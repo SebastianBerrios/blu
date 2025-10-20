@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import SideBar from "@/components/SideBar";
 
 export const metadata: Metadata = {
   title: "Blu Café",
@@ -13,7 +14,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <main className="h-dvh flex bg-primary-50">
+          <SideBar />
+          <div className="w-full h-full pt-4 ">{children}</div>
+        </main>
+      </body>
     </html>
   );
 }
