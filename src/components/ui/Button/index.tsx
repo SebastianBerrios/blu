@@ -22,7 +22,7 @@ export default function Button({
     }
 
     if (variant === "ghost") {
-      return `${baseStyles} text-gray-700 border-2 border-primay-500 hover:bg-gray-100 focus:ring-gray-500 active:bg-gray-200`;
+      return `${baseStyles} text-gray-700 border-2 border-primary-500 hover:bg-gray-100 focus:ring-gray-500 active:bg-gray-200`;
     }
 
     return baseStyles;
