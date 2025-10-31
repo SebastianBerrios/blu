@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Menu,
   X,
+  ShoppingBasket,
 } from "lucide-react";
 
 export default function SideBar() {
@@ -17,6 +18,7 @@ export default function SideBar() {
 
   const navItems = [
     { id: 1, nav: "categories", name: "Categorias", icon: FolderOpen },
+    { id: 2, nav: "products", name: "Productos", icon: ShoppingBasket },
     { id: 2, nav: "ingredients", name: "Ingredientes", icon: ChefHat },
     { id: 3, nav: "recipes", name: "Recetas", icon: BookOpen },
     { id: 4, nav: "sales", name: "Ventas", icon: TrendingUp },
