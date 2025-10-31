@@ -63,7 +63,7 @@ export default function ProductForm({
 
       onSuccess();
       onClose();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error al guardar producto:", error);
     } finally {
       setIsSubmitting(false);
@@ -132,7 +132,7 @@ export default function ProductForm({
           </div>
 
           {/* Categoria */}
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-primary-900 mb-1.5">
               Selecciona una categoria <span className="text-red-600">*</span>
             </label>
@@ -146,7 +146,7 @@ export default function ProductForm({
               className="w-full px-4 py-2.5 border border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
               placeholder="Ej: Cafes"
             />
-          </div>
+          </div> */}
 
           {/* Botones */}
           <div className="flex gap-3 pt-4">

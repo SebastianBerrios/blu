@@ -74,7 +74,7 @@ export default function IngredientForm({
 
       onSuccess();
       onClose();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error al guardar ingrediente:", error);
     } finally {
       setIsSubmitting(false);

@@ -65,7 +65,7 @@ export default function CategoryForm({
 
       onSuccess();
       onClose();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error al guardar categoria:", error);
     } finally {
       setIsSubmitting(false);
