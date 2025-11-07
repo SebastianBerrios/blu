@@ -59,7 +59,7 @@ export default function Products() {
               </div>
             </div>
             <Button variant="primary" icon={true} onClick={handleCreate}>
-              Agregar categoría
+              Agregar producto
             </Button>
           </div>
         </header>

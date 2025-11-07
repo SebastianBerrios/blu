@@ -159,7 +159,7 @@ export default function IngredientForm({
                 <option value="g">g</option>
                 <option value="l">l</option>
                 <option value="ml">ml</option>
-                <option value="und">unidad</option>
+                <option value="und">und</option>
               </select>
             </div>
           </div>
