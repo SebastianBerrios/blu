@@ -5,7 +5,14 @@ export type Recipe = Tables<"recipes">;
 export interface CreateRecipe {
   name: string;
   description: string;
-  slice: number;
+  quantity: number;
+  unit_of_measure: string;
   manufacturing_cost: number;
-  sale_price_per_slice: number;
+}
+
+export interface RecipeIngredientItem {
+  ingredient_id: number;
+  ingredient_name: string;
+  quantity: number;
+  unit_of_measure: string;
 }

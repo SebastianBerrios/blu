@@ -145,24 +145,24 @@ export type Database = {
           id: number
           manufacturing_cost: number
           name: string
-          sale_price_per_slice: number | null
-          slice: number
+          quantity: number
+          unit_of_measure: string
         }
         Insert: {
           description: string
           id?: never
           manufacturing_cost: number
           name: string
-          sale_price_per_slice?: number | null
-          slice: number
+          quantity: number
+          unit_of_measure: string
         }
         Update: {
           description?: string
           id?: never
           manufacturing_cost?: number
           name?: string
-          sale_price_per_slice?: number | null
-          slice?: number
+          quantity?: number
+          unit_of_measure?: string
         }
         Relationships: []
       }
@@ -204,21 +204,21 @@ export type Database = {
           customer_id: number | null
           id: number
           order_type: string
-          sale_date: string | null
+          sale_date: string
           total_price: number
         }
         Insert: {
           customer_id?: number | null
-          id?: never
+          id?: number
           order_type: string
-          sale_date?: string | null
+          sale_date?: string
           total_price: number
         }
         Update: {
           customer_id?: number | null
-          id?: never
+          id?: number
           order_type?: string
-          sale_date?: string | null
+          sale_date?: string
           total_price?: number
         }
         Relationships: [
