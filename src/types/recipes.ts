@@ -16,3 +16,16 @@ export interface RecipeIngredientItem {
   quantity: number;
   unit_of_measure: string;
 }
+
+export interface RecipeIngredientWithRelation {
+  quantity: number;
+  unit_of_measure: string;
+  recipe_ingredients_id: number;
+  ingredients: {
+    id: number;
+    name: string;
+    price: number;
+    quantity: number;
+    unit_of_measure: string;
+  };
+}

@@ -5,7 +5,11 @@ import { useForm, SubmitHandler } from "react-hook-form";
 import { X, Trash2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useIngredients } from "@/hooks/useIngredients";
-import type { Recipe, CreateRecipe } from "@/types";
+import type {
+  Recipe,
+  CreateRecipe,
+  RecipeIngredientWithRelation,
+} from "@/types";
 
 interface RecipeFormProps {
   isOpen: boolean;
@@ -163,8 +167,10 @@ export default function RecipeForm({
           .eq("recipe_id", recipe.id);
 
         if (!error && data) {
-          const formattedIngredients: RecipeIngredient[] = data.map(
-            (item: any) => ({
+          const typedData = data as unknown as RecipeIngredientWithRelation[];
+
+          const formattedIngredients: RecipeIngredient[] = typedData.map(
+            (item: RecipeIngredientWithRelation) => ({
               ingredient_id: item.ingredients.id,
               ingredient_name: item.ingredients.name,
               quantity: item.quantity,
