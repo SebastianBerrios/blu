@@ -78,18 +78,21 @@ export type Database = {
         Row: {
           category_id: number | null
           id: number
+          manufacturing_cost: number | null
           name: string
           price: number
         }
         Insert: {
           category_id?: number | null
           id?: never
+          manufacturing_cost?: number | null
           name: string
           price: number
         }
         Update: {
           category_id?: number | null
           id?: never
+          manufacturing_cost?: number | null
           name?: string
           price?: number
         }

@@ -5,6 +5,7 @@ export type Product = Tables<"products">;
 export interface CreateProduct {
   name: string;
   categoryId: number;
+  manufacturing_cost: number;
   price: number;
 }
 
