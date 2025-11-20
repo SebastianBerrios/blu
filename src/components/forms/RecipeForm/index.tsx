@@ -47,6 +47,7 @@ export default function RecipeForm({
   >([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [totalCost, setTotalCost] = useState(0);
+  const [addAsIngredient, setAddAsIngredient] = useState<boolean>(true);
 
   const { ingredients } = useIngredients();
   const { register, handleSubmit, reset, setValue } = useForm<CreateRecipe>();
@@ -208,6 +209,7 @@ export default function RecipeForm({
         });
         setRecipeIngredients([]);
       }
+      setAddAsIngredient(true);
       setSearchIngredient("");
       setSelectedIngredientId(null);
       setIngredientQuantity("");
@@ -334,12 +336,14 @@ export default function RecipeForm({
         recipeId = newRecipe.id;
 
         // Crear el ingrediente en la tabla ingredients
-        await supabase.from("ingredients").insert({
-          name: data.name.toLowerCase(),
-          quantity: Number(data.quantity),
-          unit_of_measure: data.unit_of_measure,
-          price: Number(data.manufacturing_cost),
-        });
+        if (addAsIngredient) {
+          await supabase.from("ingredients").insert({
+            name: data.name.toLowerCase(),
+            quantity: Number(data.quantity),
+            unit_of_measure: data.unit_of_measure,
+            price: Number(data.manufacturing_cost),
+          });
+        }
       }
 
       // Insertar ingredientes de la receta
@@ -578,66 +582,99 @@ export default function RecipeForm({
             )}
           </div>
 
-          {/* Rendimiento de la receta */}
-          <div className="border-2 border-blue-300 rounded-lg p-4 bg-linear-to-br from-blue-50 to-white">
-            <h3 className="text-base font-semibold text-blue-900 mb-3">
-              Rendimiento de la Receta
-            </h3>
-
-            <div className="grid grid-cols-2 gap-4">
+          {/* Agregar como ingrediente */}
+          {!isEditMode && (
+            <div className="border border-purple-200 rounded-lg p-4 bg-purple-50 flex items-start justify-between gap-4">
               <div>
-                <label className="block text-sm font-medium text-blue-900 mb-1.5">
-                  Cantidad <span className="text-red-600">*</span>
+                <label className="block text-sm font-medium text-purple-900 mb-1.5">
+                  ¿Agregar esta receta como ingrediente?
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  {...register("quantity", {
-                    required: "La cantidad es requerida",
-                    min: { value: 0.01, message: "Debe ser mayor a 0" },
-                  })}
-                  disabled={isSubmitting}
-                  className="w-full px-4 py-2.5 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100"
-                  placeholder="150"
+                <p className="text-xs text-purple-700">
+                  Si está activado, la receta se registrará en la lista de
+                  ingredientes para usarla en otras preparaciones.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={addAsIngredient}
+                onClick={() => setAddAsIngredient((prev) => !prev)}
+                disabled={isSubmitting}
+                className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  addAsIngredient ? "bg-purple-600" : "bg-gray-300"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    addAsIngredient ? "translate-x-6" : "translate-x-0"
+                  }`}
                 />
+              </button>
+            </div>
+          )}
+
+          {/* Rendimiento de la receta */}
+          {addAsIngredient && (
+            <div className="border-2 border-blue-300 rounded-lg p-4 bg-linear-to-br from-blue-50 to-white">
+              <h3 className="text-base font-semibold text-blue-900 mb-3">
+                Rendimiento de la Receta
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-blue-900 mb-1.5">
+                    Cantidad <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    {...register("quantity", {
+                      required: "La cantidad es requerida",
+                      min: { value: 0.01, message: "Debe ser mayor a 0" },
+                    })}
+                    disabled={isSubmitting}
+                    className="w-full px-4 py-2.5 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100"
+                    placeholder="150"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-blue-900 mb-1.5">
+                    Unidad <span className="text-red-600">*</span>
+                  </label>
+                  <select
+                    {...register("unit_of_measure", {
+                      required: "La unidad de medida es requerida",
+                    })}
+                    disabled={isSubmitting}
+                    className="w-full px-4 py-2.5 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100"
+                  >
+                    <option value="">Seleccionar</option>
+                    <option value="kg">kg</option>
+                    <option value="g">g</option>
+                    <option value="l">l</option>
+                    <option value="ml">ml</option>
+                    <option value="und">und</option>
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-blue-900 mb-1.5">
-                  Unidad <span className="text-red-600">*</span>
-                </label>
-                <select
-                  {...register("unit_of_measure", {
-                    required: "La unidad de medida es requerida",
-                  })}
-                  disabled={isSubmitting}
-                  className="w-full px-4 py-2.5 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100"
-                >
-                  <option value="">Seleccionar</option>
-                  <option value="kg">kg</option>
-                  <option value="g">g</option>
-                  <option value="l">l</option>
-                  <option value="ml">ml</option>
-                  <option value="und">unidad</option>
-                </select>
+              <div className="bg-blue-100 rounded-lg p-3 border border-blue-200 mt-3">
+                <p className="text-xs text-blue-800">
+                  <strong>Ejemplo:</strong> Si tu receta produce 150g de fudge,
+                  ingresa:
+                </p>
+                <ul className="text-xs text-blue-700 mt-2 space-y-1 ml-4">
+                  <li>
+                    • Cantidad: <strong>150</strong>
+                  </li>
+                  <li>
+                    • Unidad: <strong>g</strong>
+                  </li>
+                </ul>
               </div>
             </div>
-
-            <div className="bg-blue-100 rounded-lg p-3 border border-blue-200 mt-3">
-              <p className="text-xs text-blue-800">
-                <strong>Ejemplo:</strong> Si tu receta produce 150g de fudge,
-                ingresa:
-              </p>
-              <ul className="text-xs text-blue-700 mt-2 space-y-1 ml-4">
-                <li>
-                  • Cantidad: <strong>150</strong>
-                </li>
-                <li>
-                  • Unidad: <strong>g</strong>
-                </li>
-              </ul>
-            </div>
-          </div>
+          )}
 
           {/* Costo de fabricación */}
           <div className="border-2 border-green-300 rounded-lg p-4 bg-linear-to-br from-green-50 to-white">
@@ -646,7 +683,7 @@ export default function RecipeForm({
             </label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">
-                $
+                S/
               </span>
               <input
                 type="number"
