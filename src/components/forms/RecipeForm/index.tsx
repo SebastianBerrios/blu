@@ -26,6 +26,7 @@ interface RecipeIngredient {
   ingredient_price: number;
   ingredient_unit: string;
   ingredient_quantity_stock: number;
+  equivalent_price?: number; // Precio calculado para esta cantidad específica
 }
 
 export default function RecipeForm({
@@ -171,15 +172,26 @@ export default function RecipeForm({
           const typedData = data as unknown as RecipeIngredientWithRelation[];
 
           const formattedIngredients: RecipeIngredient[] = typedData.map(
-            (item: RecipeIngredientWithRelation) => ({
-              ingredient_id: item.ingredients.id,
-              ingredient_name: item.ingredients.name,
-              quantity: item.quantity,
-              unit_of_measure: item.unit_of_measure,
-              ingredient_price: item.ingredients.price,
-              ingredient_unit: item.ingredients.unit_of_measure,
-              ingredient_quantity_stock: item.ingredients.quantity,
-            })
+            (item: RecipeIngredientWithRelation) => {
+              const equivalentPrice = calculateIngredientCost(
+                item.quantity,
+                item.unit_of_measure,
+                item.ingredients.price,
+                item.ingredients.quantity,
+                item.ingredients.unit_of_measure
+              );
+
+              return {
+                ingredient_id: item.ingredients.id,
+                ingredient_name: item.ingredients.name,
+                quantity: item.quantity,
+                unit_of_measure: item.unit_of_measure,
+                ingredient_price: item.ingredients.price,
+                ingredient_unit: item.ingredients.unit_of_measure,
+                ingredient_quantity_stock: item.ingredients.quantity,
+                equivalent_price: equivalentPrice,
+              };
+            }
           );
           setRecipeIngredients(formattedIngredients);
         }
@@ -250,6 +262,15 @@ export default function RecipeForm({
       return;
     }
 
+    // Calcular el precio equivalente para esta cantidad específica
+    const equivalentPrice = calculateIngredientCost(
+      parseFloat(ingredientQuantity),
+      ingredientUnit,
+      selectedIngredient.price,
+      selectedIngredient.quantity,
+      selectedIngredient.unit_of_measure
+    );
+
     const newIngredient: RecipeIngredient = {
       ingredient_id: selectedIngredientId,
       ingredient_name: selectedIngredient.name,
@@ -258,6 +279,7 @@ export default function RecipeForm({
       ingredient_price: selectedIngredient.price,
       ingredient_unit: selectedIngredient.unit_of_measure,
       ingredient_quantity_stock: selectedIngredient.quantity,
+      equivalent_price: equivalentPrice,
     };
 
     setRecipeIngredients([...recipeIngredients, newIngredient]);
@@ -540,6 +562,9 @@ export default function RecipeForm({
                         <th className="px-4 py-2 text-left text-xs font-medium text-primary-700 uppercase">
                           Unidad
                         </th>
+                        <th className="px-4 py-2 text-right text-xs font-medium text-primary-700 uppercase">
+                          Precio
+                        </th>
                         <th className="px-4 py-2 text-center text-xs font-medium text-primary-700 uppercase">
                           Acción
                         </th>
@@ -560,6 +585,11 @@ export default function RecipeForm({
                           <td className="px-4 py-2.5 text-sm text-primary-900">
                             {item.unit_of_measure}
                           </td>
+                          <td className="px-4 py-2.5 text-sm text-primary-900 text-right font-semibold">
+                            <span className="text-green-600">
+                              S/ {item.equivalent_price?.toFixed(2) || "0.00"}
+                            </span>
+                          </td>
                           <td className="px-4 py-2.5 text-center">
                             <button
                               type="button"
@@ -575,6 +605,19 @@ export default function RecipeForm({
                           </td>
                         </tr>
                       ))}
+                      {/* Fila de total */}
+                      <tr className="bg-green-50 font-semibold">
+                        <td
+                          colSpan={3}
+                          className="px-4 py-3 text-sm text-right text-green-900"
+                        >
+                          Total de ingredientes:
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right text-green-700">
+                          S/ {totalCost.toFixed(2)}
+                        </td>
+                        <td></td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -582,36 +625,29 @@ export default function RecipeForm({
             )}
           </div>
 
-          {/* Agregar como ingrediente */}
-          {!isEditMode && (
-            <div className="border border-purple-200 rounded-lg p-4 bg-purple-50 flex items-start justify-between gap-4">
-              <div>
-                <label className="block text-sm font-medium text-purple-900 mb-1.5">
-                  ¿Agregar esta receta como ingrediente?
-                </label>
-                <p className="text-xs text-purple-700">
-                  Si está activado, la receta se registrará en la lista de
-                  ingredientes para usarla en otras preparaciones.
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={addAsIngredient}
-                onClick={() => setAddAsIngredient((prev) => !prev)}
-                disabled={isSubmitting}
-                className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  addAsIngredient ? "bg-purple-600" : "bg-gray-300"
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    addAsIngredient ? "translate-x-6" : "translate-x-0"
-                  }`}
-                />
-              </button>
+          {/* Costo de fabricación */}
+          <div className="border-2 border-green-300 rounded-lg p-4 bg-linear-to-br from-green-50 to-white">
+            <label className="block text-sm font-medium text-green-900 mb-1.5">
+              Costo de fabricación (calculado automáticamente)
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">
+                S/
+              </span>
+              <input
+                type="number"
+                step="0.01"
+                {...register("manufacturing_cost")}
+                disabled
+                className="w-full pl-8 pr-4 py-3 border-2 border-green-300 rounded-lg bg-white text-gray-800 font-semibold text-lg cursor-not-allowed"
+                placeholder="0.00"
+              />
             </div>
-          )}
+            <p className="text-xs text-green-700 mt-2">
+              💡 Este costo se calcula automáticamente sumando los precios de
+              todos los ingredientes
+            </p>
+          </div>
 
           {/* Rendimiento de la receta */}
           {addAsIngredient && (
@@ -676,29 +712,36 @@ export default function RecipeForm({
             </div>
           )}
 
-          {/* Costo de fabricación */}
-          <div className="border-2 border-green-300 rounded-lg p-4 bg-linear-to-br from-green-50 to-white">
-            <label className="block text-sm font-medium text-green-900 mb-1.5">
-              Costo de fabricación (calculado automáticamente)
-            </label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">
-                S/
-              </span>
-              <input
-                type="number"
-                step="0.01"
-                {...register("manufacturing_cost")}
-                disabled
-                className="w-full pl-8 pr-4 py-3 border-2 border-green-300 rounded-lg bg-white text-gray-800 font-semibold text-lg cursor-not-allowed"
-                placeholder="0.00"
-              />
+          {/* Agregar como ingrediente */}
+          {!isEditMode && (
+            <div className="border border-purple-200 rounded-lg p-4 bg-purple-50 flex items-start justify-between gap-4">
+              <div>
+                <label className="block text-sm font-medium text-purple-900 mb-1.5">
+                  ¿Agregar esta receta como ingrediente?
+                </label>
+                <p className="text-xs text-purple-700">
+                  Si está activado, la receta se registrará en la lista de
+                  ingredientes para usarla en otras preparaciones.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={addAsIngredient}
+                onClick={() => setAddAsIngredient((prev) => !prev)}
+                disabled={isSubmitting}
+                className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  addAsIngredient ? "bg-purple-600" : "bg-gray-300"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    addAsIngredient ? "translate-x-6" : "translate-x-0"
+                  }`}
+                />
+              </button>
             </div>
-            <p className="text-xs text-green-700 mt-2">
-              💡 Este costo se calcula automáticamente sumando los precios de
-              todos los ingredientes
-            </p>
-          </div>
+          )}
 
           {/* Botones */}
           <div className="flex gap-3 pt-4 sticky bottom-0 bg-white pb-2">
