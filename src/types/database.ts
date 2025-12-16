@@ -81,6 +81,7 @@ export type Database = {
           manufacturing_cost: number | null
           name: string
           price: number
+          suggested_price: number | null
         }
         Insert: {
           category_id?: number | null
@@ -88,6 +89,7 @@ export type Database = {
           manufacturing_cost?: number | null
           name: string
           price: number
+          suggested_price?: number | null
         }
         Update: {
           category_id?: number | null
@@ -95,6 +97,7 @@ export type Database = {
           manufacturing_cost?: number | null
           name?: string
           price?: number
+          suggested_price?: number | null
         }
         Relationships: [
           {

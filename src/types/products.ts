@@ -6,6 +6,7 @@ export interface CreateProduct {
   name: string;
   categoryId: number;
   manufacturing_cost: number;
+  suggested_price: number;
   price: number;
 }
 
