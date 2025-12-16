@@ -74,8 +74,21 @@ export default function Products() {
           )}
           <DataTable<Product>
             title="Lista de Productos"
-            columns={["N°", "Producto", "precio", "Acciones"]}
-            dataKeys={["id", "name", "price"]}
+            columns={[
+              "N°",
+              "Producto",
+              "Costo de Fabricación",
+              "Precio sugerido",
+              "Precio Venta",
+              "Acciones",
+            ]}
+            dataKeys={[
+              "id",
+              "name",
+              "manufacturing_cost",
+              "suggested_price",
+              "price",
+            ]}
             data={products || []}
             isLoading={isLoading}
             onEdit={handleEdit}

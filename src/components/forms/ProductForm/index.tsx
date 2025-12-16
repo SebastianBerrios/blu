@@ -130,9 +130,10 @@ export default function ProductForm({
 
     const recipe = recipes.find((item) => item.id === id);
     const cost = recipe?.manufacturing_cost ?? 0;
+    const quantity = recipe?.quantity ?? 1; // Traer el quantity automáticamente
 
     setRecipeBatchCost(cost);
-    setRecipeYield(1);
+    setRecipeYield(quantity); // Ahora se establece automáticamente desde la receta
   };
 
   const handleClearRecipe = () => {
@@ -178,6 +179,7 @@ export default function ProductForm({
         category_id: data.categoryId,
         manufacturing_cost: Number(data.manufacturing_cost ?? 0),
         price: Number(data.price),
+        suggested_price: Number(suggestedPrice), // Guardar el precio sugerido
       };
 
       if (isEditMode) {
@@ -337,13 +339,9 @@ export default function ProductForm({
                     <label className="block text-xs font-medium text-blue-700 mb-1">
                       Porciones que rinde
                     </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={recipeYield}
-                      onChange={(e) => setRecipeYield(Number(e.target.value))}
-                      className="w-full px-3 py-1.5 border border-blue-300 rounded bg-blue-50 text-center font-semibold text-blue-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                    />
+                    <div className="w-full px-3 py-1.5 border border-blue-300 rounded bg-blue-100 text-center font-semibold text-blue-900">
+                      {recipeYield}
+                    </div>
                   </div>
                   <div className="pb-2 text-blue-300">
                     <ArrowRight className="w-4 h-4" />
