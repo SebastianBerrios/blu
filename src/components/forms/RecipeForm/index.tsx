@@ -26,7 +26,7 @@ interface RecipeIngredient {
   ingredient_price: number;
   ingredient_unit: string;
   ingredient_quantity_stock: number;
-  equivalent_price?: number; // Precio calculado para esta cantidad específica
+  equivalent_price?: number;
 }
 
 export default function RecipeForm({
@@ -53,34 +53,23 @@ export default function RecipeForm({
   const { ingredients } = useIngredients();
   const { register, handleSubmit, reset, setValue } = useForm<CreateRecipe>();
 
-  // Función para convertir unidades a una base común (gramos o mililitros)
   const convertToBaseUnit = (
     quantity: number,
     unit: string,
     targetType: "weight" | "volume"
   ): number => {
-    const weightUnits: { [key: string]: number } = {
-      kg: 1000,
-      g: 1,
-    };
-
-    const volumeUnits: { [key: string]: number } = {
-      l: 1000,
-      ml: 1,
-    };
+    const weightUnits: { [key: string]: number } = { kg: 1000, g: 1 };
+    const volumeUnits: { [key: string]: number } = { l: 1000, ml: 1 };
 
     if (targetType === "weight" && weightUnits[unit]) {
       return quantity * weightUnits[unit];
     }
-
     if (targetType === "volume" && volumeUnits[unit]) {
       return quantity * volumeUnits[unit];
     }
-
     return quantity;
   };
 
-  // Calcular el costo de un ingrediente en la receta
   const calculateIngredientCost = (
     recipeQuantity: number,
     recipeUnit: string,
@@ -128,7 +117,6 @@ export default function RecipeForm({
     return 0;
   };
 
-  // Recalcular costos cuando cambian los ingredientes
   useEffect(() => {
     const total = recipeIngredients.reduce((sum, item) => {
       const cost = calculateIngredientCost(
@@ -145,7 +133,6 @@ export default function RecipeForm({
     setValue("manufacturing_cost", Number(total.toFixed(2)));
   }, [recipeIngredients, setValue]);
 
-  // Cargar ingredientes de la receta en modo edición
   useEffect(() => {
     const loadRecipeIngredients = async () => {
       if (isEditMode && recipe) {
@@ -170,7 +157,6 @@ export default function RecipeForm({
 
         if (!error && data) {
           const typedData = data as unknown as RecipeIngredientWithRelation[];
-
           const formattedIngredients: RecipeIngredient[] = typedData.map(
             (item: RecipeIngredientWithRelation) => {
               const equivalentPrice = calculateIngredientCost(
@@ -235,10 +221,18 @@ export default function RecipeForm({
     ingredient.name.toLowerCase().includes(searchIngredient.toLowerCase())
   );
 
+  const selectedIngredient = selectedIngredientId
+    ? ingredients.find((ing) => ing.id === selectedIngredientId)
+    : null;
+
   const handleSelectIngredient = (id: number, name: string) => {
+    const ingredient = ingredients.find((ing) => ing.id === id);
     setSelectedIngredientId(id);
     setSearchIngredient(name);
     setShowDropdown(false);
+    if (ingredient) {
+      setIngredientUnit(ingredient.unit_of_measure);
+    }
   };
 
   const handleAddIngredient = () => {
@@ -247,43 +241,39 @@ export default function RecipeForm({
       return;
     }
 
-    const selectedIngredient = ingredients.find(
+    const ingredient = ingredients.find(
       (ing) => ing.id === selectedIngredientId
     );
-
-    if (!selectedIngredient) return;
+    if (!ingredient) return;
 
     const exists = recipeIngredients.some(
       (item) => item.ingredient_id === selectedIngredientId
     );
-
     if (exists) {
       alert("Este ingrediente ya está agregado a la receta");
       return;
     }
 
-    // Calcular el precio equivalente para esta cantidad específica
     const equivalentPrice = calculateIngredientCost(
       parseFloat(ingredientQuantity),
       ingredientUnit,
-      selectedIngredient.price,
-      selectedIngredient.quantity,
-      selectedIngredient.unit_of_measure
+      ingredient.price,
+      ingredient.quantity,
+      ingredient.unit_of_measure
     );
 
     const newIngredient: RecipeIngredient = {
       ingredient_id: selectedIngredientId,
-      ingredient_name: selectedIngredient.name,
+      ingredient_name: ingredient.name,
       quantity: parseFloat(ingredientQuantity),
       unit_of_measure: ingredientUnit,
-      ingredient_price: selectedIngredient.price,
-      ingredient_unit: selectedIngredient.unit_of_measure,
-      ingredient_quantity_stock: selectedIngredient.quantity,
+      ingredient_price: ingredient.price,
+      ingredient_unit: ingredient.unit_of_measure,
+      ingredient_quantity_stock: ingredient.quantity,
       equivalent_price: equivalentPrice,
     };
 
     setRecipeIngredients([...recipeIngredients, newIngredient]);
-
     setSearchIngredient("");
     setSelectedIngredientId(null);
     setIngredientQuantity("");
@@ -311,7 +301,6 @@ export default function RecipeForm({
 
     try {
       const supabase = createClient();
-
       const recipeData = {
         name: data.name.toLowerCase(),
         description: data.description,
@@ -331,13 +320,11 @@ export default function RecipeForm({
         if (error) throw error;
         recipeId = recipe.id;
 
-        // Eliminar ingredientes anteriores
         await supabase
           .from("recipe_ingredients")
           .delete()
           .eq("recipe_id", recipeId);
 
-        // Actualizar el ingrediente en la tabla ingredients
         await supabase
           .from("ingredients")
           .update({
@@ -357,7 +344,6 @@ export default function RecipeForm({
         if (error) throw error;
         recipeId = newRecipe.id;
 
-        // Crear el ingrediente en la tabla ingredients
         if (addAsIngredient) {
           await supabase.from("ingredients").insert({
             name: data.name.toLowerCase(),
@@ -368,7 +354,6 @@ export default function RecipeForm({
         }
       }
 
-      // Insertar ingredientes de la receta
       const ingredientsToInsert = recipeIngredients.map((ingredient) => ({
         recipe_id: recipeId,
         recipe_ingredients_id: ingredient.ingredient_id,
@@ -401,7 +386,6 @@ export default function RecipeForm({
         className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-primary-200 bg-primary-50 rounded-t-xl sticky top-0 z-10">
           <h2 className="text-xl font-semibold text-primary-900">
             {isEditMode ? "Editar Receta" : "Agregar Receta"}
@@ -416,9 +400,7 @@ export default function RecipeForm({
           </button>
         </div>
 
-        {/* Formulario */}
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
-          {/* Nombre */}
           <div>
             <label className="block text-sm font-medium text-primary-900 mb-1.5">
               Nombre de la receta <span className="text-red-600">*</span>
@@ -435,7 +417,6 @@ export default function RecipeForm({
             />
           </div>
 
-          {/* Descripción */}
           <div>
             <label className="block text-sm font-medium text-primary-900 mb-1.5">
               Descripción de la receta <span className="text-red-600">*</span>
@@ -451,51 +432,63 @@ export default function RecipeForm({
             />
           </div>
 
-          {/* Ingredientes */}
           <div className="border border-primary-200 rounded-lg p-4 bg-primary-50/50">
             <label className="block text-sm font-medium text-primary-900 mb-3">
               Ingredientes de la receta <span className="text-red-600">*</span>
             </label>
 
             <div className="space-y-3">
-              {/* Búsqueda de ingrediente */}
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchIngredient}
-                  onChange={(e) => {
-                    setSearchIngredient(e.target.value);
-                    setShowDropdown(true);
-                  }}
-                  onFocus={() => setShowDropdown(true)}
-                  disabled={isSubmitting}
-                  className="w-full px-4 py-2.5 border border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-                  placeholder="Buscar ingrediente..."
-                />
+              <div className="flex gap-2 items-start">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={searchIngredient}
+                    onChange={(e) => {
+                      setSearchIngredient(e.target.value);
+                      setShowDropdown(true);
+                    }}
+                    onFocus={() => setShowDropdown(true)}
+                    disabled={isSubmitting}
+                    className="w-full px-4 py-2.5 border border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+                    placeholder="Buscar ingrediente..."
+                  />
 
-                {showDropdown &&
-                  searchIngredient &&
-                  filteredIngredients.length > 0 && (
-                    <ul className="absolute z-20 w-full mt-1 bg-white border border-primary-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                      {filteredIngredients.map((ingredient) => (
-                        <li
-                          key={ingredient.id}
-                          onClick={() =>
-                            handleSelectIngredient(
-                              ingredient.id,
-                              ingredient.name
-                            )
-                          }
-                          className="px-4 py-2.5 hover:bg-primary-100 cursor-pointer transition-colors capitalize"
-                        >
-                          {ingredient.name}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  {showDropdown &&
+                    searchIngredient &&
+                    filteredIngredients.length > 0 && (
+                      <ul className="absolute z-20 w-full mt-1 bg-white border border-primary-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {filteredIngredients.map((ingredient) => (
+                          <li
+                            key={ingredient.id}
+                            onClick={() =>
+                              handleSelectIngredient(
+                                ingredient.id,
+                                ingredient.name
+                              )
+                            }
+                            className="px-4 py-2.5 hover:bg-primary-100 cursor-pointer transition-colors capitalize flex justify-between items-center"
+                          >
+                            <span>{ingredient.name}</span>
+                            <span className="text-xs text-primary-500 font-medium lowercase">
+                              ({ingredient.quantity}{" "}
+                              {ingredient.unit_of_measure})
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                </div>
+
+                {selectedIngredient && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 flex items-center whitespace-nowrap min-w-fit">
+                    <span className="text-sm font-semibold text-blue-700">
+                      {selectedIngredient.quantity}{" "}
+                      {selectedIngredient.unit_of_measure}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              {/* Cantidad y Unidad */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-primary-900 mb-1.5">
@@ -532,7 +525,6 @@ export default function RecipeForm({
                 </div>
               </div>
 
-              {/* Botón agregar ingrediente */}
               <button
                 type="button"
                 onClick={handleAddIngredient}
@@ -543,7 +535,6 @@ export default function RecipeForm({
               </button>
             </div>
 
-            {/* Lista de ingredientes agregados */}
             {recipeIngredients.length > 0 && (
               <div className="mt-4">
                 <h3 className="text-sm font-medium text-primary-900 mb-2">
@@ -605,7 +596,6 @@ export default function RecipeForm({
                           </td>
                         </tr>
                       ))}
-                      {/* Fila de total */}
                       <tr className="bg-green-50 font-semibold">
                         <td
                           colSpan={3}
@@ -625,7 +615,6 @@ export default function RecipeForm({
             )}
           </div>
 
-          {/* Costo de fabricación */}
           <div className="border-2 border-green-300 rounded-lg p-4 bg-linear-to-br from-green-50 to-white">
             <label className="block text-sm font-medium text-green-900 mb-1.5">
               Costo de fabricación (calculado automáticamente)
@@ -649,13 +638,11 @@ export default function RecipeForm({
             </p>
           </div>
 
-          {/* Rendimiento de la receta */}
           {addAsIngredient && (
             <div className="border-2 border-blue-300 rounded-lg p-4 bg-linear-to-br from-blue-50 to-white">
               <h3 className="text-base font-semibold text-blue-900 mb-3">
                 Rendimiento de la Receta
               </h3>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-blue-900 mb-1.5">
@@ -673,7 +660,6 @@ export default function RecipeForm({
                     placeholder="150"
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-blue-900 mb-1.5">
                     Unidad <span className="text-red-600">*</span>
@@ -694,7 +680,6 @@ export default function RecipeForm({
                   </select>
                 </div>
               </div>
-
               <div className="bg-blue-100 rounded-lg p-3 border border-blue-200 mt-3">
                 <p className="text-xs text-blue-800">
                   <strong>Ejemplo:</strong> Si tu receta produce 150g de fudge,
@@ -712,7 +697,6 @@ export default function RecipeForm({
             </div>
           )}
 
-          {/* Agregar como ingrediente */}
           {!isEditMode && (
             <div className="border border-purple-200 rounded-lg p-4 bg-purple-50 flex items-start justify-between gap-4">
               <div>
@@ -743,7 +727,6 @@ export default function RecipeForm({
             </div>
           )}
 
-          {/* Botones */}
           <div className="flex gap-3 pt-4 sticky bottom-0 bg-white pb-2">
             <button
               type="button"
