@@ -7,13 +7,38 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
   }
   public: {
     Tables: {
+      accounts: {
+        Row: {
+          balance: number
+          created_at: string
+          id: number
+          name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: never
+          name: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: never
+          name?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           id: number
@@ -150,6 +175,7 @@ export type Database = {
       }
       purchases: {
         Row: {
+          account_id: number | null
           created_at: string
           delivery_cost: number | null
           has_delivery: boolean
@@ -159,6 +185,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_id?: number | null
           created_at?: string
           delivery_cost?: number | null
           has_delivery?: boolean
@@ -168,6 +195,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_id?: number | null
           created_at?: string
           delivery_cost?: number | null
           has_delivery?: boolean
@@ -177,6 +205,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "purchases_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "purchases_user_id_fkey"
             columns: ["user_id"]
@@ -299,6 +334,7 @@ export type Database = {
           sale_date: string
           table_number: number | null
           total_price: number
+          user_id: string | null
           yape_amount: number | null
         }
         Insert: {
@@ -311,6 +347,7 @@ export type Database = {
           sale_date?: string
           table_number?: number | null
           total_price: number
+          user_id?: string | null
           yape_amount?: number | null
         }
         Update: {
@@ -323,6 +360,7 @@ export type Database = {
           sale_date?: string
           table_number?: number | null
           total_price?: number
+          user_id?: string | null
           yape_amount?: number | null
         }
         Relationships: [
@@ -331,6 +369,64 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          account_id: number
+          amount: number
+          created_at: string
+          description: string | null
+          id: number
+          reference_id: number | null
+          reference_type: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          account_id: number
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: never
+          reference_id?: number | null
+          reference_type?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          account_id?: number
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: never
+          reference_id?: number | null
+          reference_type?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -374,6 +470,18 @@ export type Database = {
     }
     Functions: {
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
+      record_transaction: {
+        Args: {
+          p_account_id: number
+          p_amount: number
+          p_description?: string
+          p_reference_id?: number
+          p_reference_type?: string
+          p_type: string
+          p_user_id?: string
+        }
+        Returns: number
+      }
     }
     Enums: {
       app_role: "admin" | "cocinero" | "barista"
