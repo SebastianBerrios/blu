@@ -21,7 +21,7 @@ export default function Spinner({
 
   return (
     <div className={containerClasses}>
-      <div className="flex items-center gap-3 text-primary-700">
+      <div className="flex items-center gap-3 text-slate-700">
         <div
           className={`${sizeClasses[size]} border-2 border-primary-500 border-t-transparent rounded-full animate-spin`}
         ></div>

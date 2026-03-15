@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   Coffee,
   FolderOpen,
   ChefHat,
   BookOpen,
   TrendingUp,
-  Menu,
-  X,
   ShoppingBasket,
   ShoppingCart,
   Users,
@@ -44,9 +43,9 @@ const allNavItems: NavItem[] = [
 ];
 
 export default function SideBar() {
-  const [isOpen, setIsOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const { profile, isAdmin, signOut, mutate } = useAuth();
+  const pathname = usePathname();
 
   const navItems = allNavItems.filter(
     (item) => !item.adminOnly || isAdmin
@@ -54,70 +53,40 @@ export default function SideBar() {
 
   return (
     <>
-      {/* Mobile header with button and title */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-primary-200 shadow-sm">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="p-2 bg-primary-500 text-white rounded-lg shadow-lg hover:bg-primary-600 transition-colors"
-            aria-label="Toggle menu"
-          >
-            {isOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-          <div className="flex items-center gap-2">
-            <div>
-              <h1 className="text-primary-900 text-lg font-bold">Blu Café</h1>
-              <p className="text-primary-500 text-xs">Gestión de Negocio</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Overlay for mobile */}
-      {isOpen && (
-        <div
-          className="md:hidden fixed inset-0 bg-transparent bg-opacity-100 z-40"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={`
-          w-64 h-full bg-linear-to-b from-primary-50 to-white border-r border-primary-200 shadow-lg
-          fixed md:static
-          transform transition-transform duration-300 ease-in-out z-50
-          flex flex-col
-          ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-        `}
-      >
-        <div className="p-6 flex items-center gap-3 border-b border-primary-200 bg-white">
+      <aside className="hidden md:flex md:flex-col w-64 h-full bg-white border-r border-slate-200 shadow-sm">
+        {/* Logo */}
+        <div className="p-6 flex items-center gap-3 border-b border-slate-200">
           <div className="p-2 bg-primary-500 rounded-lg">
             <Coffee size={24} className="text-white" />
           </div>
           <div>
-            <h1 className="text-primary-900 text-xl font-bold">Blu Café</h1>
-            <p className="text-primary-500 text-sm">Gestión de Negocio</p>
+            <h1 className="text-slate-900 text-xl font-bold">Blu Café</h1>
+            <p className="text-slate-500 text-sm">Gestión de Negocio</p>
           </div>
         </div>
 
-        <div className="p-4 flex-1">
-          <h2 className="text-primary-700 font-semibold text-sm uppercase tracking-wider mb-4 px-2">
+        {/* Navigation */}
+        <div className="p-4 flex-1 overflow-y-auto">
+          <h2 className="text-slate-500 font-semibold text-xs uppercase tracking-wider mb-4 px-2">
             Navegación
           </h2>
           <nav className="space-y-1">
             {navItems.map((item) => {
               const IconComponent = item.icon;
+              const isActive = pathname.startsWith(item.nav);
               return (
                 <Link
                   key={item.id}
                   href={item.nav}
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2.5 text-primary-700 rounded-lg transition-all duration-200 hover:bg-primary-100 hover:text-primary-900 hover:shadow-sm group"
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
+                    isActive
+                      ? "bg-primary-50 text-primary-700 border-l-3 border-primary-500 font-semibold"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  }`}
                 >
                   <IconComponent
                     size={18}
-                    className="text-primary-500 group-hover:text-primary-700 transition-colors"
+                    className={isActive ? "text-primary-600" : "text-slate-400 group-hover:text-slate-600"}
                   />
                   <span className="font-medium">{item.name}</span>
                 </Link>
@@ -127,10 +96,10 @@ export default function SideBar() {
         </div>
 
         {/* User section */}
-        <div className="p-4 border-t border-primary-200 bg-white">
+        <div className="p-4 border-t border-slate-200">
           <button
             onClick={() => setIsProfileModalOpen(true)}
-            className="flex items-center gap-3 px-2 mb-3 w-full rounded-lg hover:bg-primary-50 py-1.5 transition-colors group"
+            className="flex items-center gap-3 px-2 mb-3 w-full rounded-lg hover:bg-slate-100 py-1.5 transition-colors group"
             title="Editar perfil"
           >
             <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-sm">
@@ -139,18 +108,18 @@ export default function SideBar() {
                 "?"}
             </div>
             <div className="flex-1 min-w-0 text-left">
-              <p className="text-sm font-medium text-primary-900 truncate">
+              <p className="text-sm font-medium text-slate-900 truncate">
                 {profile?.full_name || profile?.email}
               </p>
-              <p className="text-xs text-primary-500 capitalize">
+              <p className="text-xs text-slate-500 capitalize">
                 {profile?.role ?? "Sin rol"}
               </p>
             </div>
-            <SquarePen size={14} className="text-primary-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <SquarePen size={14} className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
           </button>
           <button
             onClick={signOut}
-            className="flex items-center gap-2 px-3 py-2 w-full text-sm text-primary-700 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 w-full text-sm text-slate-600 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors"
           >
             <LogOut size={16} />
             Cerrar sesión

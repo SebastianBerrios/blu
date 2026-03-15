@@ -8,8 +8,10 @@ import {
   ChevronDown,
   ChevronsUpDown,
   Search,
+  Inbox,
 } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
+import EmptyState from "@/components/ui/EmptyState";
 
 type SortDirection = "asc" | "desc" | null;
 
@@ -21,6 +23,7 @@ interface DataTableProps<T> {
   isLoading?: boolean;
   onEdit?: (item: T) => void;
   onDelete?: (item: T) => void;
+  renderCard?: (item: T, onEdit?: (item: T) => void, onDelete?: (item: T) => void) => React.ReactNode;
 }
 
 export default function DataTable<T extends { id: number; name: string }>({
@@ -31,6 +34,7 @@ export default function DataTable<T extends { id: number; name: string }>({
   isLoading = false,
   onEdit,
   onDelete,
+  renderCard,
 }: DataTableProps<T>) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<keyof T | null>(null);
@@ -82,23 +86,23 @@ export default function DataTable<T extends { id: number; name: string }>({
   };
 
   return (
-    <div className="bg-white rounded-lg border border-primary-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-primary-200 bg-primary-50">
+      <div className="px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 bg-slate-50">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-lg font-semibold text-primary-900">{title}</h3>
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-400" />
+          <h3 className="text-base md:text-lg font-semibold text-slate-900">{title}</h3>
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="relative flex-1 md:flex-none">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Buscar por nombre..."
+                placeholder="Buscar..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 text-sm border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white placeholder-primary-400"
+                className="w-full md:w-auto pl-9 pr-4 py-3 md:py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white placeholder-slate-400"
               />
             </div>
-            <span className="text-sm text-primary-700 whitespace-nowrap">
+            <span className="text-sm text-slate-500 whitespace-nowrap hidden md:inline">
               {isLoading
                 ? "Cargando..."
                 : `${sortedData?.length || 0} registros`}
@@ -114,12 +118,23 @@ export default function DataTable<T extends { id: number; name: string }>({
         </div>
       )}
 
-      {/* Table */}
+      {/* Mobile Card View */}
+      {!isLoading && sortedData && sortedData.length > 0 && renderCard && (
+        <div className="md:hidden divide-y divide-slate-100">
+          {sortedData.map((item) => (
+            <div key={item.id}>
+              {renderCard(item, onEdit, onDelete)}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Desktop Table (always) + Mobile Table (only when no renderCard) */}
       {!isLoading && sortedData && sortedData.length > 0 && (
-        <div className="overflow-x-auto">
+        <div className={`overflow-x-auto ${renderCard ? "hidden md:block" : ""}`}>
           <table className="w-full">
             {/* Table Head */}
-            <thead className="bg-primary-50">
+            <thead className="bg-slate-50">
               <tr>
                 {columns.map((column, columnIndex) => {
                   const isSortable = columnIndex < dataKeys.length;
@@ -129,9 +144,9 @@ export default function DataTable<T extends { id: number; name: string }>({
                   return (
                     <th
                       key={column}
-                      className={`px-6 py-3 text-xs font-medium text-primary-700 uppercase tracking-wider text-center ${
+                      className={`px-6 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider text-center ${
                         isSortable
-                          ? "cursor-pointer select-none hover:bg-primary-100 transition-colors"
+                          ? "cursor-pointer select-none hover:bg-slate-100 transition-colors"
                           : ""
                       }`}
                       onClick={() => isSortable && handleSort(columnIndex)}
@@ -144,7 +159,7 @@ export default function DataTable<T extends { id: number; name: string }>({
                           ) : isActive && sortDirection === "desc" ? (
                             <ChevronDown className="w-3.5 h-3.5" />
                           ) : (
-                            <ChevronsUpDown className="w-3.5 h-3.5 text-primary-400" />
+                            <ChevronsUpDown className="w-3.5 h-3.5 text-slate-400" />
                           ))}
                       </div>
                     </th>
@@ -154,42 +169,40 @@ export default function DataTable<T extends { id: number; name: string }>({
             </thead>
 
             {/* Table Body */}
-            <tbody className="bg-white divide-y divide-primary-200">
+            <tbody className="bg-white divide-y divide-slate-100">
               {sortedData.map((item) => (
                 <tr
                   key={item.id}
-                  className="hover:bg-primary-50 transition-colors"
+                  className="hover:bg-slate-50 transition-colors"
                 >
-                  {/* Datos */}
                   {dataKeys.map((key) => (
                     <td
                       key={String(key)}
-                      className="px-6 py-4 text-center text-sm text-primary-900 uppercase"
+                      className="px-6 py-4 text-center text-sm text-slate-900 uppercase"
                     >
                       {String(item[key] ?? "-")}
                     </td>
                   ))}
 
-                  {/* Botones de acciones */}
                   {(onEdit || onDelete) && (
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
                         {onEdit && (
                           <button
                             onClick={() => onEdit(item)}
-                            className="p-2 text-primary-700 hover:bg-primary-100 rounded-lg transition-colors"
+                            className="p-3 text-primary-700 hover:bg-primary-100 rounded-lg transition-colors"
                             title="Editar"
                           >
-                            <SquarePen className="w-4 h-4" />
+                            <SquarePen className="w-5 h-5" />
                           </button>
                         )}
                         {onDelete && (
                           <button
                             onClick={() => onDelete(item)}
-                            className="p-2 text-red-700 hover:bg-red-100 rounded-lg transition-colors"
+                            className="p-3 text-red-700 hover:bg-red-100 rounded-lg transition-colors"
                             title="Eliminar"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         )}
                       </div>
@@ -204,28 +217,20 @@ export default function DataTable<T extends { id: number; name: string }>({
 
       {/* Empty State - No search results */}
       {!isLoading && data.length > 0 && sortedData.length === 0 && (
-        <div className="text-center py-12 px-6">
-          <div className="max-w-sm mx-auto">
-            <h3 className="text-lg font-medium text-primary-900 mb-2">
-              Sin resultados
-            </h3>
-            <p className="text-primary-700 mb-6">
-              No se encontraron registros para &quot;{searchQuery}&quot;
-            </p>
-          </div>
-        </div>
+        <EmptyState
+          icon={<Search className="w-12 h-12" />}
+          title="Sin resultados"
+          description={`No se encontraron registros para "${searchQuery}"`}
+        />
       )}
 
       {/* Empty State - No data */}
       {!isLoading && (!data || data.length === 0) && (
-        <div className="text-center py-12 px-6">
-          <div className="max-w-sm mx-auto">
-            <h3 className="text-lg font-medium text-primary-900 mb-2">
-              No hay datos
-            </h3>
-            <p className="text-primary-700 mb-6">No se encontraron registros</p>
-          </div>
-        </div>
+        <EmptyState
+          icon={<Inbox className="w-12 h-12" />}
+          title="No hay datos"
+          description="No se encontraron registros"
+        />
       )}
     </div>
   );

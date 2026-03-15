@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FolderOpen } from "lucide-react";
+import { FolderOpen, SquarePen, Trash2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,6 +9,8 @@ import type { Category } from "@/types";
 import CategoryForm from "@/components/forms/CategoryForm";
 import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
+import PageHeader from "@/components/ui/PageHeader";
+import FAB from "@/components/ui/FAB";
 
 export default function Categories() {
   const { categories, error, isLoading, mutate } = useCategories();
@@ -32,7 +34,6 @@ export default function Categories() {
   const handleDelete = async (category: Category) => {
     const supabase = createClient();
     await supabase.from("categories").delete().eq("id", category.id);
-
     mutate();
   };
 
@@ -47,31 +48,21 @@ export default function Categories() {
 
   return (
     <>
-      <section className="h-full flex flex-col bg-primary-50">
-        <header className="bg-white border-b border-primary-200 px-6 py-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-primary-100 rounded-xl">
-                <FolderOpen className="w-6 h-6 text-primary-700" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-primary-900">
-                  Categorías
-                </h1>
-                <p className="text-primary-700 mt-1">
-                  Gestiona las categorías de tu cafeteria
-                </p>
-              </div>
-            </div>
-            {isAdmin && (
+      <section className="h-full flex flex-col bg-slate-50">
+        <PageHeader
+          title="Categorías"
+          subtitle="Gestiona las categorías de tu cafetería"
+          icon={<FolderOpen className="w-6 h-6 text-primary-700" />}
+          action={
+            isAdmin ? (
               <Button variant="primary" icon={true} onClick={handleCreate}>
                 Agregar categoría
               </Button>
-            )}
-          </div>
-        </header>
+            ) : undefined
+          }
+        />
 
-        <div className="flex-1 px-6 py-6 overflow-auto bg-primary-50">
+        <div className="flex-1 px-4 py-4 md:px-6 md:py-6 overflow-auto">
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-700">
@@ -87,9 +78,33 @@ export default function Categories() {
             isLoading={isLoading}
             onEdit={isAdmin ? handleEdit : undefined}
             onDelete={isAdmin ? handleDelete : undefined}
+            renderCard={(item, onEditFn, onDeleteFn) => (
+              <div className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <span className="text-xs text-slate-400">#{item.id}</span>
+                  <p className="text-sm font-medium text-slate-900 capitalize">{item.name}</p>
+                </div>
+                {(onEditFn || onDeleteFn) && (
+                  <div className="flex items-center gap-1">
+                    {onEditFn && (
+                      <button onClick={() => onEditFn(item)} className="p-3 text-primary-700 hover:bg-primary-50 rounded-lg">
+                        <SquarePen className="w-5 h-5" />
+                      </button>
+                    )}
+                    {onDeleteFn && (
+                      <button onClick={() => onDeleteFn(item)} className="p-3 text-red-700 hover:bg-red-50 rounded-lg">
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           />
         </div>
       </section>
+
+      {isAdmin && <FAB onClick={handleCreate} label="Agregar categoría" />}
 
       {isAdmin && (
         <CategoryForm

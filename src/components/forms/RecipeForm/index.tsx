@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { X, Trash2 } from "lucide-react";
+import { ArrowLeft, X, Trash2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useIngredients } from "@/hooks/useIngredients";
 import type {
@@ -377,369 +377,389 @@ export default function RecipeForm({
     }
   };
 
-  return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-primary-200 bg-primary-50 rounded-t-xl sticky top-0 z-10">
-          <h2 className="text-xl font-semibold text-primary-900">
-            {isEditMode ? "Editar Receta" : "Agregar Receta"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="p-2 hover:bg-primary-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-primary-700" />
-          </button>
-        </div>
+  const formFields = (
+    <>
+      <div>
+        <label className="block text-sm font-medium text-slate-900 mb-1.5">
+          Nombre de la receta <span className="text-red-600">*</span>
+        </label>
+        <input
+          type="text"
+          {...register("name", {
+            required: "El nombre es requerido",
+            maxLength: { value: 50, message: "Máximo 50 caracteres" },
+          })}
+          disabled={isSubmitting}
+          className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+          placeholder="Ej: Fudge"
+        />
+      </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-primary-900 mb-1.5">
-              Nombre de la receta <span className="text-red-600">*</span>
-            </label>
-            <input
-              type="text"
-              {...register("name", {
-                required: "El nombre es requerido",
-                maxLength: { value: 50, message: "Máximo 50 caracteres" },
-              })}
-              disabled={isSubmitting}
-              className="w-full px-4 py-2.5 border border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-              placeholder="Ej: Fudge"
-            />
-          </div>
+      <div>
+        <label className="block text-sm font-medium text-slate-900 mb-1.5">
+          Descripción de la receta <span className="text-red-600">*</span>
+        </label>
+        <textarea
+          {...register("description", {
+            required: "La descripción es requerida",
+          })}
+          disabled={isSubmitting}
+          rows={3}
+          className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+          placeholder="Ej: Mezclar la leche con la leche condensada..."
+        />
+      </div>
 
-          <div>
-            <label className="block text-sm font-medium text-primary-900 mb-1.5">
-              Descripción de la receta <span className="text-red-600">*</span>
-            </label>
-            <textarea
-              {...register("description", {
-                required: "La descripción es requerida",
-              })}
-              disabled={isSubmitting}
-              rows={3}
-              className="w-full px-4 py-2.5 border border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-              placeholder="Ej: Mezclar la leche con la leche condensada..."
-            />
-          </div>
+      <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+        <label className="block text-sm font-medium text-slate-900 mb-3">
+          Ingredientes de la receta <span className="text-red-600">*</span>
+        </label>
 
-          <div className="border border-primary-200 rounded-lg p-4 bg-primary-50/50">
-            <label className="block text-sm font-medium text-primary-900 mb-3">
-              Ingredientes de la receta <span className="text-red-600">*</span>
-            </label>
-
-            <div className="space-y-3">
-              <div className="flex gap-2 items-start">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={searchIngredient}
-                    onChange={(e) => {
-                      setSearchIngredient(e.target.value);
-                      setShowDropdown(true);
-                    }}
-                    onFocus={() => setShowDropdown(true)}
-                    disabled={isSubmitting}
-                    className="w-full px-4 py-2.5 border border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-                    placeholder="Buscar ingrediente..."
-                  />
-
-                  {showDropdown &&
-                    searchIngredient &&
-                    filteredIngredients.length > 0 && (
-                      <ul className="absolute z-20 w-full mt-1 bg-white border border-primary-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                        {filteredIngredients.map((ingredient) => (
-                          <li
-                            key={ingredient.id}
-                            onClick={() =>
-                              handleSelectIngredient(
-                                ingredient.id,
-                                ingredient.name
-                              )
-                            }
-                            className="px-4 py-2.5 hover:bg-primary-100 cursor-pointer transition-colors capitalize flex justify-between items-center"
-                          >
-                            <span>{ingredient.name}</span>
-                            <span className="text-xs text-primary-500 font-medium lowercase">
-                              ({ingredient.quantity}{" "}
-                              {ingredient.unit_of_measure})
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                </div>
-
-                {selectedIngredient && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 flex items-center whitespace-nowrap min-w-fit">
-                    <span className="text-sm font-semibold text-blue-700">
-                      {selectedIngredient.quantity}{" "}
-                      {selectedIngredient.unit_of_measure}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-primary-900 mb-1.5">
-                    Cantidad <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={ingredientQuantity}
-                    onChange={(e) => setIngredientQuantity(e.target.value)}
-                    disabled={isSubmitting}
-                    className="w-full px-4 py-2.5 border border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
-                    placeholder="100"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-primary-900 mb-1.5">
-                    Unidad <span className="text-red-600">*</span>
-                  </label>
-                  <select
-                    value={ingredientUnit}
-                    onChange={(e) => setIngredientUnit(e.target.value)}
-                    disabled={isSubmitting}
-                    className="w-full px-4 py-2.5 border border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
-                  >
-                    <option value="">Seleccionar</option>
-                    <option value="kg">kg</option>
-                    <option value="g">g</option>
-                    <option value="l">l</option>
-                    <option value="ml">ml</option>
-                    <option value="und">und</option>
-                  </select>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleAddIngredient}
+        <div className="space-y-3">
+          <div className="flex gap-2 items-start">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={searchIngredient}
+                onChange={(e) => {
+                  setSearchIngredient(e.target.value);
+                  setShowDropdown(true);
+                }}
+                onFocus={() => setShowDropdown(true)}
                 disabled={isSubmitting}
-                className="w-full bg-primary-900 py-2.5 text-white rounded-lg hover:bg-primary-800 disabled:bg-gray-400 transition-colors font-medium"
-              >
-                Agregar ingrediente
-              </button>
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+                placeholder="Buscar ingrediente..."
+              />
+
+              {showDropdown &&
+                searchIngredient &&
+                filteredIngredients.length > 0 && (
+                  <ul className="absolute z-20 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {filteredIngredients.map((ingredient) => (
+                      <li
+                        key={ingredient.id}
+                        onClick={() =>
+                          handleSelectIngredient(
+                            ingredient.id,
+                            ingredient.name
+                          )
+                        }
+                        className="px-4 py-3.5 hover:bg-slate-100 cursor-pointer transition-colors capitalize flex justify-between items-center"
+                      >
+                        <span>{ingredient.name}</span>
+                        <span className="text-xs text-slate-500 font-medium lowercase">
+                          ({ingredient.quantity}{" "}
+                          {ingredient.unit_of_measure})
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
             </div>
 
-            {recipeIngredients.length > 0 && (
-              <div className="mt-4">
-                <h3 className="text-sm font-medium text-primary-900 mb-2">
-                  Ingredientes agregados ({recipeIngredients.length})
-                </h3>
-                <div className="bg-white rounded-lg border border-primary-200 overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-primary-100">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-primary-700 uppercase">
-                          Ingrediente
-                        </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-primary-700 uppercase">
-                          Cantidad
-                        </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-primary-700 uppercase">
-                          Unidad
-                        </th>
-                        <th className="px-4 py-2 text-right text-xs font-medium text-primary-700 uppercase">
-                          Precio
-                        </th>
-                        <th className="px-4 py-2 text-center text-xs font-medium text-primary-700 uppercase">
-                          Acción
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-primary-200">
-                      {recipeIngredients.map((item) => (
-                        <tr
-                          key={item.ingredient_id}
-                          className="hover:bg-primary-50 transition-colors"
-                        >
-                          <td className="px-4 py-2.5 text-sm text-primary-900 capitalize">
-                            {item.ingredient_name}
-                          </td>
-                          <td className="px-4 py-2.5 text-sm text-primary-900">
-                            {item.quantity}
-                          </td>
-                          <td className="px-4 py-2.5 text-sm text-primary-900">
-                            {item.unit_of_measure}
-                          </td>
-                          <td className="px-4 py-2.5 text-sm text-primary-900 text-right font-semibold">
-                            <span className="text-green-600">
-                              S/ {item.equivalent_price?.toFixed(2) || "0.00"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5 text-center">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleRemoveIngredient(item.ingredient_id)
-                              }
-                              disabled={isSubmitting}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                              title="Eliminar ingrediente"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      <tr className="bg-green-50 font-semibold">
-                        <td
-                          colSpan={3}
-                          className="px-4 py-3 text-sm text-right text-green-900"
-                        >
-                          Total de ingredientes:
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right text-green-700">
-                          S/ {totalCost.toFixed(2)}
-                        </td>
-                        <td></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+            {selectedIngredient && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center whitespace-nowrap min-w-fit">
+                <span className="text-sm font-semibold text-blue-700">
+                  {selectedIngredient.quantity}{" "}
+                  {selectedIngredient.unit_of_measure}
+                </span>
               </div>
             )}
           </div>
 
-          <div className="border-2 border-green-300 rounded-lg p-4 bg-linear-to-br from-green-50 to-white">
-            <label className="block text-sm font-medium text-green-900 mb-1.5">
-              Costo de fabricación (calculado automáticamente)
-            </label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">
-                S/
-              </span>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-900 mb-1.5">
+                Cantidad <span className="text-red-600">*</span>
+              </label>
               <input
                 type="number"
                 step="0.01"
-                {...register("manufacturing_cost")}
-                disabled
-                className="w-full pl-8 pr-4 py-3 border-2 border-green-300 rounded-lg bg-white text-gray-800 font-semibold text-lg cursor-not-allowed"
-                placeholder="0.00"
+                value={ingredientQuantity}
+                onChange={(e) => setIngredientQuantity(e.target.value)}
+                disabled={isSubmitting}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
+                placeholder="100"
               />
             </div>
-            <p className="text-xs text-green-700 mt-2">
-              💡 Este costo se calcula automáticamente sumando los precios de
-              todos los ingredientes
-            </p>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-900 mb-1.5">
+                Unidad <span className="text-red-600">*</span>
+              </label>
+              <select
+                value={ingredientUnit}
+                onChange={(e) => setIngredientUnit(e.target.value)}
+                disabled={isSubmitting}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
+              >
+                <option value="">Seleccionar</option>
+                <option value="kg">kg</option>
+                <option value="g">g</option>
+                <option value="l">l</option>
+                <option value="ml">ml</option>
+                <option value="und">und</option>
+              </select>
+            </div>
           </div>
 
-          {addAsIngredient && (
-            <div className="border-2 border-blue-300 rounded-lg p-4 bg-linear-to-br from-blue-50 to-white">
-              <h3 className="text-base font-semibold text-blue-900 mb-3">
-                Rendimiento de la Receta
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-blue-900 mb-1.5">
-                    Cantidad <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    {...register("quantity", {
-                      required: "La cantidad es requerida",
-                      min: { value: 0.01, message: "Debe ser mayor a 0" },
-                    })}
-                    disabled={isSubmitting}
-                    className="w-full px-4 py-2.5 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100"
-                    placeholder="150"
-                  />
+          <button
+            type="button"
+            onClick={handleAddIngredient}
+            disabled={isSubmitting}
+            className="w-full bg-primary-900 py-3 min-h-[44px] text-white rounded-lg hover:bg-primary-800 disabled:bg-gray-400 transition-colors font-medium"
+          >
+            Agregar ingrediente
+          </button>
+        </div>
+
+        {recipeIngredients.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-sm font-medium text-slate-900 mb-2">
+              Ingredientes agregados ({recipeIngredients.length})
+            </h3>
+
+            {/* Mobile card list */}
+            <div className="space-y-2 md:hidden">
+              {recipeIngredients.map((item) => (
+                <div key={item.ingredient_id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-900 capitalize truncate">{item.ingredient_name}</p>
+                    <p className="text-xs text-slate-500">{item.quantity} {item.unit_of_measure}</p>
+                  </div>
+                  <div className="flex items-center gap-3 ml-3">
+                    <span className="text-sm font-semibold text-green-600">S/ {item.equivalent_price?.toFixed(2) || "0.00"}</span>
+                    <button type="button" onClick={() => handleRemoveIngredient(item.ingredient_id)} disabled={isSubmitting} className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-blue-900 mb-1.5">
-                    Unidad <span className="text-red-600">*</span>
-                  </label>
-                  <select
-                    {...register("unit_of_measure", {
-                      required: "La unidad de medida es requerida",
-                    })}
-                    disabled={isSubmitting}
-                    className="w-full px-4 py-2.5 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100"
-                  >
-                    <option value="">Seleccionar</option>
-                    <option value="kg">kg</option>
-                    <option value="g">g</option>
-                    <option value="l">l</option>
-                    <option value="ml">ml</option>
-                    <option value="und">und</option>
-                  </select>
-                </div>
-              </div>
-              <div className="bg-blue-100 rounded-lg p-3 border border-blue-200 mt-3">
-                <p className="text-xs text-blue-800">
-                  <strong>Ejemplo:</strong> Si tu receta produce 150g de fudge,
-                  ingresa:
-                </p>
-                <ul className="text-xs text-blue-700 mt-2 space-y-1 ml-4">
-                  <li>
-                    • Cantidad: <strong>150</strong>
-                  </li>
-                  <li>
-                    • Unidad: <strong>g</strong>
-                  </li>
-                </ul>
+              ))}
+              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                <span className="text-sm font-semibold text-green-900">Total de ingredientes:</span>
+                <span className="text-sm font-semibold text-green-700">S/ {totalCost.toFixed(2)}</span>
               </div>
             </div>
-          )}
 
-          {!isEditMode && (
-            <div className="border border-purple-200 rounded-lg p-4 bg-purple-50 flex items-start justify-between gap-4">
-              <div>
-                <label className="block text-sm font-medium text-purple-900 mb-1.5">
-                  ¿Agregar esta receta como ingrediente?
-                </label>
-                <p className="text-xs text-purple-700">
-                  Si está activado, la receta se registrará en la lista de
-                  ingredientes para usarla en otras preparaciones.
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={addAsIngredient}
-                onClick={() => setAddAsIngredient((prev) => !prev)}
+            {/* Desktop table */}
+            <div className="hidden md:block bg-white rounded-lg border border-slate-200 overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-slate-100">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-700 uppercase">
+                      Ingrediente
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-700 uppercase">
+                      Cantidad
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-700 uppercase">
+                      Unidad
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-slate-700 uppercase">
+                      Precio
+                    </th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-slate-700 uppercase">
+                      Acción
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {recipeIngredients.map((item) => (
+                    <tr
+                      key={item.ingredient_id}
+                      className="hover:bg-slate-50 transition-colors"
+                    >
+                      <td className="px-4 py-3 text-sm text-slate-900 capitalize">
+                        {item.ingredient_name}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-900">
+                        {item.quantity}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-900">
+                        {item.unit_of_measure}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-900 text-right font-semibold">
+                        <span className="text-green-600">
+                          S/ {item.equivalent_price?.toFixed(2) || "0.00"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleRemoveIngredient(item.ingredient_id)
+                          }
+                          disabled={isSubmitting}
+                          className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                          title="Eliminar ingrediente"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="bg-green-50 font-semibold">
+                    <td
+                      colSpan={3}
+                      className="px-4 py-3 text-sm text-right text-green-900"
+                    >
+                      Total de ingredientes:
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right text-green-700">
+                      S/ {totalCost.toFixed(2)}
+                    </td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="border-2 border-green-300 rounded-lg p-4 bg-linear-to-br from-green-50 to-white">
+        <label className="block text-sm font-medium text-green-900 mb-1.5">
+          Costo de fabricación (calculado automáticamente)
+        </label>
+        <div className="relative">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">
+            S/
+          </span>
+          <input
+            type="number"
+            step="0.01"
+            {...register("manufacturing_cost")}
+            disabled
+            className="w-full pl-8 pr-4 py-3 border-2 border-green-300 rounded-lg bg-white text-gray-800 font-semibold text-lg cursor-not-allowed"
+            placeholder="0.00"
+          />
+        </div>
+        <p className="text-xs text-green-700 mt-2">
+          Este costo se calcula automaticamente sumando los precios de
+          todos los ingredientes
+        </p>
+      </div>
+
+      {addAsIngredient && (
+        <div className="border-2 border-blue-300 rounded-lg p-4 bg-linear-to-br from-blue-50 to-white">
+          <h3 className="text-base font-semibold text-blue-900 mb-3">
+            Rendimiento de la Receta
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-blue-900 mb-1.5">
+                Cantidad <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                {...register("quantity", {
+                  required: "La cantidad es requerida",
+                  min: { value: 0.01, message: "Debe ser mayor a 0" },
+                })}
                 disabled={isSubmitting}
-                className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  addAsIngredient ? "bg-purple-600" : "bg-gray-300"
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    addAsIngredient ? "translate-x-6" : "translate-x-0"
-                  }`}
-                />
-              </button>
+                className="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100"
+                placeholder="150"
+              />
             </div>
-          )}
+            <div>
+              <label className="block text-sm font-medium text-blue-900 mb-1.5">
+                Unidad <span className="text-red-600">*</span>
+              </label>
+              <select
+                {...register("unit_of_measure", {
+                  required: "La unidad de medida es requerida",
+                })}
+                disabled={isSubmitting}
+                className="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100"
+              >
+                <option value="">Seleccionar</option>
+                <option value="kg">kg</option>
+                <option value="g">g</option>
+                <option value="l">l</option>
+                <option value="ml">ml</option>
+                <option value="und">und</option>
+              </select>
+            </div>
+          </div>
+          <div className="bg-blue-100 rounded-lg p-3 border border-blue-200 mt-3">
+            <p className="text-xs text-blue-800">
+              <strong>Ejemplo:</strong> Si tu receta produce 150g de fudge,
+              ingresa:
+            </p>
+            <ul className="text-xs text-blue-700 mt-2 space-y-1 ml-4">
+              <li>
+                • Cantidad: <strong>150</strong>
+              </li>
+              <li>
+                • Unidad: <strong>g</strong>
+              </li>
+            </ul>
+          </div>
+        </div>
+      )}
 
-          <div className="flex gap-3 pt-4 sticky bottom-0 bg-white pb-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="flex-1 px-4 py-2.5 border-2 border-primary-300 text-primary-700 font-medium rounded-lg hover:bg-primary-50 transition-colors disabled:opacity-50"
-            >
-              Cancelar
-            </button>
+      {!isEditMode && (
+        <div className="border border-purple-200 rounded-lg p-4 bg-purple-50 flex items-start justify-between gap-4">
+          <div>
+            <label className="block text-sm font-medium text-purple-900 mb-1.5">
+              ¿Agregar esta receta como ingrediente?
+            </label>
+            <p className="text-xs text-purple-700">
+              Si está activado, la receta se registrará en la lista de
+              ingredientes para usarla en otras preparaciones.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={addAsIngredient}
+            onClick={() => setAddAsIngredient((prev) => !prev)}
+            disabled={isSubmitting}
+            className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              addAsIngredient ? "bg-purple-600" : "bg-gray-300"
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                addAsIngredient ? "translate-x-6" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
+      )}
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile fullscreen view */}
+      <div className="fixed inset-0 z-50 flex flex-col bg-white md:hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="p-2 -ml-2 text-slate-600 rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {isEditMode ? "Editar Receta" : "Agregar Receta"}
+          </h2>
+          <div className="w-9" />
+        </div>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {formFields}
+          </div>
+
+          <div className="shrink-0 px-4 py-3 border-t border-slate-200 bg-white">
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2.5 bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+              className="w-full px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
             >
               {isSubmitting
                 ? "Guardando..."
@@ -750,6 +770,57 @@ export default function RecipeForm({
           </div>
         </form>
       </div>
-    </div>
+
+      {/* Desktop modal view */}
+      <div
+        className="hidden md:flex fixed inset-0 bg-black/50 backdrop-blur-sm z-50 items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <div
+          className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl sticky top-0 z-10">
+            <h2 className="text-xl font-semibold text-slate-900">
+              {isEditMode ? "Editar Receta" : "Agregar Receta"}
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="p-3 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5 text-slate-700" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+            {formFields}
+
+            <div className="flex gap-3 pt-4 sticky bottom-0 bg-white pb-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="flex-1 px-4 py-3 min-h-[44px] border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex-1 px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+              >
+                {isSubmitting
+                  ? "Guardando..."
+                  : isEditMode
+                  ? "Actualizar"
+                  : "Guardar"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </>
   );
 }

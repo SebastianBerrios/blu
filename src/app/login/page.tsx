@@ -73,27 +73,27 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-dvh bg-primary-50 flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-gradient-to-b from-slate-50 to-primary-50/30 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center p-3 bg-primary-500 rounded-2xl mb-4">
             <Coffee size={32} className="text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-primary-900">Blu Café</h1>
-          <p className="text-primary-700 mt-1">Gestión de Negocio</p>
+          <h1 className="text-3xl font-bold text-slate-900">Blu Café</h1>
+          <p className="text-slate-500 mt-1">Gestión de Negocio</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-lg border border-primary-200 p-8">
-          <h2 className="text-xl font-semibold text-primary-900 text-center mb-6">
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 md:p-8">
+          <h2 className="text-xl font-semibold text-slate-900 text-center mb-6">
             {isRegister ? "Crear cuenta" : "Iniciar sesión"}
           </h2>
 
           {/* Google Button */}
           <button
             onClick={handleGoogleLogin}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-primary-200 rounded-lg hover:bg-primary-50 transition-colors text-primary-900 font-medium"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-slate-900 font-medium min-h-[44px]"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -118,28 +118,25 @@ export default function LoginPage() {
 
           {/* Separator */}
           <div className="flex items-center gap-3 my-6">
-            <div className="flex-1 h-px bg-primary-200"></div>
-            <span className="text-sm text-primary-500">o</span>
-            <div className="flex-1 h-px bg-primary-200"></div>
+            <div className="flex-1 h-px bg-slate-200"></div>
+            <span className="text-sm text-slate-400">o</span>
+            <div className="flex-1 h-px bg-slate-200"></div>
           </div>
 
           {/* Email/Password Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {isRegister && (
               <div>
-                <label className="block text-sm font-medium text-primary-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
                   Nombre completo
                 </label>
                 <div className="relative">
-                  <User
-                    size={18}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500"
-                  />
+                  <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 border border-primary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="Tu nombre"
                     required
                   />
@@ -148,19 +145,16 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-primary-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Correo electrónico
               </label>
               <div className="relative">
-                <Mail
-                  size={18}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500"
-                />
+                <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-primary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="correo@ejemplo.com"
                   required
                 />
@@ -168,19 +162,16 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-primary-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Contraseña
               </label>
               <div className="relative">
-                <Lock
-                  size={18}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500"
-                />
+                <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-primary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="••••••••"
                   required
                   minLength={6}
@@ -203,7 +194,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-primary-500 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-primary-500 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
             >
               {loading
                 ? "Cargando..."
@@ -214,7 +205,7 @@ export default function LoginPage() {
           </form>
 
           {/* Toggle */}
-          <p className="text-center text-sm text-primary-700 mt-6">
+          <p className="text-center text-sm text-slate-600 mt-6">
             {isRegister ? "¿Ya tienes cuenta?" : "¿No tienes cuenta?"}{" "}
             <button
               onClick={() => {
@@ -222,7 +213,7 @@ export default function LoginPage() {
                 setError("");
                 setMessage("");
               }}
-              className="text-primary-500 font-medium hover:underline"
+              className="text-primary-600 font-medium hover:underline"
             >
               {isRegister ? "Inicia sesión" : "Regístrate"}
             </button>

@@ -17,6 +17,7 @@ import {
 import { Line, Bar, Doughnut } from "react-chartjs-2";
 import { useSalesStats } from "@/hooks/useSalesStats";
 import type { DateRange, DateRangePreset } from "@/types";
+import PageHeader from "@/components/ui/PageHeader";
 
 ChartJS.register(
   CategoryScale,
@@ -71,83 +72,98 @@ export default function EstadisticasPage() {
   const totalRevenue = topProducts.reduce((sum, p) => sum + p.totalRevenue, 0);
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <BarChart3 className="w-7 h-7 text-primary-700" />
-          <h1 className="text-2xl font-bold text-primary-900">Estadísticas</h1>
-        </div>
-        <div className="flex gap-2">
+    <section className="h-full flex flex-col bg-slate-50">
+      <PageHeader
+        title="Estadísticas"
+        icon={<BarChart3 className="w-6 h-6 text-primary-700" />}
+        action={
+          <div className="flex gap-2">
+            {PRESETS.map((p) => (
+              <button
+                key={p.value}
+                onClick={() => handlePresetChange(p.value)}
+                className={`px-4 py-2 rounded-lg border-2 font-medium text-sm transition-all ${
+                  preset === p.value
+                    ? "bg-primary-100 text-primary-800 border-primary-300"
+                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        }
+      />
+
+      <div className="flex-1 px-4 py-4 md:px-6 md:py-6 overflow-auto space-y-4 md:space-y-6">
+        {/* Mobile preset selector */}
+        <div className="flex gap-2 md:hidden">
           {PRESETS.map((p) => (
             <button
               key={p.value}
               onClick={() => handlePresetChange(p.value)}
-              className={`px-4 py-2 rounded-lg border-2 font-medium text-sm transition-all ${
+              className={`flex-1 px-3 py-3 rounded-lg border-2 font-medium text-sm transition-all min-h-[44px] ${
                 preset === p.value
                   ? "bg-primary-100 text-primary-800 border-primary-300"
-                  : "bg-white text-primary-600 border-primary-200 hover:bg-primary-50"
+                  : "bg-white text-slate-600 border-slate-200"
               }`}
             >
               {p.label}
             </button>
           ))}
         </div>
-      </div>
 
-      {isLoading ? (
-        <div className="text-center py-12 text-primary-500">Cargando estadísticas...</div>
-      ) : (
-        <>
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <KPICard
-              icon={<DollarSign className="w-5 h-5" />}
-              label="Ingresos Hoy"
-              value={`S/ ${kpis.dailyRevenue.toFixed(2)}`}
-              color="text-green-700 bg-green-50 border-green-200"
-              iconColor="text-green-600"
-            />
-            <KPICard
-              icon={<TrendingUp className="w-5 h-5" />}
-              label="Ingresos Mes"
-              value={`S/ ${kpis.monthlyRevenue.toFixed(2)}`}
-              color="text-blue-700 bg-blue-50 border-blue-200"
-              iconColor="text-blue-600"
-            />
-            <KPICard
-              icon={<Receipt className="w-5 h-5" />}
-              label="Ticket Promedio"
-              value={`S/ ${kpis.avgTicket.toFixed(2)}`}
-              color="text-purple-700 bg-purple-50 border-purple-200"
-              iconColor="text-purple-600"
-            />
-            <KPICard
-              icon={<ShoppingBag className="w-5 h-5" />}
-              label="Productos Vendidos"
-              value={String(kpis.productsSold)}
-              color="text-amber-700 bg-amber-50 border-amber-200"
-              iconColor="text-amber-600"
-            />
-            <KPICard
-              icon={<Receipt className="w-5 h-5" />}
-              label="Total Ventas"
-              value={String(kpis.totalSales)}
-              color="text-primary-700 bg-primary-50 border-primary-200"
-              iconColor="text-primary-600"
-            />
-          </div>
+        {isLoading ? (
+          <div className="text-center py-12 text-slate-500">Cargando estadísticas...</div>
+        ) : (
+          <>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <KPICard
+                icon={<DollarSign className="w-5 h-5" />}
+                label="Ingresos Hoy"
+                value={`S/ ${kpis.dailyRevenue.toFixed(2)}`}
+                color="text-green-700 bg-green-50 border-green-200"
+                iconColor="text-green-600"
+              />
+              <KPICard
+                icon={<TrendingUp className="w-5 h-5" />}
+                label="Ingresos Mes"
+                value={`S/ ${kpis.monthlyRevenue.toFixed(2)}`}
+                color="text-blue-700 bg-blue-50 border-blue-200"
+                iconColor="text-blue-600"
+              />
+              <KPICard
+                icon={<Receipt className="w-5 h-5" />}
+                label="Ticket Promedio"
+                value={`S/ ${kpis.avgTicket.toFixed(2)}`}
+                color="text-purple-700 bg-purple-50 border-purple-200"
+                iconColor="text-purple-600"
+              />
+              <KPICard
+                icon={<ShoppingBag className="w-5 h-5" />}
+                label="Productos Vendidos"
+                value={String(kpis.productsSold)}
+                color="text-amber-700 bg-amber-50 border-amber-200"
+                iconColor="text-amber-600"
+              />
+              <KPICard
+                icon={<Receipt className="w-5 h-5" />}
+                label="Total Ventas"
+                value={String(kpis.totalSales)}
+                color="text-primary-700 bg-primary-50 border-primary-200"
+                iconColor="text-primary-600"
+              />
+            </div>
 
-          {/* Charts grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Revenue trend */}
-            <ChartCard title="Tendencia de Ingresos">
-              {revenueByDay.length > 0 ? (
-                <Line
-                  data={{
-                    labels: revenueByDay.map((d) => formatDate(d.date)),
-                    datasets: [
-                      {
+            {/* Charts grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ChartCard title="Tendencia de Ingresos">
+                {revenueByDay.length > 0 ? (
+                  <Line
+                    data={{
+                      labels: revenueByDay.map((d) => formatDate(d.date)),
+                      datasets: [{
                         label: "Ingresos",
                         data: revenueByDay.map((d) => d.revenue),
                         borderColor: "#0369a1",
@@ -155,232 +171,178 @@ export default function EstadisticasPage() {
                         fill: true,
                         tension: 0.3,
                         pointRadius: 2,
-                      },
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                      y: { beginAtZero: true, ticks: { callback: (v) => `S/ ${v}` } },
-                    },
-                  }}
-                />
-              ) : (
-                <EmptyChart />
-              )}
-            </ChartCard>
+                      }],
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: { legend: { display: false } },
+                      scales: { y: { beginAtZero: true, ticks: { callback: (v) => `S/ ${v}` } } },
+                    }}
+                  />
+                ) : <EmptyChart />}
+              </ChartCard>
 
-            {/* Revenue by payment method */}
-            <ChartCard title="Ingresos por Método de Pago">
-              {revenueByMethod.length > 0 ? (
-                <Doughnut
-                  data={{
-                    labels: revenueByMethod.map((d) => d.method),
-                    datasets: [
-                      {
+              <ChartCard title="Ingresos por Método de Pago">
+                {revenueByMethod.length > 0 ? (
+                  <Doughnut
+                    data={{
+                      labels: revenueByMethod.map((d) => d.method),
+                      datasets: [{
                         data: revenueByMethod.map((d) => d.total),
                         backgroundColor: ["#16a34a", "#7c3aed", "#4f46e5"],
                         borderWidth: 2,
                         borderColor: "#fff",
-                      },
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { position: "bottom" },
-                    },
-                  }}
-                />
-              ) : (
-                <EmptyChart />
-              )}
-            </ChartCard>
+                      }],
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: { legend: { position: "bottom" } },
+                    }}
+                  />
+                ) : <EmptyChart />}
+              </ChartCard>
 
-            {/* Top products */}
-            <ChartCard title="Top Productos">
-              {topProducts.length > 0 ? (
-                <Bar
-                  data={{
-                    labels: topProducts.map((p) => p.productName),
-                    datasets: [
-                      {
+              <ChartCard title="Top Productos">
+                {topProducts.length > 0 ? (
+                  <Bar
+                    data={{
+                      labels: topProducts.map((p) => p.productName),
+                      datasets: [{
                         label: "Ingresos",
                         data: topProducts.map((p) => p.totalRevenue),
                         backgroundColor: "#0369a1",
                         borderRadius: 4,
-                      },
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: "y",
-                    plugins: { legend: { display: false } },
-                    scales: {
-                      x: { beginAtZero: true, ticks: { callback: (v) => `S/ ${v}` } },
-                    },
-                  }}
-                />
-              ) : (
-                <EmptyChart />
-              )}
-            </ChartCard>
+                      }],
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      indexAxis: "y",
+                      plugins: { legend: { display: false } },
+                      scales: { x: { beginAtZero: true, ticks: { callback: (v) => `S/ ${v}` } } },
+                    }}
+                  />
+                ) : <EmptyChart />}
+              </ChartCard>
 
-            {/* Sales by order type */}
-            <ChartCard title="Ventas por Tipo de Pedido">
-              {salesByOrderType.length > 0 ? (
-                <Doughnut
-                  data={{
-                    labels: salesByOrderType.map((d) => d.orderType),
-                    datasets: [
-                      {
+              <ChartCard title="Ventas por Tipo de Pedido">
+                {salesByOrderType.length > 0 ? (
+                  <Doughnut
+                    data={{
+                      labels: salesByOrderType.map((d) => d.orderType),
+                      datasets: [{
                         data: salesByOrderType.map((d) => d.count),
                         backgroundColor: ["#2563eb", "#d97706", "#16a34a"],
                         borderWidth: 2,
                         borderColor: "#fff",
-                      },
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { position: "bottom" },
-                    },
-                  }}
-                />
-              ) : (
-                <EmptyChart />
-              )}
-            </ChartCard>
+                      }],
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: { legend: { position: "bottom" } },
+                    }}
+                  />
+                ) : <EmptyChart />}
+              </ChartCard>
 
-            {/* Sales by hour */}
-            <ChartCard title="Ventas por Hora del Día">
-              {salesByHour.length > 0 ? (
-                <Bar
-                  data={{
-                    labels: salesByHour.map((d) => `${d.hour}:00`),
-                    datasets: [
-                      {
+              <ChartCard title="Ventas por Hora del Día">
+                {salesByHour.length > 0 ? (
+                  <Bar
+                    data={{
+                      labels: salesByHour.map((d) => `${d.hour}:00`),
+                      datasets: [{
                         label: "Ventas",
                         data: salesByHour.map((d) => d.count),
-                        backgroundColor: "#7c3aed",
+                        backgroundColor: "#d97706",
                         borderRadius: 4,
-                      },
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } },
-                  }}
-                />
-              ) : (
-                <EmptyChart />
-              )}
-            </ChartCard>
+                      }],
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: { legend: { display: false } },
+                      scales: { y: { beginAtZero: true } },
+                    }}
+                  />
+                ) : <EmptyChart />}
+              </ChartCard>
 
-            {/* Revenue vs Expenses */}
-            <ChartCard title="Ingresos vs Gastos">
-              {revenueVsExpenses.length > 0 ? (
-                <Line
-                  data={{
-                    labels: revenueVsExpenses.map((d) => formatDate(d.date)),
-                    datasets: [
-                      {
-                        label: "Ingresos",
-                        data: revenueVsExpenses.map((d) => d.revenue),
-                        borderColor: "#16a34a",
-                        backgroundColor: "rgba(22, 163, 74, 0.1)",
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 2,
-                      },
-                      {
-                        label: "Gastos",
-                        data: revenueVsExpenses.map((d) => d.expenses),
-                        borderColor: "#dc2626",
-                        backgroundColor: "rgba(220, 38, 38, 0.1)",
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 2,
-                      },
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: "bottom" } },
-                    scales: {
-                      y: { beginAtZero: true, ticks: { callback: (v) => `S/ ${v}` } },
-                    },
-                  }}
-                />
-              ) : (
-                <EmptyChart />
-              )}
-            </ChartCard>
-          </div>
-
-          {/* Top products table */}
-          {topProducts.length > 0 && (
-            <div className="bg-white rounded-xl border border-primary-200 overflow-hidden">
-              <div className="px-5 py-4 border-b border-primary-200 bg-primary-50">
-                <h3 className="text-base font-semibold text-primary-900">
-                  Top 10 Productos
-                </h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-primary-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-primary-700 uppercase">
-                        Producto
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-primary-700 uppercase">
-                        Cantidad
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-primary-700 uppercase">
-                        Ingresos
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-primary-700 uppercase">
-                        % del Total
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-primary-100">
-                    {topProducts.map((p, i) => (
-                      <tr key={i} className="hover:bg-primary-50 transition-colors">
-                        <td className="px-4 py-3 text-sm text-primary-900 capitalize font-medium">
-                          {p.productName}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-primary-700 text-right">
-                          {p.quantitySold}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-green-700 text-right font-semibold">
-                          S/ {p.totalRevenue.toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-primary-600 text-right">
-                          {totalRevenue > 0
-                            ? ((p.totalRevenue / totalRevenue) * 100).toFixed(1)
-                            : 0}
-                          %
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ChartCard title="Ingresos vs Gastos">
+                {revenueVsExpenses.length > 0 ? (
+                  <Line
+                    data={{
+                      labels: revenueVsExpenses.map((d) => formatDate(d.date)),
+                      datasets: [
+                        {
+                          label: "Ingresos",
+                          data: revenueVsExpenses.map((d) => d.revenue),
+                          borderColor: "#16a34a",
+                          backgroundColor: "rgba(22, 163, 74, 0.1)",
+                          fill: true,
+                          tension: 0.3,
+                          pointRadius: 2,
+                        },
+                        {
+                          label: "Gastos",
+                          data: revenueVsExpenses.map((d) => d.expenses),
+                          borderColor: "#dc2626",
+                          backgroundColor: "rgba(220, 38, 38, 0.1)",
+                          fill: true,
+                          tension: 0.3,
+                          pointRadius: 2,
+                        },
+                      ],
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: { legend: { position: "bottom" } },
+                      scales: { y: { beginAtZero: true, ticks: { callback: (v) => `S/ ${v}` } } },
+                    }}
+                  />
+                ) : <EmptyChart />}
+              </ChartCard>
             </div>
-          )}
-        </>
-      )}
-    </div>
+
+            {/* Top products table */}
+            {topProducts.length > 0 && (
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div className="px-4 md:px-5 py-3 md:py-4 border-b border-slate-200 bg-slate-50">
+                  <h3 className="text-base font-semibold text-slate-900">Top 10 Productos</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Producto</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-slate-600 uppercase">Cantidad</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-slate-600 uppercase">Ingresos</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-slate-600 uppercase">% del Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {topProducts.map((p, i) => (
+                        <tr key={i} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3 text-sm text-slate-900 capitalize font-medium">{p.productName}</td>
+                          <td className="px-4 py-3 text-sm text-slate-700 text-right">{p.quantitySold}</td>
+                          <td className="px-4 py-3 text-sm text-green-700 text-right font-semibold">S/ {p.totalRevenue.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600 text-right">
+                            {totalRevenue > 0 ? ((p.totalRevenue / totalRevenue) * 100).toFixed(1) : 0}%
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -398,32 +360,26 @@ function KPICard({
   iconColor: string;
 }) {
   return (
-    <div className={`rounded-xl border-2 p-4 ${color}`}>
+    <div className={`rounded-xl border-2 p-4 md:p-5 ${color}`}>
       <div className={`mb-2 ${iconColor}`}>{icon}</div>
       <p className="text-xs font-medium opacity-75">{label}</p>
-      <p className="text-lg font-bold mt-0.5">{value}</p>
+      <p className="text-lg md:text-xl font-bold mt-0.5">{value}</p>
     </div>
   );
 }
 
-function ChartCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-primary-200 p-4">
-      <h3 className="text-sm font-semibold text-primary-900 mb-3">{title}</h3>
-      <div className="h-64">{children}</div>
+    <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <h3 className="text-sm font-semibold text-slate-900 mb-3">{title}</h3>
+      <div className="h-64 md:h-72">{children}</div>
     </div>
   );
 }
 
 function EmptyChart() {
   return (
-    <div className="h-full flex items-center justify-center text-primary-400 text-sm">
+    <div className="h-full flex items-center justify-center text-slate-400 text-sm">
       Sin datos para este período
     </div>
   );

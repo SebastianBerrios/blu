@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Trash2 } from "lucide-react";
+import { ArrowLeft, X, Trash2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
@@ -334,377 +334,457 @@ export default function SaleForm({
     }
   };
 
+  /* ─── Shared form fields (rendered in both mobile & desktop) ─── */
+  const formFields = (
+    <>
+      {/* Tipo de pedido */}
+      <div>
+        <label className="block text-sm font-medium text-slate-900 mb-2">
+          Tipo de pedido <span className="text-red-600">*</span>
+        </label>
+        <div className="flex gap-2">
+          {ORDER_TYPES.map((type) => (
+            <button
+              key={type.value}
+              type="button"
+              onClick={() => setOrderType(type.value)}
+              disabled={isSubmitting}
+              className={`flex-1 px-4 py-3 min-h-[44px] rounded-lg border-2 font-medium transition-all ${
+                orderType === type.value
+                  ? `${type.color} border-current`
+                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              {type.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Numero de mesa */}
+      {orderType === "Mesa" && (
+        <div>
+          <label className="block text-sm font-medium text-slate-900 mb-1.5">
+            Numero de mesa <span className="text-red-600">*</span>
+          </label>
+          <input
+            type="number"
+            min="1"
+            value={tableNumber}
+            onChange={(e) => setTableNumber(e.target.value)}
+            disabled={isSubmitting}
+            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+            placeholder="Ej: 1, 2, 3..."
+          />
+        </div>
+      )}
+
+      {/* DNI del cliente (opcional) */}
+      <div>
+        <label className="block text-sm font-medium text-slate-900 mb-1.5">
+          DNI del cliente <span className="text-slate-500 text-xs">(opcional)</span>
+        </label>
+        <input
+          type="number"
+          value={customerDni}
+          onChange={(e) => setCustomerDni(e.target.value)}
+          disabled={isSubmitting}
+          className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+          placeholder="Ej: 12345678"
+        />
+      </div>
+
+      {/* Buscar y agregar productos */}
+      <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+        <label className="block text-sm font-medium text-slate-900 mb-3">
+          Agregar productos <span className="text-red-600">*</span>
+        </label>
+
+        <div className="space-y-3">
+          <div className="flex gap-2 items-start">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={searchProduct}
+                onChange={(e) => {
+                  setSearchProduct(e.target.value);
+                  setSelectedProductId(null);
+                  setShowDropdown(true);
+                }}
+                onFocus={() => setShowDropdown(true)}
+                disabled={isSubmitting}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+                placeholder="Buscar producto..."
+              />
+
+              {showDropdown &&
+                searchProduct &&
+                !selectedProductId &&
+                filteredProducts.length > 0 && (
+                  <ul className="absolute z-20 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {filteredProducts.map((product) => (
+                      <li
+                        key={product.id}
+                        onClick={() =>
+                          handleSelectProduct(product.id, product.name)
+                        }
+                        className="px-4 py-3.5 hover:bg-slate-100 cursor-pointer transition-colors capitalize flex justify-between items-center"
+                      >
+                        <span>{product.name}</span>
+                        <span className="text-xs text-green-600 font-semibold">
+                          S/ {product.price.toFixed(2)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+            </div>
+
+            {selectedProduct && (
+              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center whitespace-nowrap min-w-fit">
+                <span className="text-sm font-semibold text-green-700">
+                  S/ {selectedProduct.price.toFixed(2)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={productQuantity}
+                onChange={(e) => setProductQuantity(e.target.value)}
+                disabled={isSubmitting}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
+                placeholder="Cantidad"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleAddProduct}
+              disabled={isSubmitting}
+              className="px-6 py-3 min-h-[44px] bg-primary-900 text-white rounded-lg hover:bg-primary-800 disabled:bg-gray-400 transition-colors font-medium"
+            >
+              Agregar
+            </button>
+          </div>
+        </div>
+
+        {/* Lista de productos agregados */}
+        {saleProducts.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-sm font-medium text-slate-900 mb-2">
+              Productos en la venta ({saleProducts.length})
+            </h3>
+
+            {/* Mobile card list */}
+            <div className="space-y-2 md:hidden">
+              {saleProducts.map((item) => (
+                <div key={item.product_id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-900 capitalize truncate">{item.product_name}</p>
+                    <p className="text-xs text-slate-500">{item.quantity} × S/ {item.unit_price.toFixed(2)}</p>
+                  </div>
+                  <div className="flex items-center gap-3 ml-3">
+                    <span className="text-sm font-semibold text-green-600">S/ {item.subtotal.toFixed(2)}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveProduct(item.product_id)}
+                      disabled={isSubmitting}
+                      className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {/* Mobile total */}
+              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg font-semibold">
+                <span className="text-sm text-green-900">Total:</span>
+                <span className="text-sm text-green-700">S/ {totalPrice.toFixed(2)}</span>
+              </div>
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block bg-white rounded-lg border border-slate-200 overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-slate-100">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-700 uppercase">
+                      Producto
+                    </th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-slate-700 uppercase">
+                      Cant.
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-slate-700 uppercase">
+                      P. Unit.
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-slate-700 uppercase">
+                      Subtotal
+                    </th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-slate-700 uppercase">
+                      Accion
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {saleProducts.map((item) => (
+                    <tr
+                      key={item.product_id}
+                      className="hover:bg-slate-50 transition-colors"
+                    >
+                      <td className="px-4 py-3 text-sm text-slate-900 capitalize">
+                        {item.product_name}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-900 text-center">
+                        {item.quantity}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-900 text-right">
+                        S/ {item.unit_price.toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-900 text-right font-semibold">
+                        <span className="text-green-600">
+                          S/ {item.subtotal.toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProduct(item.product_id)}
+                          disabled={isSubmitting}
+                          className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                          title="Eliminar producto"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="bg-green-50 font-semibold">
+                    <td
+                      colSpan={3}
+                      className="px-4 py-3 text-sm text-right text-green-900"
+                    >
+                      Total:
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right text-green-700">
+                      S/ {totalPrice.toFixed(2)}
+                    </td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Registrar pago */}
+      <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={registerPayment}
+            onChange={(e) => setRegisterPayment(e.target.checked)}
+            disabled={isSubmitting}
+            className="w-4 h-4 rounded border-primary-300 text-primary-600 focus:ring-primary-500"
+          />
+          <span className="text-sm font-medium text-slate-900">
+            Registrar pago {isEditMode && sale?.payment_method ? "" : "ahora"}
+          </span>
+        </label>
+
+        {registerPayment && (
+          <div className="mt-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-900 mb-2">
+                Método de pago
+              </label>
+              <div className="flex gap-2">
+                {PAYMENT_METHODS.map((method) => (
+                  <button
+                    key={method.value}
+                    type="button"
+                    onClick={() => {
+                      setPaymentMethod(method.value);
+                      setCashAmount("");
+                      setYapeAmount("");
+                    }}
+                    disabled={isSubmitting}
+                    className={`flex-1 px-3 py-3 min-h-[44px] rounded-lg border-2 font-medium transition-all text-sm ${
+                      paymentMethod === method.value
+                        ? `${method.color} border-current`
+                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    {method.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {paymentMethod === "Efectivo + Yape" ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-900 mb-1.5">
+                    Efectivo
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">S/</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={cashAmount}
+                      onChange={(e) => {
+                        setCashAmount(e.target.value);
+                        const cash = parseFloat(e.target.value);
+                        if (!isNaN(cash) && cash >= 0 && cash <= totalPrice) {
+                          setYapeAmount((totalPrice - cash).toFixed(2));
+                        }
+                      }}
+                      disabled={isSubmitting}
+                      className="w-full pl-9 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-900 mb-1.5">
+                    Yape
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">S/</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={yapeAmount}
+                      onChange={(e) => {
+                        setYapeAmount(e.target.value);
+                        const yape = parseFloat(e.target.value);
+                        if (!isNaN(yape) && yape >= 0 && yape <= totalPrice) {
+                          setCashAmount((totalPrice - yape).toFixed(2));
+                        }
+                      }}
+                      disabled={isSubmitting}
+                      className="w-full pl-9 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                <span className="text-sm text-green-700">Total en {paymentMethod}:</span>
+                <span className="ml-2 font-bold text-green-800">
+                  S/ {totalPrice.toFixed(2)}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
   return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-primary-200 bg-primary-50 rounded-t-xl sticky top-0 z-10">
-          <h2 className="text-xl font-semibold text-primary-900">
-            {isEditMode ? "Editar Venta" : "Registrar Venta"}
-          </h2>
+    <>
+      {/* ─── Mobile fullscreen view ─── */}
+      <div className="fixed inset-0 z-50 flex flex-col bg-white md:hidden">
+        {/* Header bar */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50 shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="p-2 hover:bg-primary-100 rounded-lg transition-colors"
+            className="p-3 hover:bg-slate-100 rounded-lg transition-colors"
           >
-            <X className="w-5 h-5 text-primary-700" />
+            <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {isEditMode ? "Editar Venta" : "Registrar Venta"}
+          </h2>
+          <div className="w-11" />
         </div>
 
-        <div className="p-6 space-y-4">
-          {/* Tipo de pedido */}
-          <div>
-            <label className="block text-sm font-medium text-primary-900 mb-2">
-              Tipo de pedido <span className="text-red-600">*</span>
-            </label>
-            <div className="flex gap-2">
-              {ORDER_TYPES.map((type) => (
-                <button
-                  key={type.value}
-                  type="button"
-                  onClick={() => setOrderType(type.value)}
-                  disabled={isSubmitting}
-                  className={`flex-1 px-4 py-2.5 rounded-lg border-2 font-medium transition-all ${
-                    orderType === type.value
-                      ? `${type.color} border-current`
-                      : "bg-white text-primary-600 border-primary-200 hover:bg-primary-50"
-                  }`}
-                >
-                  {type.label}
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {formFields}
+        </div>
 
-          {/* Numero de mesa */}
-          {orderType === "Mesa" && (
-            <div>
-              <label className="block text-sm font-medium text-primary-900 mb-1.5">
-                Numero de mesa <span className="text-red-600">*</span>
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={tableNumber}
-                onChange={(e) => setTableNumber(e.target.value)}
-                disabled={isSubmitting}
-                className="w-full px-4 py-2.5 border border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-                placeholder="Ej: 1, 2, 3..."
-              />
-            </div>
-          )}
+        {/* Bottom bar */}
+        <div className="shrink-0 px-4 py-3 border-t border-slate-200 bg-white">
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSubmitting || saleProducts.length === 0}
+            className="w-full px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+          >
+            {isSubmitting
+              ? "Guardando..."
+              : isEditMode
+              ? "Actualizar"
+              : "Registrar venta"}
+          </button>
+        </div>
+      </div>
 
-          {/* DNI del cliente (opcional) */}
-          <div>
-            <label className="block text-sm font-medium text-primary-900 mb-1.5">
-              DNI del cliente <span className="text-primary-500 text-xs">(opcional)</span>
-            </label>
-            <input
-              type="number"
-              value={customerDni}
-              onChange={(e) => setCustomerDni(e.target.value)}
-              disabled={isSubmitting}
-              className="w-full px-4 py-2.5 border border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-              placeholder="Ej: 12345678"
-            />
-          </div>
-
-          {/* Buscar y agregar productos */}
-          <div className="border border-primary-200 rounded-lg p-4 bg-primary-50/50">
-            <label className="block text-sm font-medium text-primary-900 mb-3">
-              Agregar productos <span className="text-red-600">*</span>
-            </label>
-
-            <div className="space-y-3">
-              <div className="flex gap-2 items-start">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={searchProduct}
-                    onChange={(e) => {
-                      setSearchProduct(e.target.value);
-                      setSelectedProductId(null);
-                      setShowDropdown(true);
-                    }}
-                    onFocus={() => setShowDropdown(true)}
-                    disabled={isSubmitting}
-                    className="w-full px-4 py-2.5 border border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-                    placeholder="Buscar producto..."
-                  />
-
-                  {showDropdown &&
-                    searchProduct &&
-                    !selectedProductId &&
-                    filteredProducts.length > 0 && (
-                      <ul className="absolute z-20 w-full mt-1 bg-white border border-primary-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                        {filteredProducts.map((product) => (
-                          <li
-                            key={product.id}
-                            onClick={() =>
-                              handleSelectProduct(product.id, product.name)
-                            }
-                            className="px-4 py-2.5 hover:bg-primary-100 cursor-pointer transition-colors capitalize flex justify-between items-center"
-                          >
-                            <span>{product.name}</span>
-                            <span className="text-xs text-green-600 font-semibold">
-                              S/ {product.price.toFixed(2)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                </div>
-
-                {selectedProduct && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2.5 flex items-center whitespace-nowrap min-w-fit">
-                    <span className="text-sm font-semibold text-green-700">
-                      S/ {selectedProduct.price.toFixed(2)}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={productQuantity}
-                    onChange={(e) => setProductQuantity(e.target.value)}
-                    disabled={isSubmitting}
-                    className="w-full px-4 py-2.5 border border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
-                    placeholder="Cantidad"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAddProduct}
-                  disabled={isSubmitting}
-                  className="px-6 py-2.5 bg-primary-900 text-white rounded-lg hover:bg-primary-800 disabled:bg-gray-400 transition-colors font-medium"
-                >
-                  Agregar
-                </button>
-              </div>
-            </div>
-
-            {/* Lista de productos agregados */}
-            {saleProducts.length > 0 && (
-              <div className="mt-4">
-                <h3 className="text-sm font-medium text-primary-900 mb-2">
-                  Productos en la venta ({saleProducts.length})
-                </h3>
-                <div className="bg-white rounded-lg border border-primary-200 overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-primary-100">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-primary-700 uppercase">
-                          Producto
-                        </th>
-                        <th className="px-4 py-2 text-center text-xs font-medium text-primary-700 uppercase">
-                          Cant.
-                        </th>
-                        <th className="px-4 py-2 text-right text-xs font-medium text-primary-700 uppercase">
-                          P. Unit.
-                        </th>
-                        <th className="px-4 py-2 text-right text-xs font-medium text-primary-700 uppercase">
-                          Subtotal
-                        </th>
-                        <th className="px-4 py-2 text-center text-xs font-medium text-primary-700 uppercase">
-                          Accion
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-primary-200">
-                      {saleProducts.map((item) => (
-                        <tr
-                          key={item.product_id}
-                          className="hover:bg-primary-50 transition-colors"
-                        >
-                          <td className="px-4 py-2.5 text-sm text-primary-900 capitalize">
-                            {item.product_name}
-                          </td>
-                          <td className="px-4 py-2.5 text-sm text-primary-900 text-center">
-                            {item.quantity}
-                          </td>
-                          <td className="px-4 py-2.5 text-sm text-primary-900 text-right">
-                            S/ {item.unit_price.toFixed(2)}
-                          </td>
-                          <td className="px-4 py-2.5 text-sm text-primary-900 text-right font-semibold">
-                            <span className="text-green-600">
-                              S/ {item.subtotal.toFixed(2)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveProduct(item.product_id)}
-                              disabled={isSubmitting}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                              title="Eliminar producto"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      <tr className="bg-green-50 font-semibold">
-                        <td
-                          colSpan={3}
-                          className="px-4 py-3 text-sm text-right text-green-900"
-                        >
-                          Total:
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right text-green-700">
-                          S/ {totalPrice.toFixed(2)}
-                        </td>
-                        <td></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Registrar pago */}
-          <div className="border border-primary-200 rounded-lg p-4 bg-primary-50/50">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={registerPayment}
-                onChange={(e) => setRegisterPayment(e.target.checked)}
-                disabled={isSubmitting}
-                className="w-4 h-4 rounded border-primary-300 text-primary-600 focus:ring-primary-500"
-              />
-              <span className="text-sm font-medium text-primary-900">
-                Registrar pago {isEditMode && sale?.payment_method ? "" : "ahora"}
-              </span>
-            </label>
-
-            {registerPayment && (
-              <div className="mt-4 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-primary-900 mb-2">
-                    Método de pago
-                  </label>
-                  <div className="flex gap-2">
-                    {PAYMENT_METHODS.map((method) => (
-                      <button
-                        key={method.value}
-                        type="button"
-                        onClick={() => {
-                          setPaymentMethod(method.value);
-                          setCashAmount("");
-                          setYapeAmount("");
-                        }}
-                        disabled={isSubmitting}
-                        className={`flex-1 px-3 py-2.5 rounded-lg border-2 font-medium transition-all text-sm ${
-                          paymentMethod === method.value
-                            ? `${method.color} border-current`
-                            : "bg-white text-primary-600 border-primary-200 hover:bg-primary-50"
-                        }`}
-                      >
-                        {method.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {paymentMethod === "Efectivo + Yape" ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-primary-900 mb-1.5">
-                        Efectivo
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 text-sm">S/</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={cashAmount}
-                          onChange={(e) => {
-                            setCashAmount(e.target.value);
-                            const cash = parseFloat(e.target.value);
-                            if (!isNaN(cash) && cash >= 0 && cash <= totalPrice) {
-                              setYapeAmount((totalPrice - cash).toFixed(2));
-                            }
-                          }}
-                          disabled={isSubmitting}
-                          className="w-full pl-9 pr-4 py-2.5 border border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-                          placeholder="0.00"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-primary-900 mb-1.5">
-                        Yape
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 text-sm">S/</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={yapeAmount}
-                          onChange={(e) => {
-                            setYapeAmount(e.target.value);
-                            const yape = parseFloat(e.target.value);
-                            if (!isNaN(yape) && yape >= 0 && yape <= totalPrice) {
-                              setCashAmount((totalPrice - yape).toFixed(2));
-                            }
-                          }}
-                          disabled={isSubmitting}
-                          className="w-full pl-9 pr-4 py-2.5 border border-primary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-                          placeholder="0.00"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-                    <span className="text-sm text-green-700">Total en {paymentMethod}:</span>
-                    <span className="ml-2 font-bold text-green-800">
-                      S/ {totalPrice.toFixed(2)}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Botones de accion */}
-          <div className="flex gap-3 pt-4 sticky bottom-0 bg-white pb-2">
+      {/* ─── Desktop modal view ─── */}
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden md:flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <div
+          className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl sticky top-0 z-10">
+            <h2 className="text-xl font-semibold text-slate-900">
+              {isEditMode ? "Editar Venta" : "Registrar Venta"}
+            </h2>
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2.5 border-2 border-primary-300 text-primary-700 font-medium rounded-lg hover:bg-primary-50 transition-colors disabled:opacity-50"
+              className="p-3 hover:bg-slate-100 rounded-lg transition-colors"
             >
-              Cancelar
+              <X className="w-5 h-5 text-slate-700" />
             </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting || saleProducts.length === 0}
-              className="flex-1 px-4 py-2.5 bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-            >
-              {isSubmitting
-                ? "Guardando..."
-                : isEditMode
-                ? "Actualizar"
-                : "Registrar venta"}
-            </button>
+          </div>
+
+          <div className="p-6 space-y-4">
+            {formFields}
+
+            {/* Botones de accion */}
+            <div className="flex gap-3 pt-4 sticky bottom-0 bg-white pb-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="flex-1 px-4 py-3 min-h-[44px] border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting || saleProducts.length === 0}
+                className="flex-1 px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+              >
+                {isSubmitting
+                  ? "Guardando..."
+                  : isEditMode
+                  ? "Actualizar"
+                  : "Registrar venta"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
