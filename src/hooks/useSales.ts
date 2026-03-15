@@ -19,6 +19,7 @@ const fetchSales = async (): Promise<SaleWithProducts[]> => {
       cash_amount,
       yape_amount,
       table_number,
+      user_id,
       customers (
         dni
       ),

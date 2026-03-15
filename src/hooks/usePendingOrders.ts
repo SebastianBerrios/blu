@@ -33,6 +33,7 @@ const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
       cash_amount,
       yape_amount,
       table_number,
+      user_id,
       customers (
         dni
       ),

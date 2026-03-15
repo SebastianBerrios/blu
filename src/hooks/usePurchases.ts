@@ -14,6 +14,7 @@ const fetchPurchases = async (
       `
       id,
       user_id,
+      account_id,
       has_delivery,
       delivery_cost,
       total,
