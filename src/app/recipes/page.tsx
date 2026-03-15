@@ -4,13 +4,20 @@ import { useState } from "react";
 import { BookOpen } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useRecipes } from "@/hooks/useRecipes";
+import { useAuth } from "@/hooks/useAuth";
 import type { Recipe } from "@/types";
 import RecipeForm from "@/components/forms/RecipeForm";
 import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
+import { redirect } from "next/navigation";
 
 export default function Recipes() {
+  const { isAdmin, isLoading: authLoading } = useAuth();
   const { recipes, error, isLoading, mutate } = useRecipes();
+
+  if (!authLoading && !isAdmin) {
+    redirect("/");
+  }
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | undefined>();

@@ -11,18 +11,42 @@ import {
   Menu,
   X,
   ShoppingBasket,
+  ShoppingCart,
+  Users,
+  LogOut,
+  SquarePen,
+  ClipboardList,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import ProfileForm from "@/components/forms/ProfileForm";
+
+type NavItem = {
+  id: number;
+  nav: string;
+  name: string;
+  icon: typeof Coffee;
+  adminOnly?: boolean;
+};
+
+const allNavItems: NavItem[] = [
+  { id: 1, nav: "/categories", name: "Categorias", icon: FolderOpen },
+  { id: 2, nav: "/products", name: "Productos", icon: ShoppingBasket },
+  { id: 3, nav: "/ingredients", name: "Ingredientes", icon: ChefHat, adminOnly: true },
+  { id: 4, nav: "/recipes", name: "Recetas", icon: BookOpen, adminOnly: true },
+  { id: 5, nav: "/sales", name: "Ventas", icon: TrendingUp },
+  { id: 8, nav: "/pedidos", name: "Pedidos", icon: ClipboardList },
+  { id: 6, nav: "/compras", name: "Compras", icon: ShoppingCart },
+  { id: 7, nav: "/users", name: "Usuarios", icon: Users, adminOnly: true },
+];
 
 export default function SideBar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const { profile, isAdmin, signOut, mutate } = useAuth();
 
-  const navItems = [
-    { id: 1, nav: "categories", name: "Categorias", icon: FolderOpen },
-    { id: 2, nav: "products", name: "Productos", icon: ShoppingBasket },
-    { id: 3, nav: "ingredients", name: "Ingredientes", icon: ChefHat },
-    { id: 4, nav: "recipes", name: "Recetas", icon: BookOpen },
-    { id: 5, nav: "sales", name: "Ventas", icon: TrendingUp },
-  ];
+  const navItems = allNavItems.filter(
+    (item) => !item.adminOnly || isAdmin
+  );
 
   return (
     <>
@@ -59,6 +83,7 @@ export default function SideBar() {
           w-64 h-full bg-linear-to-b from-primary-50 to-white border-r border-primary-200 shadow-lg
           fixed md:static
           transform transition-transform duration-300 ease-in-out z-50
+          flex flex-col
           ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
       >
@@ -72,7 +97,7 @@ export default function SideBar() {
           </div>
         </div>
 
-        <div className="p-4">
+        <div className="p-4 flex-1">
           <h2 className="text-primary-700 font-semibold text-sm uppercase tracking-wider mb-4 px-2">
             Navegación
           </h2>
@@ -96,7 +121,47 @@ export default function SideBar() {
             })}
           </nav>
         </div>
+
+        {/* User section */}
+        <div className="p-4 border-t border-primary-200 bg-white">
+          <button
+            onClick={() => setIsProfileModalOpen(true)}
+            className="flex items-center gap-3 px-2 mb-3 w-full rounded-lg hover:bg-primary-50 py-1.5 transition-colors group"
+            title="Editar perfil"
+          >
+            <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-sm">
+              {profile?.full_name?.charAt(0)?.toUpperCase() ||
+                profile?.email?.charAt(0)?.toUpperCase() ||
+                "?"}
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-sm font-medium text-primary-900 truncate">
+                {profile?.full_name || profile?.email}
+              </p>
+              <p className="text-xs text-primary-500 capitalize">
+                {profile?.role ?? "Sin rol"}
+              </p>
+            </div>
+            <SquarePen size={14} className="text-primary-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+          <button
+            onClick={signOut}
+            className="flex items-center gap-2 px-3 py-2 w-full text-sm text-primary-700 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors"
+          >
+            <LogOut size={16} />
+            Cerrar sesión
+          </button>
+        </div>
       </aside>
+
+      {profile && (
+        <ProfileForm
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          onSuccess={() => mutate()}
+          profile={profile}
+        />
+      )}
     </>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FolderOpen } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useCategories } from "@/hooks/useCategories";
+import { useAuth } from "@/hooks/useAuth";
 import type { Category } from "@/types";
 import CategoryForm from "@/components/forms/CategoryForm";
 import DataTable from "@/components/ui/DataTable";
@@ -11,6 +12,7 @@ import Button from "@/components/ui/Button";
 
 export default function Categories() {
   const { categories, error, isLoading, mutate } = useCategories();
+  const { isAdmin } = useAuth();
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedCategory, setSelectedCategory] = useState<
@@ -61,9 +63,11 @@ export default function Categories() {
                 </p>
               </div>
             </div>
-            <Button variant="primary" icon={true} onClick={handleCreate}>
-              Agregar categoría
-            </Button>
+            {isAdmin && (
+              <Button variant="primary" icon={true} onClick={handleCreate}>
+                Agregar categoría
+              </Button>
+            )}
           </div>
         </header>
 
@@ -77,22 +81,24 @@ export default function Categories() {
           )}
           <DataTable<Category>
             title="Lista de Categorías"
-            columns={["N°", "Categorías", "Acciones"]}
+            columns={isAdmin ? ["N°", "Categorías", "Acciones"] : ["N°", "Categorías"]}
             dataKeys={["id", "name"]}
             data={categories || []}
             isLoading={isLoading}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
+            onEdit={isAdmin ? handleEdit : undefined}
+            onDelete={isAdmin ? handleDelete : undefined}
           />
         </div>
       </section>
 
-      <CategoryForm
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onSuccess={handleSuccess}
-        category={selectedCategory}
-      />
+      {isAdmin && (
+        <CategoryForm
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          onSuccess={handleSuccess}
+          category={selectedCategory}
+        />
+      )}
     </>
   );
 }

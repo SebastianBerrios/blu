@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FolderOpen } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useProducts } from "@/hooks/useProducts";
+import { useAuth } from "@/hooks/useAuth";
 import type { Product } from "@/types";
 import ProductForm from "@/components/forms/ProductForm";
 import DataTable from "@/components/ui/DataTable";
@@ -11,6 +12,7 @@ import Button from "@/components/ui/Button";
 
 export default function Products() {
   const { products, error, isLoading, mutate } = useProducts();
+  const { isAdmin } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>();
 
@@ -40,6 +42,14 @@ export default function Products() {
     mutate();
   };
 
+  const columns = isAdmin
+    ? ["N°", "Producto", "Costo de Fabricación", "Precio sugerido", "Precio Venta", "Acciones"]
+    : ["N°", "Producto", "Precio Venta"];
+
+  const dataKeys: (keyof Product)[] = isAdmin
+    ? ["id", "name", "manufacturing_cost", "suggested_price", "price"]
+    : ["id", "name", "price"];
+
   return (
     <>
       <section className="h-full flex flex-col bg-primary-50">
@@ -58,9 +68,11 @@ export default function Products() {
                 </p>
               </div>
             </div>
-            <Button variant="primary" icon={true} onClick={handleCreate}>
-              Agregar producto
-            </Button>
+            {isAdmin && (
+              <Button variant="primary" icon={true} onClick={handleCreate}>
+                Agregar producto
+              </Button>
+            )}
           </div>
         </header>
 
@@ -74,35 +86,24 @@ export default function Products() {
           )}
           <DataTable<Product>
             title="Lista de Productos"
-            columns={[
-              "N°",
-              "Producto",
-              "Costo de Fabricación",
-              "Precio sugerido",
-              "Precio Venta",
-              "Acciones",
-            ]}
-            dataKeys={[
-              "id",
-              "name",
-              "manufacturing_cost",
-              "suggested_price",
-              "price",
-            ]}
+            columns={columns}
+            dataKeys={dataKeys}
             data={products || []}
             isLoading={isLoading}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
+            onEdit={isAdmin ? handleEdit : undefined}
+            onDelete={isAdmin ? handleDelete : undefined}
           />
         </div>
       </section>
 
-      <ProductForm
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onSuccess={handleSuccess}
-        product={selectedProduct}
-      />
+      {isAdmin && (
+        <ProductForm
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          onSuccess={handleSuccess}
+          product={selectedProduct}
+        />
+      )}
     </>
   );
 }

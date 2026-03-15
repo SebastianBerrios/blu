@@ -4,13 +4,20 @@ import { useState } from "react";
 import { ChefHat } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useIngredients } from "@/hooks/useIngredients";
+import { useAuth } from "@/hooks/useAuth";
 import type { Ingredient } from "@/types";
 import IngredientForm from "@/components/forms/IngredientForm";
 import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
+import { redirect } from "next/navigation";
 
 export default function Ingredients() {
+  const { isAdmin, isLoading: authLoading } = useAuth();
   const { ingredients, error, isLoading, mutate } = useIngredients();
+
+  if (!authLoading && !isAdmin) {
+    redirect("/");
+  }
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedIngredient, setSelectedIngredient] = useState<
