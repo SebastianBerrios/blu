@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { X, Trash2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useAccounts } from "@/hooks/useAccounts";
+import { recordTransaction } from "@/hooks/useTransactions";
 import type { Ingredient, PurchaseWithItems, PurchaseItemLine } from "@/types";
 
 interface PurchaseFormProps {
@@ -21,11 +24,14 @@ export default function PurchaseForm({
   ingredients,
 }: PurchaseFormProps) {
   const isEditMode = !!purchase;
+  const { isAdmin } = useAuth();
+  const { cajaAccount, bancoAccount } = useAccounts();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [items, setItems] = useState<PurchaseItemLine[]>([]);
   const [hasDelivery, setHasDelivery] = useState(false);
   const [deliveryCost, setDeliveryCost] = useState("");
   const [notes, setNotes] = useState("");
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
 
   // Item entry fields
   const [searchText, setSearchText] = useState("");
@@ -50,11 +56,13 @@ export default function PurchaseForm({
         setHasDelivery(purchase.has_delivery);
         setDeliveryCost(purchase.delivery_cost ? String(purchase.delivery_cost) : "");
         setNotes(purchase.notes ?? "");
+        setSelectedAccountId(purchase.account_id ?? cajaAccount?.id ?? null);
       } else {
         setItems([]);
         setHasDelivery(false);
         setDeliveryCost("");
         setNotes("");
+        setSelectedAccountId(cajaAccount?.id ?? null);
       }
       setSearchText("");
       setSelectedIngredientId(null);
@@ -118,6 +126,11 @@ export default function PurchaseForm({
       }
     }
 
+    if (!selectedAccountId) {
+      alert("Selecciona una cuenta para la compra");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -132,6 +145,7 @@ export default function PurchaseForm({
         delivery_cost: hasDelivery ? deliveryCostNum : null,
         total,
         notes: notes.trim() || null,
+        account_id: selectedAccountId,
       };
 
       if (isEditMode && purchase) {
@@ -180,6 +194,16 @@ export default function PurchaseForm({
           );
 
         if (itemsError) throw itemsError;
+
+        // Register financial transaction for new purchase
+        await recordTransaction({
+          accountId: selectedAccountId,
+          type: "egreso_compra",
+          amount: -total,
+          description: `Compra #${newPurchase.id}`,
+          referenceId: newPurchase.id,
+          referenceType: "purchase",
+        });
       }
 
       onSuccess();
@@ -216,6 +240,49 @@ export default function PurchaseForm({
         </div>
 
         <div className="p-6 space-y-4">
+          {/* Cuenta de pago */}
+          <div>
+            <label className="block text-sm font-medium text-primary-900 mb-2">
+              Pagar desde <span className="text-red-600">*</span>
+            </label>
+            <div className="flex gap-2">
+              {cajaAccount && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedAccountId(cajaAccount.id)}
+                  disabled={isSubmitting}
+                  className={`flex-1 px-4 py-2.5 rounded-lg border-2 font-medium transition-all ${
+                    selectedAccountId === cajaAccount.id
+                      ? "bg-green-100 text-green-700 border-green-300"
+                      : "bg-white text-primary-600 border-primary-200 hover:bg-primary-50"
+                  }`}
+                >
+                  Caja
+                </button>
+              )}
+              {bancoAccount && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isAdmin) setSelectedAccountId(bancoAccount.id);
+                  }}
+                  disabled={isSubmitting || !isAdmin}
+                  title={!isAdmin ? "Solo administradores pueden usar la cuenta bancaria" : undefined}
+                  className={`flex-1 px-4 py-2.5 rounded-lg border-2 font-medium transition-all ${
+                    selectedAccountId === bancoAccount.id
+                      ? "bg-blue-100 text-blue-700 border-blue-300"
+                      : !isAdmin
+                      ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                      : "bg-white text-primary-600 border-primary-200 hover:bg-primary-50"
+                  }`}
+                >
+                  Cuenta Bancaria
+                  {!isAdmin && <span className="block text-xs mt-0.5">Solo admin</span>}
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Agregar ítems */}
           <div className="border border-primary-200 rounded-lg p-4 bg-primary-50/50">
             <label className="block text-sm font-medium text-primary-900 mb-1">

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { useAccounts } from "@/hooks/useAccounts";
+import { recordTransaction } from "@/hooks/useTransactions";
 import type { SaleWithProducts, PaymentMethod } from "@/types";
 
 interface PaymentModalProps {
@@ -24,6 +26,7 @@ export default function PaymentModal({
   onSuccess,
   sale,
 }: PaymentModalProps) {
+  const { cajaAccount, bancoAccount } = useAccounts();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Efectivo");
   const [cashAmount, setCashAmount] = useState("");
   const [yapeAmount, setYapeAmount] = useState("");
@@ -84,6 +87,29 @@ export default function PaymentModal({
         .eq("id", sale.id);
 
       if (error) throw error;
+
+      // Register financial transactions
+      if (cash && cash > 0 && cajaAccount) {
+        await recordTransaction({
+          accountId: cajaAccount.id,
+          type: "ingreso_venta",
+          amount: cash,
+          description: `Venta #${sale.id} - Efectivo`,
+          referenceId: sale.id,
+          referenceType: "sale",
+        });
+      }
+      if (yape && yape > 0 && bancoAccount) {
+        await recordTransaction({
+          accountId: bancoAccount.id,
+          type: "ingreso_venta",
+          amount: yape,
+          description: `Venta #${sale.id} - Yape`,
+          referenceId: sale.id,
+          referenceType: "sale",
+        });
+      }
+
       onSuccess();
       onClose();
     } catch (error) {

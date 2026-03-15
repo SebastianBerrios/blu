@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { X, Trash2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useAccounts } from "@/hooks/useAccounts";
+import { recordTransaction } from "@/hooks/useTransactions";
 import type { Product, SaleWithProducts, PaymentMethod } from "@/types";
 
 interface SaleFormProps {
@@ -41,6 +44,8 @@ export default function SaleForm({
   products,
 }: SaleFormProps) {
   const isEditMode = !!sale;
+  const { user } = useAuth();
+  const { cajaAccount, bancoAccount } = useAccounts();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderType, setOrderType] = useState("Mesa");
   const [searchProduct, setSearchProduct] = useState("");
@@ -270,6 +275,7 @@ export default function SaleForm({
             total_price: totalPrice,
             customer_id: customerId,
             table_number: orderType === "Mesa" ? parseInt(tableNumber) || null : null,
+            user_id: user?.id ?? null,
             ...paymentFields,
           })
           .select()
@@ -289,6 +295,33 @@ export default function SaleForm({
           );
 
         if (productsError) throw productsError;
+
+        // Register financial transactions if payment was registered
+        if (registerPayment) {
+          const cashAmt = paymentFields.cash_amount;
+          const yapeAmt = paymentFields.yape_amount;
+
+          if (cashAmt && cashAmt > 0 && cajaAccount) {
+            await recordTransaction({
+              accountId: cajaAccount.id,
+              type: "ingreso_venta",
+              amount: cashAmt,
+              description: `Venta #${newSale.id} - Efectivo`,
+              referenceId: newSale.id,
+              referenceType: "sale",
+            });
+          }
+          if (yapeAmt && yapeAmt > 0 && bancoAccount) {
+            await recordTransaction({
+              accountId: bancoAccount.id,
+              type: "ingreso_venta",
+              amount: yapeAmt,
+              description: `Venta #${newSale.id} - Yape`,
+              referenceId: newSale.id,
+              referenceType: "sale",
+            });
+          }
+        }
       }
 
       onSuccess();
