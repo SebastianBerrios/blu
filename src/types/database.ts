@@ -109,6 +109,83 @@ export type Database = {
           },
         ]
       }
+      purchase_items: {
+        Row: {
+          id: number
+          ingredient_id: number | null
+          item_name: string
+          price: number
+          purchase_id: number
+        }
+        Insert: {
+          id?: never
+          ingredient_id?: number | null
+          item_name: string
+          price: number
+          purchase_id: number
+        }
+        Update: {
+          id?: never
+          ingredient_id?: number | null
+          item_name?: string
+          price?: number
+          purchase_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_items_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchases: {
+        Row: {
+          created_at: string
+          delivery_cost: number | null
+          has_delivery: boolean
+          id: number
+          notes: string | null
+          total: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_cost?: number | null
+          has_delivery?: boolean
+          id?: never
+          notes?: string | null
+          total?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delivery_cost?: number | null
+          has_delivery?: boolean
+          id?: never
+          notes?: string | null
+          total?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_ingredients: {
         Row: {
           quantity: number
@@ -177,16 +254,22 @@ export type Database = {
           product_id: number
           quantity: number
           sale_id: number
+          status: string
+          unit_price: number
         }
         Insert: {
           product_id: number
           quantity: number
           sale_id: number
+          status?: string
+          unit_price?: number
         }
         Update: {
           product_id?: number
           quantity?: number
           sale_id?: number
+          status?: string
+          unit_price?: number
         }
         Relationships: [
           {
@@ -207,25 +290,40 @@ export type Database = {
       }
       sales: {
         Row: {
+          cash_amount: number | null
           customer_id: number | null
           id: number
           order_type: string
+          payment_date: string | null
+          payment_method: string | null
           sale_date: string
+          table_number: number | null
           total_price: number
+          yape_amount: number | null
         }
         Insert: {
+          cash_amount?: number | null
           customer_id?: number | null
           id?: number
           order_type: string
+          payment_date?: string | null
+          payment_method?: string | null
           sale_date?: string
+          table_number?: number | null
           total_price: number
+          yape_amount?: number | null
         }
         Update: {
+          cash_amount?: number | null
           customer_id?: number | null
           id?: number
           order_type?: string
+          payment_date?: string | null
+          payment_method?: string | null
           sale_date?: string
+          table_number?: number | null
           total_price?: number
+          yape_amount?: number | null
         }
         Relationships: [
           {
@@ -237,15 +335,48 @@ export type Database = {
           },
         ]
       }
+      user_profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+          is_active: boolean | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email: string
+          full_name?: string | null
+          id: string
+          is_active?: boolean | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "cocinero" | "barista"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -372,6 +503,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "cocinero", "barista"],
+    },
   },
 } as const
