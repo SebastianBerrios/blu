@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { TrendingUp, ChevronDown, ChevronUp, SquarePen, Trash2, Banknote } from "lucide-react";
+import {
+  TrendingUp,
+  ChevronDown,
+  ChevronUp,
+  SquarePen,
+  Trash2,
+  Banknote,
+} from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useSales, groupSalesByDate } from "@/hooks/useSales";
 import { useProducts } from "@/hooks/useProducts";
@@ -25,15 +32,28 @@ const ORDER_TYPE_BADGE: Record<string, string> = {
 function formatDate(dateStr: string): string {
   const [year, month, day] = dateStr.split("-");
   const months = [
-    "enero", "febrero", "marzo", "abril", "mayo", "junio",
-    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
   ];
   return `${parseInt(day)} de ${months[parseInt(month) - 1]} de ${year}`;
 }
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
-  return date.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
+  return date.toLocaleTimeString("es-PE", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export default function Sales() {
@@ -41,10 +61,14 @@ export default function Sales() {
   const { products } = useProducts();
   const { isAdmin, user, profile } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedSale, setSelectedSale] = useState<SaleWithProducts | undefined>();
+  const [selectedSale, setSelectedSale] = useState<
+    SaleWithProducts | undefined
+  >();
   const [expandedSaleId, setExpandedSaleId] = useState<number | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [paymentSale, setPaymentSale] = useState<SaleWithProducts | undefined>();
+  const [paymentSale, setPaymentSale] = useState<
+    SaleWithProducts | undefined
+  >();
 
   const groupedSales = useMemo(() => groupSalesByDate(sales), [sales]);
 
@@ -105,7 +129,9 @@ export default function Sales() {
         <div className="flex-1 px-4 py-4 md:px-6 md:py-6 overflow-auto">
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700">Error al cargar las ventas: {error.message}</p>
+              <p className="text-red-700">
+                Error al cargar las ventas: {error.message}
+              </p>
             </div>
           )}
 
@@ -115,7 +141,9 @@ export default function Sales() {
             <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
               <div className="px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 bg-slate-50">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base md:text-lg font-semibold text-slate-900">Historial de Ventas</h3>
+                  <h3 className="text-base md:text-lg font-semibold text-slate-900">
+                    Historial de Ventas
+                  </h3>
                   <span className="text-sm text-slate-500">0 registros</span>
                 </div>
               </div>
@@ -130,8 +158,12 @@ export default function Sales() {
           {!isLoading && sales.length > 0 && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-base md:text-lg font-semibold text-slate-900">Historial de Ventas</h3>
-                <span className="text-sm text-slate-500">{sales.length} registros</span>
+                <h3 className="text-base md:text-lg font-semibold text-slate-900">
+                  Historial de Ventas
+                </h3>
+                <span className="text-sm text-slate-500">
+                  {sales.length} registros
+                </span>
               </div>
 
               {groupedSales.map((group) => (
@@ -148,7 +180,9 @@ export default function Sales() {
                   <div className="space-y-2">
                     {group.sales.map((sale) => {
                       const isExpanded = expandedSaleId === sale.id;
-                      const badgeClass = ORDER_TYPE_BADGE[sale.order_type] || "bg-gray-100 text-gray-700";
+                      const badgeClass =
+                        ORDER_TYPE_BADGE[sale.order_type] ||
+                        "bg-gray-100 text-gray-700";
 
                       return (
                         <div
@@ -170,7 +204,9 @@ export default function Sales() {
                                 <span className="text-sm text-slate-600 font-medium">
                                   {formatTime(sale.sale_date)}
                                 </span>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}>
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}
+                                >
                                   {sale.order_type}
                                 </span>
                                 {sale.payment_method ? (
@@ -190,7 +226,8 @@ export default function Sales() {
                               </div>
                               <div className="flex items-center justify-between mt-1 md:hidden">
                                 <span className="text-xs text-slate-500">
-                                  {sale.sale_products.length} producto{sale.sale_products.length !== 1 ? "s" : ""}
+                                  {sale.sale_products.length} producto
+                                  {sale.sale_products.length !== 1 ? "s" : ""}
                                 </span>
                                 <span className="font-bold text-slate-900 text-sm">
                                   S/ {sale.total_price.toFixed(2)}
@@ -200,7 +237,8 @@ export default function Sales() {
 
                             <div className="hidden md:flex items-center gap-3">
                               <span className="text-sm text-slate-600">
-                                {sale.sale_products.length} producto{sale.sale_products.length !== 1 ? "s" : ""}
+                                {sale.sale_products.length} producto
+                                {sale.sale_products.length !== 1 ? "s" : ""}
                               </span>
                               <span className="font-bold text-slate-900">
                                 S/ {sale.total_price.toFixed(2)}
@@ -208,25 +246,33 @@ export default function Sales() {
                               <div className="flex items-center gap-1">
                                 {!sale.payment_method && (
                                   <button
-                                    onClick={(e) => { e.stopPropagation(); setPaymentSale(sale); setIsPaymentModalOpen(true); }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPaymentSale(sale);
+                                      setIsPaymentModalOpen(true);
+                                    }}
                                     className="p-3 text-green-700 hover:bg-green-100 rounded-lg transition-colors"
                                     title="Registrar pago"
                                   >
                                     <Banknote className="w-5 h-5" />
                                   </button>
                                 )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEdit(sale);
+                                  }}
+                                  className="p-3 text-primary-700 hover:bg-primary-100 rounded-lg transition-colors"
+                                  title="Editar"
+                                >
+                                  <SquarePen className="w-5 h-5" />
+                                </button>
                                 {isAdmin && (
                                   <button
-                                    onClick={(e) => { e.stopPropagation(); handleEdit(sale); }}
-                                    className="p-3 text-primary-700 hover:bg-primary-100 rounded-lg transition-colors"
-                                    title="Editar"
-                                  >
-                                    <SquarePen className="w-5 h-5" />
-                                  </button>
-                                )}
-                                {isAdmin && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleDelete(sale); }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDelete(sale);
+                                    }}
                                     className="p-3 text-red-700 hover:bg-red-100 rounded-lg transition-colors"
                                     title="Eliminar"
                                   >
@@ -234,12 +280,20 @@ export default function Sales() {
                                   </button>
                                 )}
                               </div>
-                              {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                              {isExpanded ? (
+                                <ChevronUp className="w-4 h-4 text-slate-400" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-slate-400" />
+                              )}
                             </div>
 
                             {/* Mobile chevron */}
                             <div className="md:hidden ml-2">
-                              {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                              {isExpanded ? (
+                                <ChevronUp className="w-4 h-4 text-slate-400" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-slate-400" />
+                              )}
                             </div>
                           </div>
 
@@ -249,10 +303,18 @@ export default function Sales() {
                               <table className="w-full">
                                 <thead>
                                   <tr>
-                                    <th className="text-left text-xs font-medium text-slate-600 uppercase pb-2">Producto</th>
-                                    <th className="text-center text-xs font-medium text-slate-600 uppercase pb-2">Cant.</th>
-                                    <th className="text-right text-xs font-medium text-slate-600 uppercase pb-2">P. Unit.</th>
-                                    <th className="text-right text-xs font-medium text-slate-600 uppercase pb-2">Subtotal</th>
+                                    <th className="text-left text-xs font-medium text-slate-600 uppercase pb-2">
+                                      Producto
+                                    </th>
+                                    <th className="text-center text-xs font-medium text-slate-600 uppercase pb-2">
+                                      Cant.
+                                    </th>
+                                    <th className="text-right text-xs font-medium text-slate-600 uppercase pb-2">
+                                      P. Unit.
+                                    </th>
+                                    <th className="text-right text-xs font-medium text-slate-600 uppercase pb-2">
+                                      Subtotal
+                                    </th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-200">
@@ -275,9 +337,18 @@ export default function Sales() {
                                           </div>
                                         )}
                                       </td>
-                                      <td className="py-2 text-sm text-slate-900 text-center">{sp.quantity}</td>
-                                      <td className="py-2 text-sm text-slate-900 text-right">S/ {sp.unit_price.toFixed(2)}</td>
-                                      <td className="py-2 text-sm text-green-700 text-right font-semibold">S/ {(sp.quantity * sp.unit_price).toFixed(2)}</td>
+                                      <td className="py-2 text-sm text-slate-900 text-center">
+                                        {sp.quantity}
+                                      </td>
+                                      <td className="py-2 text-sm text-slate-900 text-right">
+                                        S/ {sp.unit_price.toFixed(2)}
+                                      </td>
+                                      <td className="py-2 text-sm text-green-700 text-right font-semibold">
+                                        S/{" "}
+                                        {(sp.quantity * sp.unit_price).toFixed(
+                                          2,
+                                        )}
+                                      </td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -287,7 +358,10 @@ export default function Sales() {
                               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200 md:hidden">
                                 {!sale.payment_method && (
                                   <button
-                                    onClick={() => { setPaymentSale(sale); setIsPaymentModalOpen(true); }}
+                                    onClick={() => {
+                                      setPaymentSale(sale);
+                                      setIsPaymentModalOpen(true);
+                                    }}
                                     className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-600 text-white rounded-lg font-medium text-sm active:scale-[0.97]"
                                   >
                                     <Banknote className="w-5 h-5" />
@@ -316,19 +390,30 @@ export default function Sales() {
                               <div className="mt-3 pt-3 border-t border-slate-200">
                                 {sale.payment_method ? (
                                   <div className="flex flex-wrap items-center gap-3 text-sm">
-                                    <span className="text-slate-600">Pago:</span>
-                                    <span className="font-medium text-slate-900">{sale.payment_method}</span>
-                                    {sale.payment_method === "Efectivo + Yape" && (
+                                    <span className="text-slate-600">
+                                      Pago:
+                                    </span>
+                                    <span className="font-medium text-slate-900">
+                                      {sale.payment_method}
+                                    </span>
+                                    {sale.payment_method ===
+                                      "Efectivo + Yape" && (
                                       <span className="text-slate-500">
-                                        (Efectivo: S/ {sale.cash_amount?.toFixed(2)} | Yape: S/ {sale.yape_amount?.toFixed(2)})
+                                        (Efectivo: S/{" "}
+                                        {sale.cash_amount?.toFixed(2)} | Yape:
+                                        S/ {sale.yape_amount?.toFixed(2)})
                                       </span>
                                     )}
                                     {sale.payment_date && (
-                                      <span className="text-slate-400 text-xs">{formatTime(sale.payment_date)}</span>
+                                      <span className="text-slate-400 text-xs">
+                                        {formatTime(sale.payment_date)}
+                                      </span>
                                     )}
                                   </div>
                                 ) : (
-                                  <span className="text-sm text-red-600 font-medium">Pago pendiente</span>
+                                  <span className="text-sm text-red-600 font-medium">
+                                    Pago pendiente
+                                  </span>
                                 )}
                               </div>
                             </div>
@@ -357,7 +442,10 @@ export default function Sales() {
       {paymentSale && (
         <PaymentModal
           isOpen={isPaymentModalOpen}
-          onClose={() => { setIsPaymentModalOpen(false); setPaymentSale(undefined); }}
+          onClose={() => {
+            setIsPaymentModalOpen(false);
+            setPaymentSale(undefined);
+          }}
           onSuccess={handleSuccess}
           sale={paymentSale}
         />
