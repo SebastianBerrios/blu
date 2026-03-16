@@ -236,6 +236,11 @@ export default function PurchaseForm({
           Pagar desde <span className="text-red-600">*</span>
         </label>
         <div className="flex gap-2">
+          {!cajaAccount && !bancoAccount && (
+            <p className="text-sm text-red-600">
+              No hay cuentas configuradas. Contacta al administrador.
+            </p>
+          )}
           {cajaAccount && (
             <button
               type="button"
