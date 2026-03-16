@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { redirect } from "next/navigation";
 import {
   Wallet,
   ArrowRightLeft,
@@ -36,7 +37,11 @@ const FILTER_OPTIONS: { value: string; label: string }[] = [
 ];
 
 export default function FinanzasPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isLoading: authLoading } = useAuth();
+
+  if (!authLoading && !isAdmin) {
+    redirect("/");
+  }
   const { cajaAccount, bancoAccount, mutate: mutateAccounts } = useAccounts();
   const [accountFilter, setAccountFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState<TransactionType | "">("");

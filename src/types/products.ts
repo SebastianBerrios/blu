@@ -8,6 +8,8 @@ export interface CreateProduct {
   manufacturing_cost: number;
   suggested_price: number;
   price: number;
+  temperatura?: string | null;
+  tipo_leche?: string | null;
 }
 
 export interface UpdateProductPrice {

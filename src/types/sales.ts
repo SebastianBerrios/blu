@@ -6,11 +6,14 @@ export type PaymentMethod = "Efectivo" | "Yape" | "Efectivo + Yape";
 export type SaleProductStatus = "Pendiente" | "Entregado";
 
 export interface SaleProductWithDetails {
+  id: number;
   product_id: number;
   quantity: number;
   unit_price: number;
   product_name: string;
   status: SaleProductStatus;
+  temperatura: string | null;
+  tipo_leche: string | null;
 }
 
 export interface SaleWithProducts extends Sale {

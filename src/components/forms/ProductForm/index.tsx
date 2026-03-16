@@ -100,6 +100,8 @@ export default function ProductForm({
           categoryId: product.category_id ?? undefined,
           manufacturing_cost: product.manufacturing_cost ?? 0,
           price: product.price,
+          temperatura: product.temperatura ?? "",
+          tipo_leche: product.tipo_leche ?? "",
         });
         setRecipeBatchCost(0);
         setRecipeYield(1);
@@ -109,6 +111,8 @@ export default function ProductForm({
           categoryId: undefined,
           manufacturing_cost: 0,
           price: 0,
+          temperatura: "",
+          tipo_leche: "",
         });
         setRecipeBatchCost(0);
         setRecipeYield(1);
@@ -179,7 +183,9 @@ export default function ProductForm({
         category_id: data.categoryId,
         manufacturing_cost: Number(data.manufacturing_cost ?? 0),
         price: Number(data.price),
-        suggested_price: Number(suggestedPrice), // Guardar el precio sugerido
+        suggested_price: Number(suggestedPrice),
+        temperatura: data.temperatura || null,
+        tipo_leche: data.tipo_leche || null,
       };
 
       if (isEditMode) {
@@ -240,6 +246,35 @@ export default function ProductForm({
                 {category.name}
               </option>
             ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-900 mb-1.5">
+            Temperatura
+          </label>
+          <select
+            {...register("temperatura")}
+            disabled={isSubmitting}
+            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white"
+          >
+            <option value="">Sin especificar</option>
+            <option value="caliente">Caliente</option>
+            <option value="frío">Frío</option>
+            <option value="ambos">Ambos</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-900 mb-1.5">
+            Tipo de leche
+          </label>
+          <select
+            {...register("tipo_leche")}
+            disabled={isSubmitting}
+            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white"
+          >
+            <option value="">Sin leche</option>
+            <option value="entera">Entera</option>
+            <option value="deslactosada">Deslactosada</option>
           </select>
         </div>
       </div>

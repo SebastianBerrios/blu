@@ -29,17 +29,17 @@ function OrderCard({
   completed = false,
 }: {
   sale: PendingOrderSale;
-  onDeliver: (saleId: number, productId: number) => Promise<void>;
+  onDeliver: (itemId: number) => Promise<void>;
   onDeliverAll: (saleId: number) => Promise<void>;
   completed?: boolean;
 }) {
   const [loading, setLoading] = useState<string | null>(null);
 
-  const handleDeliver = async (productId: number) => {
-    const key = `${sale.id}-${productId}`;
+  const handleDeliver = async (itemId: number) => {
+    const key = `item-${itemId}`;
     setLoading(key);
     try {
-      await onDeliver(sale.id, productId);
+      await onDeliver(itemId);
     } catch {
       alert("Error al marcar como entregado");
     } finally {
@@ -101,22 +101,38 @@ function OrderCard({
       <div className="divide-y divide-slate-100">
         {sale.sale_products.map((product) => {
           const isPending = product.status === "Pendiente";
-          const isLoading = loading === `${sale.id}-${product.product_id}`;
+          const isLoading = loading === `item-${product.id}`;
 
           return (
             <div
-              key={product.product_id}
+              key={product.id}
               className={`px-4 md:px-5 py-3 flex items-center justify-between gap-3 transition-colors ${
                 isPending ? "bg-white" : "bg-green-50/50"
               }`}
             >
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <span className="text-sm font-medium text-slate-900 capitalize truncate">
-                  {product.product_name}
-                </span>
-                <span className="text-xs text-slate-500 shrink-0">
-                  x{product.quantity}
-                </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-slate-900 capitalize truncate">
+                    {product.product_name}
+                  </span>
+                  <span className="text-xs text-slate-500 shrink-0">
+                    x{product.quantity}
+                  </span>
+                </div>
+                {(product.temperatura || product.tipo_leche) && (
+                  <div className="flex gap-1.5 mt-1">
+                    {product.temperatura && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
+                        {product.temperatura}
+                      </span>
+                    )}
+                    {product.tipo_leche && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">
+                        {product.tipo_leche}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
@@ -133,7 +149,7 @@ function OrderCard({
                 {isPending && (
                   <button
                     type="button"
-                    onClick={() => handleDeliver(product.product_id)}
+                    onClick={() => handleDeliver(product.id)}
                     disabled={isLoading || loading === "all"}
                     className="p-2.5 text-green-600 hover:bg-green-100 rounded-lg transition-colors disabled:opacity-50 min-w-[44px] min-h-[44px] flex items-center justify-center"
                     title="Marcar como entregado"

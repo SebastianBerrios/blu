@@ -30,14 +30,28 @@ Blu is a café/bakery business management system. It manages ingredients, recipe
 
 ```
 src/
-├── app/              # Next.js App Router pages (categories, products, ingredients, recipes, sales)
+├── app/              # Next.js App Router pages
+│   ├── categories/   # Category management
+│   ├── products/     # Product management
+│   ├── ingredients/  # Ingredient inventory (admin only)
+│   ├── recipes/      # Recipe management (admin only)
+│   ├── sales/        # Sales/orders
+│   ├── pedidos/      # Pending orders
+│   ├── compras/      # Purchase management
+│   ├── finanzas/     # Financial dashboard (admin only)
+│   ├── estadisticas/ # Statistics dashboard (admin only)
+│   ├── users/        # User management (admin only)
+│   ├── login/        # Authentication (email/password + Google OAuth)
+│   └── auth/callback # OAuth callback
 ├── components/
-│   ├── forms/        # Modal form components (CategoryForm, ProductForm, RecipeForm, IngredientForm)
-│   ├── ui/           # Reusable UI (Button, DataTable, Spinner)
-│   └── SideBar/      # Navigation sidebar
-├── hooks/            # SWR-based data hooks (useCategories, useProducts, useIngredients, useRecipes, etc.)
+│   ├── forms/        # Modal form components (CategoryForm, ProductForm, SaleForm, PurchaseForm, etc.)
+│   ├── ui/           # Reusable UI (Button, DataTable, Spinner, PageHeader, EmptyState, FAB, BottomNav, BottomSheet)
+│   ├── SideBar/      # Desktop navigation sidebar
+│   ├── AppShell.tsx  # Layout wrapper (sidebar + bottom nav)
+│   └── AuthGuard.tsx # Auth + role-based access wrapper
+├── hooks/            # SWR-based data hooks (useCategories, useProducts, useAuth, useSales, useAccounts, useTransactions, etc.)
 ├── types/            # TypeScript types including auto-generated Supabase types (database.ts)
-└── utils/supabase/   # Supabase client (client.ts for browser, server.ts for SSR)
+└── utils/supabase/   # Supabase client (client.ts for browser, server.ts for SSR, middleware.ts)
 ```
 
 ## Key Patterns
@@ -50,6 +64,35 @@ src/
 
 **No global state management** — state is local to components or lifted via props.
 
+## Authentication & Roles
+
+- Cookie-based SSR sessions via `@supabase/ssr`
+- Middleware in `src/middleware.ts` redirects unauthenticated users to `/login`
+- **Roles**: `admin`, `cocinero` (chef), `barista`
+- `useAuth` hook returns `{ user, profile, role, isAdmin, isPending, isInactive, signOut, hasRole }`
+- Admin-only pages (`ingredients`, `recipes`, `finanzas`, `estadisticas`, `users`) redirect non-admins
+- Root `/` redirects by role: admin → `/categories`, others → `/sales`
+
+## Database Schema (key tables)
+
+- **user_profiles** — role, full_name, is_active
+- **categories**, **products** (with manufacturing_cost, suggested_price)
+- **ingredients** (quantity, unit_of_measure, price), **recipes**, **recipe_ingredients**
+- **sales** + **sale_products** — order_type (Mesa/Para llevar/Delivery), payment_method (Efectivo/Yape/split), product status (Pendiente/Entregado)
+- **customers** — name, dni, phone
+- **accounts** (type: "caja"/"banco", balance) + **transactions** (ingreso_venta, egreso_compra, transferencia_in/out, gasto, ingreso_extra)
+- **purchases** + **purchase_items**
+
+Types in `src/types/` wrap auto-generated Supabase types: `export type Category = Tables<"categories">`
+
+## UI Components
+
+- **DataTable**: Generic `<T extends { id: number; name: string }>`, supports search, sort, mobile card view via `renderCard` prop
+- **Button**: Variants (primary/secondary/ghost/danger), sizes (sm/md/lg)
+- **BottomNav**: Mobile navigation, shows different items by role; "More" opens BottomSheet
+- **SideBar**: Desktop only (`md:flex`), icon-based navigation
+- **FAB**: Floating action button for mobile add actions
+
 ## Naming Conventions
 
 - Components/Types: PascalCase
@@ -59,7 +102,11 @@ src/
 
 ## Styling
 
-Tailwind utility-first, mobile-first responsive design (`md:` for desktop). Custom theme colors defined as `--color-primary-*` CSS variables (sky blue palette) in `globals.css`.
+Tailwind utility-first, mobile-first responsive design (`md:` for desktop). Custom theme colors defined as CSS variables in `globals.css`:
+- **Primary** (sky blue): `--color-primary-50` through `--color-primary-900`
+- **Accent** (amber/toffee): `--color-accent-50` through `--color-accent-700`
+- Icons via **Lucide React**
+- Charts via **Chart.js** + **react-chartjs-2** (used in estadisticas)
 
 ## Environment Variables
 

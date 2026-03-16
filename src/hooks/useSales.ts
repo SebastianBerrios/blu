@@ -24,10 +24,13 @@ const fetchSales = async (): Promise<SaleWithProducts[]> => {
         dni
       ),
       sale_products (
+        id,
         product_id,
         quantity,
         unit_price,
         status,
+        temperatura,
+        tipo_leche,
         products (
           name
         )
@@ -46,18 +49,24 @@ const fetchSales = async (): Promise<SaleWithProducts[]> => {
     customer_dni: (sale.customers as unknown as { dni: number | null } | null)?.dni ?? null,
     sale_products: (
       sale.sale_products as unknown as Array<{
+        id: number;
         product_id: number;
         quantity: number;
         unit_price: number;
         status: string;
+        temperatura: string | null;
+        tipo_leche: string | null;
         products: { name: string };
       }>
     ).map((sp) => ({
+      id: sp.id,
       product_id: sp.product_id,
       quantity: sp.quantity,
       unit_price: sp.unit_price,
       product_name: sp.products?.name ?? "Producto eliminado",
       status: sp.status as "Pendiente" | "Entregado",
+      temperatura: sp.temperatura,
+      tipo_leche: sp.tipo_leche,
     })),
   }));
 };
