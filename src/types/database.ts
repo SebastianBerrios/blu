@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
   }
@@ -38,6 +40,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: number
+          target_description: string | null
+          target_id: string | null
+          target_table: string
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: never
+          target_description?: string | null
+          target_id?: string | null
+          target_table: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: never
+          target_description?: string | null
+          target_id?: string | null
+          target_table?: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       categories: {
         Row: {
@@ -107,6 +153,8 @@ export type Database = {
           name: string
           price: number
           suggested_price: number | null
+          temperatura: string | null
+          tipo_leche: string | null
         }
         Insert: {
           category_id?: number | null
@@ -115,6 +163,8 @@ export type Database = {
           name: string
           price: number
           suggested_price?: number | null
+          temperatura?: string | null
+          tipo_leche?: string | null
         }
         Update: {
           category_id?: number | null
@@ -123,6 +173,8 @@ export type Database = {
           name?: string
           price?: number
           suggested_price?: number | null
+          temperatura?: string | null
+          tipo_leche?: string | null
         }
         Relationships: [
           {
@@ -286,24 +338,33 @@ export type Database = {
       }
       sale_products: {
         Row: {
+          id: number
           product_id: number
           quantity: number
           sale_id: number
           status: string
+          temperatura: string | null
+          tipo_leche: string | null
           unit_price: number
         }
         Insert: {
+          id?: never
           product_id: number
           quantity: number
           sale_id: number
           status?: string
+          temperatura?: string | null
+          tipo_leche?: string | null
           unit_price?: number
         }
         Update: {
+          id?: never
           product_id?: number
           quantity?: number
           sale_id?: number
           status?: string
+          temperatura?: string | null
+          tipo_leche?: string | null
           unit_price?: number
         }
         Relationships: [
