@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
 import { recordTransaction } from "@/hooks/useTransactions";
+import { logAudit } from "@/utils/auditLog";
 
 interface ExpenseFormProps {
   isOpen: boolean;
@@ -17,7 +18,7 @@ export default function ExpenseForm({
   onClose,
   onSuccess,
 }: ExpenseFormProps) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, profile } = useAuth();
   const { cajaAccount, bancoAccount } = useAccounts();
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [amount, setAmount] = useState("");
@@ -51,6 +52,15 @@ export default function ExpenseForm({
         type: "gasto",
         amount: -numAmount,
         description: description.trim(),
+      });
+
+      logAudit({
+        userId: user?.id ?? null,
+        userName: profile?.full_name ?? null,
+        action: "crear_transaccion",
+        targetTable: "transactions",
+        targetDescription: `Gasto: ${description.trim()} - S/ ${numAmount.toFixed(2)}`,
+        details: { tipo: "gasto", monto: numAmount, cuenta: accountId === cajaAccount?.id ? "caja" : "banco" },
       });
 
       onSuccess();

@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
 import { recordTransaction } from "@/hooks/useTransactions";
+import { logAudit } from "@/utils/auditLog";
 
 interface ExtraIncomeFormProps {
   isOpen: boolean;
@@ -17,7 +18,7 @@ export default function ExtraIncomeForm({
   onClose,
   onSuccess,
 }: ExtraIncomeFormProps) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, profile } = useAuth();
   const { cajaAccount, bancoAccount } = useAccounts();
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [amount, setAmount] = useState("");
@@ -50,6 +51,15 @@ export default function ExtraIncomeForm({
         type: "ingreso_extra",
         amount: numAmount,
         description: description.trim(),
+      });
+
+      logAudit({
+        userId: user?.id ?? null,
+        userName: profile?.full_name ?? null,
+        action: "crear_transaccion",
+        targetTable: "transactions",
+        targetDescription: `Ingreso extra: ${description.trim()} - S/ ${numAmount.toFixed(2)}`,
+        details: { tipo: "ingreso_extra", monto: numAmount, cuenta: accountId === cajaAccount?.id ? "caja" : "banco" },
       });
 
       onSuccess();

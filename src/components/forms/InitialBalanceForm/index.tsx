@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
+import { logAudit } from "@/utils/auditLog";
 
 interface InitialBalanceFormProps {
   isOpen: boolean;
@@ -16,6 +18,7 @@ export default function InitialBalanceForm({
   onClose,
   onSuccess,
 }: InitialBalanceFormProps) {
+  const { user, profile } = useAuth();
   const { cajaAccount, bancoAccount } = useAccounts();
   const [cajaBalance, setCajaBalance] = useState("");
   const [bancoBalance, setBancoBalance] = useState("");
@@ -43,6 +46,20 @@ export default function InitialBalanceForm({
           .eq("id", bancoAccount.id);
         if (error) throw error;
       }
+      logAudit({
+        userId: user?.id ?? null,
+        userName: profile?.full_name ?? null,
+        action: "configurar_saldo",
+        targetTable: "accounts",
+        targetDescription: "Configuración de saldos",
+        details: {
+          caja: cajaBalance.trim() ? parseFloat(cajaBalance) : undefined,
+          banco: bancoBalance.trim() ? parseFloat(bancoBalance) : undefined,
+          caja_anterior: cajaAccount ? Number(cajaAccount.balance) : undefined,
+          banco_anterior: bancoAccount ? Number(bancoAccount.balance) : undefined,
+        },
+      });
+
       onSuccess();
       onClose();
     } catch (error) {

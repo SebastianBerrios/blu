@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
 import { recordTransaction } from "@/hooks/useTransactions";
+import { logAudit } from "@/utils/auditLog";
 import type { Ingredient, PurchaseWithItems, PurchaseItemLine } from "@/types";
 
 interface PurchaseFormProps {
@@ -24,7 +25,7 @@ export default function PurchaseForm({
   ingredients,
 }: PurchaseFormProps) {
   const isEditMode = !!purchase;
-  const { isAdmin } = useAuth();
+  const { isAdmin, user: authUser, profile } = useAuth();
   const { cajaAccount, bancoAccount } = useAccounts();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [items, setItems] = useState<PurchaseItemLine[]>([]);
@@ -203,6 +204,15 @@ export default function PurchaseForm({
           description: `Compra #${newPurchase.id}`,
           referenceId: newPurchase.id,
           referenceType: "purchase",
+        });
+
+        logAudit({
+          userId: authUser?.id ?? null,
+          userName: profile?.full_name ?? null,
+          action: "crear_transaccion",
+          targetTable: "transactions",
+          targetDescription: `Compra #${newPurchase.id} - S/ ${total.toFixed(2)}`,
+          details: { compra_id: newPurchase.id, total },
         });
       }
 

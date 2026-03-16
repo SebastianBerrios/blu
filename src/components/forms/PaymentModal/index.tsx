@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
 import { recordTransaction } from "@/hooks/useTransactions";
+import { logAudit } from "@/utils/auditLog";
 import type { SaleWithProducts, PaymentMethod } from "@/types";
 
 interface PaymentModalProps {
@@ -26,6 +28,7 @@ export default function PaymentModal({
   onSuccess,
   sale,
 }: PaymentModalProps) {
+  const { user, profile } = useAuth();
   const { cajaAccount, bancoAccount } = useAccounts();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Efectivo");
   const [cashAmount, setCashAmount] = useState("");
@@ -109,6 +112,15 @@ export default function PaymentModal({
           referenceType: "sale",
         });
       }
+
+      logAudit({
+        userId: user?.id ?? null,
+        userName: profile?.full_name ?? null,
+        action: "crear_transaccion",
+        targetTable: "transactions",
+        targetDescription: `Pago venta #${sale.id} - ${paymentMethod} - S/ ${sale.total_price.toFixed(2)}`,
+        details: { venta_id: sale.id, metodo: paymentMethod, total: sale.total_price },
+      });
 
       onSuccess();
       onClose();

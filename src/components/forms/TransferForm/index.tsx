@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
 import { recordTransaction } from "@/hooks/useTransactions";
+import { logAudit } from "@/utils/auditLog";
 
 interface TransferFormProps {
   isOpen: boolean;
@@ -16,6 +18,7 @@ export default function TransferForm({
   onClose,
   onSuccess,
 }: TransferFormProps) {
+  const { user, profile } = useAuth();
   const { cajaAccount, bancoAccount } = useAccounts();
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -52,6 +55,15 @@ export default function TransferForm({
         amount: numAmount,
         description: description.trim() || "Transferencia Caja → Banco",
         referenceType: "transfer",
+      });
+
+      logAudit({
+        userId: user?.id ?? null,
+        userName: profile?.full_name ?? null,
+        action: "crear_transaccion",
+        targetTable: "transactions",
+        targetDescription: `Transferencia Caja → Banco: S/ ${numAmount.toFixed(2)}`,
+        details: { tipo: "transferencia", monto: numAmount, descripcion: description.trim() || null },
       });
 
       onSuccess();

@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
 import { recordTransaction } from "@/hooks/useTransactions";
+import { logAudit } from "@/utils/auditLog";
 import type { Product, SaleWithProducts, PaymentMethod } from "@/types";
 
 interface SaleFormProps {
@@ -22,6 +23,8 @@ interface SaleProductLine {
   quantity: number;
   unit_price: number;
   subtotal: number;
+  temperatura: string | null;
+  tipo_leche: string | null;
 }
 
 const ORDER_TYPES = [
@@ -44,7 +47,7 @@ export default function SaleForm({
   products,
 }: SaleFormProps) {
   const isEditMode = !!sale;
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { cajaAccount, bancoAccount } = useAccounts();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderType, setOrderType] = useState("Mesa");
@@ -52,6 +55,8 @@ export default function SaleForm({
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [productQuantity, setProductQuantity] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedTemperatura, setSelectedTemperatura] = useState<string>("");
+  const [selectedTipoLeche, setSelectedTipoLeche] = useState<string>("");
   const [saleProducts, setSaleProducts] = useState<SaleProductLine[]>([]);
   const [tableNumber, setTableNumber] = useState("");
   const [customerDni, setCustomerDni] = useState("");
@@ -75,6 +80,8 @@ export default function SaleForm({
             quantity: sp.quantity,
             unit_price: sp.unit_price,
             subtotal: sp.quantity * sp.unit_price,
+            temperatura: sp.temperatura,
+            tipo_leche: sp.tipo_leche,
           }))
         );
         if (sale.payment_method) {
@@ -102,6 +109,8 @@ export default function SaleForm({
       setSelectedProductId(null);
       setProductQuantity("");
       setShowDropdown(false);
+      setSelectedTemperatura("");
+      setSelectedTipoLeche("");
     }
   }, [isOpen, sale]);
 
@@ -119,6 +128,8 @@ export default function SaleForm({
     setSelectedProductId(id);
     setSearchProduct(name);
     setShowDropdown(false);
+    setSelectedTemperatura("");
+    setSelectedTipoLeche("");
   };
 
   const handleAddProduct = () => {
@@ -136,11 +147,30 @@ export default function SaleForm({
       return;
     }
 
-    const existing = saleProducts.find((p) => p.product_id === selectedProductId);
+    // Validate required options
+    const needsTemp = product.temperatura === "ambos";
+    const needsMilk = product.tipo_leche !== null;
+
+    if (needsTemp && !selectedTemperatura) {
+      alert("Selecciona la temperatura");
+      return;
+    }
+    if (needsMilk && !selectedTipoLeche) {
+      alert("Selecciona el tipo de leche");
+      return;
+    }
+
+    const temp = needsTemp ? selectedTemperatura : (product.temperatura === "caliente" || product.temperatura === "frío" ? product.temperatura : null);
+    const milk = needsMilk ? (selectedTipoLeche || "entera") : null;
+
+    // Dedup by product_id + temperatura + tipo_leche
+    const existing = saleProducts.find(
+      (p) => p.product_id === selectedProductId && p.temperatura === temp && p.tipo_leche === milk
+    );
     if (existing) {
       setSaleProducts(
         saleProducts.map((p) =>
-          p.product_id === selectedProductId
+          p.product_id === selectedProductId && p.temperatura === temp && p.tipo_leche === milk
             ? {
                 ...p,
                 quantity: p.quantity + quantity,
@@ -158,6 +188,8 @@ export default function SaleForm({
           quantity,
           unit_price: product.price,
           subtotal: quantity * product.price,
+          temperatura: temp,
+          tipo_leche: milk,
         },
       ]);
     }
@@ -165,10 +197,12 @@ export default function SaleForm({
     setSearchProduct("");
     setSelectedProductId(null);
     setProductQuantity("");
+    setSelectedTemperatura("");
+    setSelectedTipoLeche("");
   };
 
-  const handleRemoveProduct = (productId: number) => {
-    setSaleProducts(saleProducts.filter((p) => p.product_id !== productId));
+  const handleRemoveProduct = (index: number) => {
+    setSaleProducts(saleProducts.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
@@ -263,6 +297,8 @@ export default function SaleForm({
               product_id: p.product_id,
               quantity: p.quantity,
               unit_price: p.unit_price,
+              temperatura: p.temperatura,
+              tipo_leche: p.tipo_leche,
             }))
           );
 
@@ -291,6 +327,8 @@ export default function SaleForm({
               product_id: p.product_id,
               quantity: p.quantity,
               unit_price: p.unit_price,
+              temperatura: p.temperatura,
+              tipo_leche: p.tipo_leche,
             }))
           );
 
@@ -321,6 +359,15 @@ export default function SaleForm({
               referenceType: "sale",
             });
           }
+
+          logAudit({
+            userId: user?.id ?? null,
+            userName: profile?.full_name ?? null,
+            action: "crear_transaccion",
+            targetTable: "transactions",
+            targetDescription: `Venta #${newSale.id} - ${paymentMethod} - S/ ${totalPrice.toFixed(2)}`,
+            details: { venta_id: newSale.id, metodo: paymentMethod, total: totalPrice },
+          });
         }
       }
 
@@ -449,6 +496,51 @@ export default function SaleForm({
             )}
           </div>
 
+          {/* Conditional option selectors */}
+          {selectedProduct && selectedProduct.temperatura === "ambos" && (
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">Temperatura</label>
+              <div className="flex gap-2">
+                {["caliente", "frío"].map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setSelectedTemperatura(opt)}
+                    className={`flex-1 px-3 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                      selectedTemperatura === opt
+                        ? "bg-amber-100 text-amber-700 border-amber-300"
+                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    {opt === "caliente" ? "Caliente" : "Frío"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {selectedProduct && selectedProduct.tipo_leche !== null && (
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">Tipo de leche</label>
+              <div className="flex gap-2">
+                {["entera", "deslactosada"].map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setSelectedTipoLeche(opt)}
+                    className={`flex-1 px-3 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                      selectedTipoLeche === opt
+                        ? "bg-blue-100 text-blue-700 border-blue-300"
+                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    {opt === "entera" ? "Entera" : "Deslactosada"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <div className="flex-1">
               <input
@@ -482,17 +574,23 @@ export default function SaleForm({
 
             {/* Mobile card list */}
             <div className="space-y-2 md:hidden">
-              {saleProducts.map((item) => (
-                <div key={item.product_id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              {saleProducts.map((item, idx) => (
+                <div key={`${item.product_id}-${item.temperatura}-${item.tipo_leche}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-900 capitalize truncate">{item.product_name}</p>
+                    {(item.temperatura || item.tipo_leche) && (
+                      <div className="flex gap-1 mt-0.5">
+                        {item.temperatura && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">{item.temperatura}</span>}
+                        {item.tipo_leche && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">{item.tipo_leche}</span>}
+                      </div>
+                    )}
                     <p className="text-xs text-slate-500">{item.quantity} × S/ {item.unit_price.toFixed(2)}</p>
                   </div>
                   <div className="flex items-center gap-3 ml-3">
                     <span className="text-sm font-semibold text-green-600">S/ {item.subtotal.toFixed(2)}</span>
                     <button
                       type="button"
-                      onClick={() => handleRemoveProduct(item.product_id)}
+                      onClick={() => handleRemoveProduct(idx)}
                       disabled={isSubmitting}
                       className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg"
                     >
@@ -531,13 +629,19 @@ export default function SaleForm({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {saleProducts.map((item) => (
+                  {saleProducts.map((item, idx) => (
                     <tr
-                      key={item.product_id}
+                      key={`${item.product_id}-${item.temperatura}-${item.tipo_leche}`}
                       className="hover:bg-slate-50 transition-colors"
                     >
                       <td className="px-4 py-3 text-sm text-slate-900 capitalize">
                         {item.product_name}
+                        {(item.temperatura || item.tipo_leche) && (
+                          <div className="flex gap-1 mt-0.5">
+                            {item.temperatura && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">{item.temperatura}</span>}
+                            {item.tipo_leche && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">{item.tipo_leche}</span>}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-900 text-center">
                         {item.quantity}
@@ -553,7 +657,7 @@ export default function SaleForm({
                       <td className="px-4 py-3 text-center">
                         <button
                           type="button"
-                          onClick={() => handleRemoveProduct(item.product_id)}
+                          onClick={() => handleRemoveProduct(idx)}
                           disabled={isSubmitting}
                           className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                           title="Eliminar producto"
