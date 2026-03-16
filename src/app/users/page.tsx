@@ -5,6 +5,7 @@ import { Users, SquarePen, UserCheck, UserX } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useUsers } from "@/hooks/useUsers";
 import { useAuth } from "@/hooks/useAuth";
+import { logAudit } from "@/utils/auditLog";
 import type { UserProfile } from "@/types/auth";
 import UserRoleForm from "@/components/forms/UserRoleForm";
 import Spinner from "@/components/ui/Spinner";
@@ -24,7 +25,7 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 export default function UsersPage() {
-  const { isAdmin, isLoading: authLoading } = useAuth();
+  const { isAdmin, isLoading: authLoading, user: currentUser, profile: currentProfile } = useAuth();
   const { users, error, isLoading, mutate } = useUsers();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | undefined>();
@@ -38,20 +39,32 @@ export default function UsersPage() {
     setIsModalOpen(true);
   };
 
-  const handleToggleActive = async (user: UserProfile) => {
-    const newStatus = !user.is_active;
+  const handleToggleActive = async (targetUser: UserProfile) => {
+    const newStatus = !targetUser.is_active;
     const action = newStatus ? "activar" : "desactivar";
-    if (!confirm(`¿Estás seguro de ${action} a ${user.full_name || user.email}?`))
+    if (!confirm(`¿Estás seguro de ${action} a ${targetUser.full_name || targetUser.email}?`))
       return;
 
     const supabase = createClient();
-    await supabase
+    const { error } = await supabase
       .from("user_profiles")
       .update({
         is_active: newStatus,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", user.id);
+      .eq("id", targetUser.id);
+
+    if (!error) {
+      logAudit({
+        userId: currentUser?.id ?? null,
+        userName: currentProfile?.full_name ?? null,
+        action: "cambiar_estado_usuario",
+        targetTable: "user_profiles",
+        targetId: targetUser.id,
+        targetDescription: `Usuario ${newStatus ? "activado" : "desactivado"}: ${targetUser.full_name || targetUser.email}`,
+        details: { previous_active: targetUser.is_active, new_active: newStatus },
+      });
+    }
 
     mutate();
   };

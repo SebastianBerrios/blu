@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { X } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { logAudit } from "@/utils/auditLog";
 import type { UserProfile, AppRole } from "@/types/auth";
 
 interface UserRoleFormProps {
@@ -22,6 +24,7 @@ export default function UserRoleForm({
   user,
 }: UserRoleFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user: currentUser, profile: currentProfile } = useAuth();
 
   const { register, handleSubmit, reset } = useForm<FormData>();
 
@@ -50,6 +53,16 @@ export default function UserRoleForm({
         .eq("id", user.id);
 
       if (error) throw error;
+
+      logAudit({
+        userId: currentUser?.id ?? null,
+        userName: currentProfile?.full_name ?? null,
+        action: "cambiar_rol",
+        targetTable: "user_profiles",
+        targetId: user.id,
+        targetDescription: `Rol cambiado: ${user.full_name || user.email} → ${data.role}`,
+        details: { rol_anterior: user.role, rol_nuevo: data.role },
+      });
 
       onSuccess();
       onClose();

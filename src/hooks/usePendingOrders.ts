@@ -3,6 +3,8 @@
 import { useEffect, useCallback } from "react";
 import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { logAudit } from "@/utils/auditLog";
 import type { SaleWithProducts, SaleProductStatus } from "@/types";
 
 export interface PendingOrderSale extends SaleWithProducts {
@@ -38,10 +40,13 @@ const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
         dni
       ),
       sale_products (
+        id,
         product_id,
         quantity,
         unit_price,
         status,
+        temperatura,
+        tipo_leche,
         products (
           name
         )
@@ -59,18 +64,24 @@ const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
   return (data || []).map((sale) => {
     const saleProducts = (
       sale.sale_products as unknown as Array<{
+        id: number;
         product_id: number;
         quantity: number;
         unit_price: number;
         status: string;
+        temperatura: string | null;
+        tipo_leche: string | null;
         products: { name: string };
       }>
     ).map((sp) => ({
+      id: sp.id,
       product_id: sp.product_id,
       quantity: sp.quantity,
       unit_price: sp.unit_price,
       product_name: sp.products?.name ?? "Producto eliminado",
       status: sp.status as SaleProductStatus,
+      temperatura: sp.temperatura,
+      tipo_leche: sp.tipo_leche,
     }));
 
     const pendingCount = saleProducts.filter(
@@ -90,6 +101,7 @@ const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
 };
 
 export const usePendingOrders = () => {
+  const { user, profile } = useAuth();
   const { data, error, isLoading, mutate } = useSWR<PendingOrderSale[]>(
     "pending-orders",
     fetchTodayOrders,
@@ -124,33 +136,52 @@ export const usePendingOrders = () => {
   }, [mutate]);
 
   const markAsDelivered = useCallback(
-    async (saleId: number, productId: number) => {
+    async (itemId: number) => {
       const supabase = createClient();
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from("sale_products")
         .update({ status: "Entregado" })
-        .eq("sale_id", saleId)
-        .eq("product_id", productId);
+        .eq("id", itemId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      logAudit({
+        userId: user?.id ?? null,
+        userName: profile?.full_name ?? null,
+        action: "cambiar_estado_pedido",
+        targetTable: "sale_products",
+        targetId: itemId,
+        targetDescription: `Producto entregado (item #${itemId})`,
+      });
+
       mutate();
     },
-    [mutate]
+    [mutate, user, profile]
   );
 
   const markAllAsDelivered = useCallback(
     async (saleId: number) => {
       const supabase = createClient();
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from("sale_products")
         .update({ status: "Entregado" })
         .eq("sale_id", saleId)
         .eq("status", "Pendiente");
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      logAudit({
+        userId: user?.id ?? null,
+        userName: profile?.full_name ?? null,
+        action: "cambiar_estado_pedido",
+        targetTable: "sale_products",
+        targetId: saleId,
+        targetDescription: `Todos los productos entregados (venta #${saleId})`,
+      });
+
       mutate();
     },
-    [mutate]
+    [mutate, user, profile]
   );
 
   const allOrders = data ?? [];
