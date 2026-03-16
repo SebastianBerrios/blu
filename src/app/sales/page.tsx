@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useSales, groupSalesByDate } from "@/hooks/useSales";
 import { useProducts } from "@/hooks/useProducts";
 import { useAuth } from "@/hooks/useAuth";
+import { logAudit } from "@/utils/auditLog";
 import type { SaleWithProducts } from "@/types";
 import SaleForm from "@/components/forms/SaleForm";
 import PaymentModal from "@/components/forms/PaymentModal";
@@ -38,7 +39,7 @@ function formatTime(dateStr: string): string {
 export default function Sales() {
   const { sales, error, isLoading, mutate } = useSales();
   const { products } = useProducts();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, profile } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState<SaleWithProducts | undefined>();
   const [expandedSaleId, setExpandedSaleId] = useState<number | null>(null);
@@ -60,7 +61,17 @@ export default function Sales() {
   const handleDelete = async (sale: SaleWithProducts) => {
     if (!confirm("¿Estás seguro de eliminar esta venta?")) return;
     const supabase = createClient();
-    await supabase.from("sales").delete().eq("id", sale.id);
+    const { error } = await supabase.from("sales").delete().eq("id", sale.id);
+    if (!error) {
+      logAudit({
+        userId: user?.id ?? null,
+        userName: profile?.full_name ?? null,
+        action: "eliminar",
+        targetTable: "sales",
+        targetId: sale.id,
+        targetDescription: `Venta #${sale.id} - S/ ${sale.total_price.toFixed(2)}`,
+      });
+    }
     mutate();
   };
 
@@ -246,8 +257,24 @@ export default function Sales() {
                                 </thead>
                                 <tbody className="divide-y divide-slate-200">
                                   {sale.sale_products.map((sp) => (
-                                    <tr key={sp.product_id}>
-                                      <td className="py-2 text-sm text-slate-900 capitalize">{sp.product_name}</td>
+                                    <tr key={sp.id}>
+                                      <td className="py-2 text-sm text-slate-900 capitalize">
+                                        {sp.product_name}
+                                        {(sp.temperatura || sp.tipo_leche) && (
+                                          <div className="flex gap-1.5 mt-0.5">
+                                            {sp.temperatura && (
+                                              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
+                                                {sp.temperatura}
+                                              </span>
+                                            )}
+                                            {sp.tipo_leche && (
+                                              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">
+                                                {sp.tipo_leche}
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
+                                      </td>
                                       <td className="py-2 text-sm text-slate-900 text-center">{sp.quantity}</td>
                                       <td className="py-2 text-sm text-slate-900 text-right">S/ {sp.unit_price.toFixed(2)}</td>
                                       <td className="py-2 text-sm text-green-700 text-right font-semibold">S/ {(sp.quantity * sp.unit_price).toFixed(2)}</td>

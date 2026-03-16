@@ -5,6 +5,7 @@ import { ShoppingBasket, SquarePen, Trash2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useProducts } from "@/hooks/useProducts";
 import { useAuth } from "@/hooks/useAuth";
+import { logAudit } from "@/utils/auditLog";
 import type { Product } from "@/types";
 import ProductForm from "@/components/forms/ProductForm";
 import DataTable from "@/components/ui/DataTable";
@@ -14,7 +15,7 @@ import FAB from "@/components/ui/FAB";
 
 export default function Products() {
   const { products, error, isLoading, mutate } = useProducts();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, profile } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>();
 
@@ -30,7 +31,17 @@ export default function Products() {
 
   const handleDelete = async (product: Product) => {
     const supabase = createClient();
-    await supabase.from("products").delete().eq("id", product.id);
+    const { error } = await supabase.from("products").delete().eq("id", product.id);
+    if (!error) {
+      logAudit({
+        userId: user?.id ?? null,
+        userName: profile?.full_name ?? null,
+        action: "eliminar",
+        targetTable: "products",
+        targetId: product.id,
+        targetDescription: `Producto: ${product.name}`,
+      });
+    }
     mutate();
   };
 
@@ -93,6 +104,20 @@ export default function Products() {
                     )}
                     <span className="text-sm font-semibold text-primary-700">S/ {item.price}</span>
                   </div>
+                  {(item.temperatura || item.tipo_leche) && (
+                    <div className="flex items-center gap-1.5 mt-1">
+                      {item.temperatura && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
+                          {item.temperatura === "ambos" ? "frío o caliente" : item.temperatura}
+                        </span>
+                      )}
+                      {item.tipo_leche && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                          leche: {item.tipo_leche}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {(onEditFn || onDeleteFn) && (
                   <div className="flex items-center gap-1 shrink-0">

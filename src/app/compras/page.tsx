@@ -13,6 +13,7 @@ import { createClient } from "@/utils/supabase/client";
 import { usePurchases, groupPurchasesByDate } from "@/hooks/usePurchases";
 import { useIngredients } from "@/hooks/useIngredients";
 import { useAuth } from "@/hooks/useAuth";
+import { logAudit } from "@/utils/auditLog";
 import type { PurchaseWithItems } from "@/types";
 import PurchaseForm from "@/components/forms/PurchaseForm";
 import Button from "@/components/ui/Button";
@@ -38,7 +39,7 @@ function formatTime(dateStr: string): string {
 export default function Compras() {
   const { purchases, error, isLoading, mutate } = usePurchases();
   const { ingredients } = useIngredients();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, profile } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPurchase, setSelectedPurchase] = useState<PurchaseWithItems | undefined>();
   const [expandedPurchaseId, setExpandedPurchaseId] = useState<number | null>(null);
@@ -61,7 +62,17 @@ export default function Compras() {
   const handleDelete = async (purchase: PurchaseWithItems) => {
     if (!confirm("¿Estás seguro de eliminar esta compra?")) return;
     const supabase = createClient();
-    await supabase.from("purchases").delete().eq("id", purchase.id);
+    const { error } = await supabase.from("purchases").delete().eq("id", purchase.id);
+    if (!error) {
+      logAudit({
+        userId: user?.id ?? null,
+        userName: profile?.full_name ?? null,
+        action: "eliminar",
+        targetTable: "purchases",
+        targetId: purchase.id,
+        targetDescription: `Compra #${purchase.id} - S/ ${purchase.total.toFixed(2)}`,
+      });
+    }
     mutate();
   };
 

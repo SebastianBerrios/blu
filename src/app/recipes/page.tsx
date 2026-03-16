@@ -5,6 +5,7 @@ import { BookOpen, SquarePen, Trash2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useAuth } from "@/hooks/useAuth";
+import { logAudit } from "@/utils/auditLog";
 import type { Recipe } from "@/types";
 import RecipeForm from "@/components/forms/RecipeForm";
 import DataTable from "@/components/ui/DataTable";
@@ -14,7 +15,7 @@ import FAB from "@/components/ui/FAB";
 import { redirect } from "next/navigation";
 
 export default function Recipes() {
-  const { isAdmin, isLoading: authLoading } = useAuth();
+  const { isAdmin, isLoading: authLoading, user, profile } = useAuth();
   const { recipes, error, isLoading, mutate } = useRecipes();
 
   if (!authLoading && !isAdmin) {
@@ -36,7 +37,17 @@ export default function Recipes() {
 
   const handleDelete = async (recipe: Recipe) => {
     const supabase = createClient();
-    await supabase.from("recipes").delete().eq("id", recipe.id);
+    const { error } = await supabase.from("recipes").delete().eq("id", recipe.id);
+    if (!error) {
+      logAudit({
+        userId: user?.id ?? null,
+        userName: profile?.full_name ?? null,
+        action: "eliminar",
+        targetTable: "recipes",
+        targetId: recipe.id,
+        targetDescription: `Receta: ${recipe.name}`,
+      });
+    }
     mutate();
   };
 

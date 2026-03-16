@@ -5,6 +5,7 @@ import { FolderOpen, SquarePen, Trash2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
+import { logAudit } from "@/utils/auditLog";
 import type { Category } from "@/types";
 import CategoryForm from "@/components/forms/CategoryForm";
 import DataTable from "@/components/ui/DataTable";
@@ -14,7 +15,7 @@ import FAB from "@/components/ui/FAB";
 
 export default function Categories() {
   const { categories, error, isLoading, mutate } = useCategories();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, profile } = useAuth();
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedCategory, setSelectedCategory] = useState<
@@ -33,7 +34,17 @@ export default function Categories() {
 
   const handleDelete = async (category: Category) => {
     const supabase = createClient();
-    await supabase.from("categories").delete().eq("id", category.id);
+    const { error } = await supabase.from("categories").delete().eq("id", category.id);
+    if (!error) {
+      logAudit({
+        userId: user?.id ?? null,
+        userName: profile?.full_name ?? null,
+        action: "eliminar",
+        targetTable: "categories",
+        targetId: category.id,
+        targetDescription: `Categoría: ${category.name}`,
+      });
+    }
     mutate();
   };
 
