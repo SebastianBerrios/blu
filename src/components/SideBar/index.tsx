@@ -17,6 +17,7 @@ import {
   ClipboardList,
   Wallet,
   BarChart3,
+  ScrollText,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import ProfileForm from "@/components/forms/ProfileForm";
@@ -37,8 +38,9 @@ const allNavItems: NavItem[] = [
   { id: 5, nav: "/sales", name: "Ventas", icon: TrendingUp },
   { id: 8, nav: "/pedidos", name: "Pedidos", icon: ClipboardList },
   { id: 6, nav: "/compras", name: "Compras", icon: ShoppingCart },
-  { id: 9, nav: "/finanzas", name: "Finanzas", icon: Wallet },
+  { id: 9, nav: "/finanzas", name: "Finanzas", icon: Wallet, adminOnly: true },
   { id: 10, nav: "/estadisticas", name: "Estadisticas", icon: BarChart3, adminOnly: true },
+  { id: 11, nav: "/auditoria", name: "Auditoría", icon: ScrollText, adminOnly: true },
   { id: 7, nav: "/users", name: "Usuarios", icon: Users, adminOnly: true },
 ];
 
