@@ -368,14 +368,12 @@ export default function Sales() {
                                     Pagar
                                   </button>
                                 )}
-                                {isAdmin && (
-                                  <button
-                                    onClick={() => handleEdit(sale)}
-                                    className="p-3 text-primary-700 bg-primary-50 rounded-lg"
-                                  >
-                                    <SquarePen className="w-5 h-5" />
-                                  </button>
-                                )}
+                                <button
+                                  onClick={() => handleEdit(sale)}
+                                  className="p-3 text-primary-700 bg-primary-50 rounded-lg"
+                                >
+                                  <SquarePen className="w-5 h-5" />
+                                </button>
                                 {isAdmin && (
                                   <button
                                     onClick={() => handleDelete(sale)}

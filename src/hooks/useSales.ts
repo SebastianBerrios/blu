@@ -2,6 +2,11 @@ import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
 import type { SaleWithProducts, SalesGroupedByDate } from "@/types";
 
+export function toLocalDateKey(isoString: string): string {
+  const d = new Date(isoString);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 const fetchSales = async (): Promise<SaleWithProducts[]> => {
   const supabase = createClient();
 
@@ -77,7 +82,7 @@ export function groupSalesByDate(
   const groups: Record<string, SaleWithProducts[]> = {};
 
   for (const sale of sales) {
-    const dateKey = sale.sale_date.slice(0, 10);
+    const dateKey = toLocalDateKey(sale.sale_date);
     if (!groups[dateKey]) groups[dateKey] = [];
     groups[dateKey].push(sale);
   }

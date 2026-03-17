@@ -10,6 +10,7 @@ import type {
   RevenueVsExpenses,
   DateRange,
 } from "@/types";
+import { toLocalDateKey } from "@/hooks/useSales";
 
 interface SaleRow {
   id: number;
@@ -61,13 +62,14 @@ const fetchStats = async (dateRange: DateRange): Promise<StatsData> => {
   const expenses = expensesRes.data || [];
 
   // KPIs
-  const today = new Date().toISOString().slice(0, 10);
-  const monthStart = new Date().toISOString().slice(0, 7);
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const dailyRevenue = sales
-    .filter((s) => s.sale_date.slice(0, 10) === today)
+    .filter((s) => toLocalDateKey(s.sale_date) === today)
     .reduce((sum, s) => sum + s.total_price, 0);
   const monthlyRevenue = sales
-    .filter((s) => s.sale_date.slice(0, 7) === monthStart)
+    .filter((s) => toLocalDateKey(s.sale_date).slice(0, 7) === monthStart)
     .reduce((sum, s) => sum + s.total_price, 0);
   const totalSales = sales.length;
   const avgTicket = totalSales > 0 ? sales.reduce((sum, s) => sum + s.total_price, 0) / totalSales : 0;
@@ -81,7 +83,7 @@ const fetchStats = async (dateRange: DateRange): Promise<StatsData> => {
   // Revenue by day
   const revByDayMap: Record<string, number> = {};
   for (const s of sales) {
-    const date = s.sale_date.slice(0, 10);
+    const date = toLocalDateKey(s.sale_date);
     revByDayMap[date] = (revByDayMap[date] || 0) + s.total_price;
   }
   const revenueByDay: RevenueByDay[] = Object.entries(revByDayMap)
@@ -141,7 +143,7 @@ const fetchStats = async (dateRange: DateRange): Promise<StatsData> => {
   // Revenue vs expenses by day
   const expByDayMap: Record<string, number> = {};
   for (const e of expenses) {
-    const date = e.created_at.slice(0, 10);
+    const date = toLocalDateKey(e.created_at);
     expByDayMap[date] = (expByDayMap[date] || 0) + Math.abs(e.amount);
   }
   const allDates = new Set([...Object.keys(revByDayMap), ...Object.keys(expByDayMap)]);
