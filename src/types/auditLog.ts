@@ -4,6 +4,7 @@ export type AuditLog = Tables<"audit_logs">;
 
 export type AuditAction =
   | "eliminar"
+  | "crear_venta"
   | "crear_transaccion"
   | "cambiar_estado_pedido"
   | "cambiar_rol"
@@ -24,6 +25,7 @@ export type AuditTargetTable =
 
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   eliminar: "Eliminación",
+  crear_venta: "Creación de venta",
   crear_transaccion: "Transacción",
   cambiar_estado_pedido: "Estado de pedido",
   cambiar_rol: "Cambio de rol",

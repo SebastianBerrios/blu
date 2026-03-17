@@ -5,6 +5,7 @@ import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/utils/auditLog";
+import { getSaleNumber } from "@/utils/saleNumber";
 import type { SaleWithProducts, SaleProductStatus } from "@/types";
 
 export interface PendingOrderSale extends SaleWithProducts {
@@ -170,13 +171,15 @@ export const usePendingOrders = () => {
 
       if (updateError) throw updateError;
 
+      const saleNumber = await getSaleNumber(saleId);
+
       logAudit({
         userId: user?.id ?? null,
         userName: profile?.full_name ?? null,
         action: "cambiar_estado_pedido",
         targetTable: "sale_products",
         targetId: saleId,
-        targetDescription: `Todos los productos entregados (venta #${saleId})`,
+        targetDescription: `Todos los productos entregados (venta #${saleNumber})`,
       });
 
       mutate();

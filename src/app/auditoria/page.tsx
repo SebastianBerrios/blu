@@ -18,6 +18,7 @@ import { redirect } from "next/navigation";
 
 const ACTION_COLORS: Record<AuditAction, string> = {
   eliminar: "bg-red-100 text-red-700",
+  crear_venta: "bg-cyan-100 text-cyan-700",
   crear_transaccion: "bg-green-100 text-green-700",
   cambiar_estado_pedido: "bg-blue-100 text-blue-700",
   cambiar_rol: "bg-purple-100 text-purple-700",

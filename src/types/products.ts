@@ -6,7 +6,7 @@ export interface CreateProduct {
   name: string;
   categoryId: number;
   manufacturing_cost: number;
-  suggested_price: number;
+  suggested_price?: number;
   price: number;
   temperatura?: string | null;
   tipo_leche?: string | null;

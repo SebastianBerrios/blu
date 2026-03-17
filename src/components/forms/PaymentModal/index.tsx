@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
 import { recordTransaction } from "@/hooks/useTransactions";
 import { logAudit } from "@/utils/auditLog";
+import { getSaleNumber } from "@/utils/saleNumber";
 import type { SaleWithProducts, PaymentMethod } from "@/types";
 
 interface PaymentModalProps {
@@ -91,13 +92,15 @@ export default function PaymentModal({
 
       if (error) throw error;
 
+      const saleNumber = await getSaleNumber(sale.id);
+
       // Register financial transactions
       if (cash && cash > 0 && cajaAccount) {
         await recordTransaction({
           accountId: cajaAccount.id,
           type: "ingreso_venta",
           amount: cash,
-          description: `Venta #${sale.id} - Efectivo`,
+          description: `Venta #${saleNumber} - Efectivo`,
           referenceId: sale.id,
           referenceType: "sale",
         });
@@ -107,7 +110,7 @@ export default function PaymentModal({
           accountId: bancoAccount.id,
           type: "ingreso_venta",
           amount: yape,
-          description: `Venta #${sale.id} - Yape`,
+          description: `Venta #${saleNumber} - Yape`,
           referenceId: sale.id,
           referenceType: "sale",
         });
@@ -118,7 +121,7 @@ export default function PaymentModal({
         userName: profile?.full_name ?? null,
         action: "crear_transaccion",
         targetTable: "transactions",
-        targetDescription: `Pago venta #${sale.id} - ${paymentMethod} - S/ ${sale.total_price.toFixed(2)}`,
+        targetDescription: `Pago venta #${saleNumber} - ${paymentMethod} - S/ ${sale.total_price.toFixed(2)}`,
         details: { venta_id: sale.id, metodo: paymentMethod, total: sale.total_price },
       });
 

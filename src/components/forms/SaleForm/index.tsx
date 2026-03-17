@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
 import { recordTransaction } from "@/hooks/useTransactions";
 import { logAudit } from "@/utils/auditLog";
+import { getSaleNumber } from "@/utils/saleNumber";
 import type { Product, SaleWithProducts, PaymentMethod } from "@/types";
 
 interface SaleFormProps {
@@ -334,6 +335,23 @@ export default function SaleForm({
 
         if (productsError) throw productsError;
 
+        const saleNumber = await getSaleNumber(newSale.id);
+
+        logAudit({
+          userId: user?.id ?? null,
+          userName: profile?.full_name ?? null,
+          action: "crear_venta",
+          targetTable: "sales",
+          targetId: newSale.id,
+          targetDescription: `Venta #${saleNumber} - ${orderType} - S/ ${totalPrice.toFixed(2)}`,
+          details: {
+            tipo_pedido: orderType,
+            total: totalPrice,
+            productos: saleProducts.length,
+            pago_registrado: registerPayment,
+          },
+        });
+
         // Register financial transactions if payment was registered
         if (registerPayment) {
           const cashAmt = paymentFields.cash_amount;
@@ -344,7 +362,7 @@ export default function SaleForm({
               accountId: cajaAccount.id,
               type: "ingreso_venta",
               amount: cashAmt,
-              description: `Venta #${newSale.id} - Efectivo`,
+              description: `Venta #${saleNumber} - Efectivo`,
               referenceId: newSale.id,
               referenceType: "sale",
             });
@@ -354,7 +372,7 @@ export default function SaleForm({
               accountId: bancoAccount.id,
               type: "ingreso_venta",
               amount: yapeAmt,
-              description: `Venta #${newSale.id} - Yape`,
+              description: `Venta #${saleNumber} - Yape`,
               referenceId: newSale.id,
               referenceType: "sale",
             });
@@ -365,7 +383,7 @@ export default function SaleForm({
             userName: profile?.full_name ?? null,
             action: "crear_transaccion",
             targetTable: "transactions",
-            targetDescription: `Venta #${newSale.id} - ${paymentMethod} - S/ ${totalPrice.toFixed(2)}`,
+            targetDescription: `Venta #${saleNumber} - ${paymentMethod} - S/ ${totalPrice.toFixed(2)}`,
             details: { venta_id: newSale.id, metodo: paymentMethod, total: totalPrice },
           });
         }
