@@ -7,10 +7,16 @@ export function toLocalDateKey(isoString: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-const fetchSales = async (): Promise<SaleWithProducts[]> => {
+function getTodayStart(): string {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return now.toISOString();
+}
+
+const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
   const supabase = createClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("sales")
     .select(
       `
@@ -44,8 +50,13 @@ const fetchSales = async (): Promise<SaleWithProducts[]> => {
         )
       )
     `
-    )
-    .order("sale_date", { ascending: false });
+    );
+
+  if (todayOnly) {
+    query = query.gte("sale_date", getTodayStart());
+  }
+
+  const { data, error } = await query.order("sale_date", { ascending: false });
 
   if (error) {
     console.error("Error fetching sales:", error);
@@ -100,10 +111,11 @@ export function groupSalesByDate(
     }));
 }
 
-export const useSales = () => {
+export const useSales = ({ todayOnly = false }: { todayOnly?: boolean } = {}) => {
+  const key = todayOnly ? "sales-today" : "sales";
   const { data, error, isLoading, mutate } = useSWR<SaleWithProducts[]>(
-    "sales",
-    fetchSales,
+    key,
+    () => fetchSales(todayOnly),
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,

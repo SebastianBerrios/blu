@@ -58,9 +58,9 @@ function formatTime(dateStr: string): string {
 }
 
 export default function Sales() {
-  const { sales, error, isLoading, mutate } = useSales();
-  const { products } = useProducts();
   const { isAdmin, user, profile } = useAuth();
+  const { sales, error, isLoading, mutate } = useSales({ todayOnly: !isAdmin });
+  const { products } = useProducts();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState<
     SaleWithProducts | undefined
@@ -119,7 +119,7 @@ export default function Sales() {
       <section className="h-full flex flex-col bg-slate-50">
         <PageHeader
           title="Ventas"
-          subtitle="Registra y consulta tus ventas"
+          subtitle={isAdmin ? "Registra y consulta tus ventas" : "Ventas del día"}
           icon={<TrendingUp className="w-6 h-6 text-primary-700" />}
           action={
             <Button variant="primary" icon={true} onClick={handleCreate}>
