@@ -14,6 +14,7 @@ import { usePurchases, groupPurchasesByDate } from "@/hooks/usePurchases";
 import { useIngredients } from "@/hooks/useIngredients";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/utils/auditLog";
+import { getPurchaseNumber } from "@/utils/purchaseNumber";
 import type { PurchaseWithItems } from "@/types";
 import PurchaseForm from "@/components/forms/PurchaseForm";
 import Button from "@/components/ui/Button";
@@ -62,6 +63,7 @@ export default function Compras() {
   const handleDelete = async (purchase: PurchaseWithItems) => {
     if (!confirm("¿Estás seguro de eliminar esta compra?")) return;
     const supabase = createClient();
+    const purchaseNumber = await getPurchaseNumber(purchase.id);
     const { error } = await supabase.from("purchases").delete().eq("id", purchase.id);
     if (!error) {
       logAudit({
@@ -70,7 +72,7 @@ export default function Compras() {
         action: "eliminar",
         targetTable: "purchases",
         targetId: purchase.id,
-        targetDescription: `Compra #${purchase.id} - S/ ${purchase.total.toFixed(2)}`,
+        targetDescription: `Compra #${purchaseNumber} - S/ ${purchase.total.toFixed(2)}`,
       });
     }
     mutate();
@@ -172,6 +174,11 @@ export default function Compras() {
                                   <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 flex items-center gap-1">
                                     <Truck className="w-3 h-3" />
                                     Delivery
+                                  </span>
+                                )}
+                                {purchase.yape_change != null && purchase.yape_change > 0 && (
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                                    Vuelto Yape S/ {purchase.yape_change.toFixed(2)}
                                   </span>
                                 )}
                               </div>

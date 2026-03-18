@@ -235,6 +235,7 @@ export type Database = {
           notes: string | null
           total: number
           user_id: string
+          yape_change: number | null
         }
         Insert: {
           account_id?: number | null
@@ -245,6 +246,7 @@ export type Database = {
           notes?: string | null
           total?: number
           user_id: string
+          yape_change?: number | null
         }
         Update: {
           account_id?: number | null
@@ -255,6 +257,7 @@ export type Database = {
           notes?: string | null
           total?: number
           user_id?: string
+          yape_change?: number | null
         }
         Relationships: [
           {

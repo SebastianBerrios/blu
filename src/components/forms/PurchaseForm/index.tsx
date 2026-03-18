@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
 import { recordTransaction } from "@/hooks/useTransactions";
 import { logAudit } from "@/utils/auditLog";
+import { getPurchaseNumber } from "@/utils/purchaseNumber";
 import type { Ingredient, PurchaseWithItems, PurchaseItemLine } from "@/types";
 
 interface PurchaseFormProps {
@@ -33,6 +34,8 @@ export default function PurchaseForm({
   const [deliveryCost, setDeliveryCost] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const [hasYapeChange, setHasYapeChange] = useState(false);
+  const [yapeChange, setYapeChange] = useState("");
 
   // Item entry fields
   const [searchText, setSearchText] = useState("");
@@ -69,6 +72,8 @@ export default function PurchaseForm({
       setSelectedIngredientId(null);
       setItemPrice("");
       setShowDropdown(false);
+      setHasYapeChange(false);
+      setYapeChange("");
     }
   }, [isOpen, purchase]);
 
@@ -132,6 +137,22 @@ export default function PurchaseForm({
       return;
     }
 
+    const yapeChangeAmount = hasYapeChange && !isEditMode ? parseFloat(yapeChange) || 0 : 0;
+    if (hasYapeChange && !isEditMode) {
+      if (yapeChangeAmount <= 0) {
+        alert("Ingresa un monto válido para el vuelto por Yape");
+        return;
+      }
+      if (yapeChangeAmount >= total) {
+        alert("El vuelto no puede ser mayor o igual al total de la compra");
+        return;
+      }
+      if (!bancoAccount) {
+        alert("No hay cuenta bancaria configurada para recibir el vuelto");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -147,6 +168,7 @@ export default function PurchaseForm({
         total,
         notes: notes.trim() || null,
         account_id: selectedAccountId,
+        yape_change: !isEditMode && yapeChangeAmount > 0 ? yapeChangeAmount : null,
       };
 
       if (isEditMode && purchase) {
@@ -196,24 +218,54 @@ export default function PurchaseForm({
 
         if (itemsError) throw itemsError;
 
-        // Register financial transaction for new purchase
-        await recordTransaction({
-          accountId: selectedAccountId,
-          type: "egreso_compra",
-          amount: -total,
-          description: `Compra #${newPurchase.id}`,
-          referenceId: newPurchase.id,
-          referenceType: "purchase",
-        });
+        const purchaseNumber = await getPurchaseNumber(newPurchase.id);
 
-        logAudit({
-          userId: authUser?.id ?? null,
-          userName: profile?.full_name ?? null,
-          action: "crear_transaccion",
-          targetTable: "transactions",
-          targetDescription: `Compra #${newPurchase.id} - S/ ${total.toFixed(2)}`,
-          details: { compra_id: newPurchase.id, total },
-        });
+        // Register financial transaction(s) for new purchase
+        if (yapeChangeAmount > 0) {
+          // Caja paid total + yapeChange (full cash out)
+          await recordTransaction({
+            accountId: cajaAccount!.id,
+            type: "egreso_compra",
+            amount: -(total + yapeChangeAmount),
+            description: `Compra #${purchaseNumber} (incluye vuelto Yape S/ ${yapeChangeAmount.toFixed(2)})`,
+            referenceId: newPurchase.id,
+            referenceType: "purchase",
+          });
+          // Banco received the yape change
+          await recordTransaction({
+            accountId: bancoAccount!.id,
+            type: "ingreso_extra",
+            amount: yapeChangeAmount,
+            description: `Vuelto Yape - Compra #${purchaseNumber}`,
+            referenceId: newPurchase.id,
+            referenceType: "purchase",
+          });
+          logAudit({
+            userId: authUser?.id ?? null,
+            userName: profile?.full_name ?? null,
+            action: "crear_transaccion",
+            targetTable: "transactions",
+            targetDescription: `Compra #${purchaseNumber} - S/ ${total.toFixed(2)} (Vuelto Yape S/ ${yapeChangeAmount.toFixed(2)})`,
+            details: { compra_id: newPurchase.id, total, vuelto_yape: yapeChangeAmount },
+          });
+        } else {
+          await recordTransaction({
+            accountId: selectedAccountId,
+            type: "egreso_compra",
+            amount: -total,
+            description: `Compra #${purchaseNumber}`,
+            referenceId: newPurchase.id,
+            referenceType: "purchase",
+          });
+          logAudit({
+            userId: authUser?.id ?? null,
+            userName: profile?.full_name ?? null,
+            action: "crear_transaccion",
+            targetTable: "transactions",
+            targetDescription: `Compra #${purchaseNumber} - S/ ${total.toFixed(2)}`,
+            details: { compra_id: newPurchase.id, total },
+          });
+        }
       }
 
       onSuccess();
@@ -259,7 +311,11 @@ export default function PurchaseForm({
             <button
               type="button"
               onClick={() => {
-                if (isAdmin) setSelectedAccountId(bancoAccount.id);
+                if (isAdmin) {
+                  setSelectedAccountId(bancoAccount.id);
+                  setHasYapeChange(false);
+                  setYapeChange("");
+                }
               }}
               disabled={isSubmitting || !isAdmin}
               title={!isAdmin ? "Solo administradores pueden usar la cuenta bancaria" : undefined}
@@ -511,6 +567,53 @@ export default function PurchaseForm({
         )}
       </div>
 
+      {/* Vuelto por Yape (solo Caja, solo modo crear) */}
+      {!isEditMode && cajaAccount && selectedAccountId === cajaAccount.id && (
+        <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hasYapeChange}
+              onChange={(e) => {
+                setHasYapeChange(e.target.checked);
+                if (!e.target.checked) setYapeChange("");
+              }}
+              disabled={isSubmitting}
+              className="w-4 h-4 rounded border-primary-300 text-primary-600 focus:ring-primary-500"
+            />
+            <span className="text-sm font-medium text-slate-900">
+              Vuelto por Yape
+            </span>
+          </label>
+
+          {hasYapeChange && (
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-slate-900 mb-1.5">
+                Monto del vuelto
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
+                  S/
+                </span>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={yapeChange}
+                  onChange={(e) => setYapeChange(e.target.value)}
+                  disabled={isSubmitting}
+                  className="w-full pl-9 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+                  placeholder="0.00"
+                />
+              </div>
+              <p className="text-xs text-slate-500 mt-1.5">
+                El vuelto que el vendedor te devolvió por Yape (se registra en la Cuenta Bancaria)
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Notas */}
       <div>
         <label className="block text-sm font-medium text-slate-900 mb-1.5">
@@ -528,11 +631,30 @@ export default function PurchaseForm({
 
       {/* Total */}
       {items.length > 0 && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-          <span className="text-sm text-green-700">Total de la compra:</span>
-          <span className="ml-2 font-bold text-green-800 text-lg">
-            S/ {total.toFixed(2)}
-          </span>
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+          {hasYapeChange && !isEditMode && cajaAccount && selectedAccountId === cajaAccount.id && parseFloat(yapeChange) > 0 ? (
+            <div className="space-y-1">
+              <div className="flex justify-between text-sm text-slate-600">
+                <span>Total compra:</span>
+                <span className="font-medium">S/ {total.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-red-700">
+                <span>Caja descuenta:</span>
+                <span className="font-medium">S/ {(total + (parseFloat(yapeChange) || 0)).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-blue-700">
+                <span>Banco recibe (vuelto Yape):</span>
+                <span className="font-medium">S/ {(parseFloat(yapeChange) || 0).toFixed(2)}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center">
+              <span className="text-sm text-green-700">Total de la compra:</span>
+              <span className="ml-2 font-bold text-green-800 text-lg">
+                S/ {total.toFixed(2)}
+              </span>
+            </div>
+          )}
         </div>
       )}
     </>

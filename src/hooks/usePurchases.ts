@@ -20,6 +20,7 @@ const fetchPurchases = async (
       total,
       notes,
       created_at,
+      yape_change,
       user_profiles (
         full_name,
         email,
