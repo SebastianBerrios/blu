@@ -19,6 +19,7 @@ export interface SaleProductWithDetails {
 export interface SaleWithProducts extends Sale {
   sale_products: SaleProductWithDetails[];
   customer_dni?: number | null;
+  creator_name?: string | null;
 }
 
 export interface SalesGroupedByDate {

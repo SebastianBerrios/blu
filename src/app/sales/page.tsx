@@ -210,6 +210,9 @@ export default function Sales() {
                                   className={`px-2 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}
                                 >
                                   {sale.order_type}
+                                  {sale.order_type === "Mesa" && sale.table_number
+                                    ? ` ${sale.table_number}`
+                                    : ""}
                                 </span>
                                 {sale.payment_method ? (
                                   <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
@@ -226,6 +229,13 @@ export default function Sales() {
                                   </span>
                                 )}
                               </div>
+                              {sale.creator_name && (
+                                <div className="mt-0.5">
+                                  <span className="text-xs text-slate-400">
+                                    por {sale.creator_name}
+                                  </span>
+                                </div>
+                              )}
                               <div className="flex items-center justify-between mt-1 md:hidden">
                                 <span className="text-xs text-slate-500">
                                   {sale.sale_products.length} producto

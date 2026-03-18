@@ -28,6 +28,9 @@ const fetchSales = async (): Promise<SaleWithProducts[]> => {
       customers (
         dni
       ),
+      user_profiles (
+        full_name
+      ),
       sale_products (
         id,
         product_id,
@@ -52,6 +55,7 @@ const fetchSales = async (): Promise<SaleWithProducts[]> => {
   return (data || []).map((sale) => ({
     ...sale,
     customer_dni: (sale.customers as unknown as { dni: number | null } | null)?.dni ?? null,
+    creator_name: (sale.user_profiles as unknown as { full_name: string | null } | null)?.full_name ?? null,
     sale_products: (
       sale.sale_products as unknown as Array<{
         id: number;
