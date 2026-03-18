@@ -495,12 +495,21 @@ export default function ProductForm({
     </>
   );
 
+  const submitLabel = isSubmitting ? "Guardando..." : isEditMode ? "Actualizar" : "Guardar";
+
   return (
     <>
-      {/* Mobile fullscreen view */}
-      <div className="fixed inset-0 z-50 flex flex-col bg-white md:hidden">
-        {/* Header bar */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50 shrink-0">
+      {/* Desktop backdrop */}
+      <div
+        className="hidden md:block fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+        onClick={onClose}
+      />
+
+      {/* Unified container — fullscreen on mobile, centered modal on desktop */}
+      <div className="fixed inset-0 z-50 flex flex-col bg-white md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl md:max-h-[90vh] md:rounded-xl md:shadow-2xl">
+
+        {/* Mobile header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50 shrink-0 md:hidden">
           <button
             type="button"
             onClick={onClose}
@@ -515,83 +524,59 @@ export default function ProductForm({
           <div className="w-9" />
         </div>
 
-        {/* Scrollable content */}
-        <form
-          id="product-form-mobile"
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex-1 overflow-y-auto p-4 space-y-5"
-        >
-          {formFields}
-        </form>
-
-        {/* Bottom bar */}
-        <div className="shrink-0 px-4 py-3 border-t border-slate-200 bg-white">
+        {/* Desktop header */}
+        <div className="hidden md:flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl sticky top-0 z-10">
+          <h2 className="text-xl font-semibold text-slate-900">
+            {isEditMode ? "Editar Producto" : "Nuevo Producto"}
+          </h2>
           <button
-            type="submit"
-            form="product-form-mobile"
+            type="button"
+            onClick={onClose}
             disabled={isSubmitting}
-            className="w-full px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+            className="p-3 hover:bg-slate-100 rounded-lg transition-colors"
           >
-            {isSubmitting
-              ? "Guardando..."
-              : isEditMode
-              ? "Actualizar"
-              : "Guardar"}
+            <X className="w-5 h-5 text-slate-700" />
           </button>
         </div>
-      </div>
 
-      {/* Desktop modal view */}
-      <div
-        className="hidden md:flex fixed inset-0 bg-black/50 backdrop-blur-sm z-50 items-center justify-center p-4"
-        onClick={onClose}
-      >
-        <div
-          className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-          onClick={(e) => e.stopPropagation()}
+        {/* Single form */}
+        <form
+          id="product-form"
+          onSubmit={handleSubmit(onSubmit)}
+          className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5"
         >
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl sticky top-0 z-10">
-            <h2 className="text-xl font-semibold text-slate-900">
-              {isEditMode ? "Editar Producto" : "Nuevo Producto"}
-            </h2>
+          {formFields}
+
+          {/* Desktop action buttons */}
+          <div className="hidden md:flex gap-3 pt-4 sticky bottom-0 bg-white pb-2 border-t border-gray-100">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="p-3 hover:bg-slate-100 rounded-lg transition-colors"
+              className="flex-1 px-4 py-3 min-h-[44px] border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
             >
-              <X className="w-5 h-5 text-slate-700" />
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+            >
+              {submitLabel}
             </button>
           </div>
+        </form>
 
-          {/* Formulario */}
-          <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5">
-            {formFields}
-
-            {/* Botones */}
-            <div className="flex gap-3 pt-4 sticky bottom-0 bg-white pb-2 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isSubmitting}
-                className="flex-1 px-4 py-3 min-h-[44px] border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-1 px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-              >
-                {isSubmitting
-                  ? "Guardando..."
-                  : isEditMode
-                  ? "Actualizar"
-                  : "Guardar"}
-              </button>
-            </div>
-          </form>
+        {/* Mobile submit button */}
+        <div className="shrink-0 px-4 py-3 border-t border-slate-200 bg-white md:hidden">
+          <button
+            type="submit"
+            form="product-form"
+            disabled={isSubmitting}
+            className="w-full px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+          >
+            {submitLabel}
+          </button>
         </div>
       </div>
     </>
