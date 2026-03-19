@@ -1,6 +1,7 @@
 import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toLocalDateKey } from "@/hooks/useSales";
 import type { PurchaseWithItems, PurchasesGroupedByDate } from "@/types";
 
 const fetchPurchases = async (
@@ -70,7 +71,7 @@ export function groupPurchasesByDate(
   const groups: Record<string, PurchaseWithItems[]> = {};
 
   for (const purchase of purchases) {
-    const dateKey = purchase.created_at.slice(0, 10);
+    const dateKey = toLocalDateKey(purchase.created_at);
     if (!groups[dateKey]) groups[dateKey] = [];
     groups[dateKey].push(purchase);
   }

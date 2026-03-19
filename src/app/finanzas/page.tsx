@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useTransactions } from "@/hooks/useTransactions";
+import { toLocalDateKey } from "@/hooks/useSales";
 import type { TransactionType } from "@/types";
 import TransferForm from "@/components/forms/TransferForm";
 import ExpenseForm from "@/components/forms/ExpenseForm";
@@ -70,7 +71,7 @@ export default function FinanzasPage() {
   // Group transactions by date
   const groupedTransactions: Record<string, typeof transactions> = {};
   for (const t of transactions) {
-    const date = t.created_at.slice(0, 10);
+    const date = toLocalDateKey(t.created_at);
     if (!groupedTransactions[date]) groupedTransactions[date] = [];
     groupedTransactions[date].push(t);
   }

@@ -216,7 +216,7 @@ export default function Sales() {
                                 </span>
                                 {sale.payment_method ? (
                                   <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                                    Pagado
+                                    {sale.payment_method}
                                   </span>
                                 ) : (
                                   <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
