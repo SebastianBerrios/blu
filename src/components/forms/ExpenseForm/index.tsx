@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
@@ -11,24 +11,31 @@ interface ExpenseFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  accountId: number;
 }
 
 export default function ExpenseForm({
   isOpen,
   onClose,
   onSuccess,
+  accountId,
 }: ExpenseFormProps) {
-  const { isAdmin, user, profile } = useAuth();
-  const { cajaAccount, bancoAccount } = useAccounts();
-  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const { user, profile } = useAuth();
+  const { cajaAccount } = useAccounts();
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      setAmount("");
+      setDescription("");
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  // Default to caja if not selected
-  const accountId = selectedAccountId ?? cajaAccount?.id ?? null;
+  const accountName = accountId === cajaAccount?.id ? "Caja" : "Banco";
 
   const handleSubmit = async () => {
     const numAmount = parseFloat(amount);
@@ -38,10 +45,6 @@ export default function ExpenseForm({
     }
     if (!description.trim()) {
       alert("Ingresa una descripción del gasto");
-      return;
-    }
-    if (!accountId) {
-      alert("Selecciona una cuenta");
       return;
     }
 
@@ -97,46 +100,19 @@ export default function ExpenseForm({
         </div>
 
         <div className="p-6 space-y-4">
-          {/* Account selector */}
+          {/* Account indicator (read-only) */}
           <div>
             <label className="block text-sm font-medium text-slate-900 mb-2">
-              Cuenta <span className="text-red-600">*</span>
+              Cuenta
             </label>
-            <div className="flex gap-2">
-              {cajaAccount && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedAccountId(cajaAccount.id)}
-                  disabled={isSubmitting}
-                  className={`flex-1 px-4 py-3 min-h-[44px] rounded-lg border-2 font-medium transition-all ${
-                    accountId === cajaAccount.id
-                      ? "bg-green-100 text-green-700 border-green-300"
-                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                  }`}
-                >
-                  Caja
-                </button>
-              )}
-              {bancoAccount && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isAdmin) setSelectedAccountId(bancoAccount.id);
-                  }}
-                  disabled={isSubmitting || !isAdmin}
-                  title={!isAdmin ? "Solo administradores" : undefined}
-                  className={`flex-1 px-4 py-3 min-h-[44px] rounded-lg border-2 font-medium transition-all ${
-                    accountId === bancoAccount.id
-                      ? "bg-blue-100 text-blue-700 border-blue-300"
-                      : !isAdmin
-                      ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                  }`}
-                >
-                  Banco
-                  {!isAdmin && <span className="block text-xs mt-0.5">Solo admin</span>}
-                </button>
-              )}
+            <div
+              className={`px-4 py-3 rounded-lg border-2 font-medium text-sm ${
+                accountId === cajaAccount?.id
+                  ? "bg-green-100 text-green-700 border-green-300"
+                  : "bg-blue-100 text-blue-700 border-blue-300"
+              }`}
+            >
+              {accountName}
             </div>
           </div>
 

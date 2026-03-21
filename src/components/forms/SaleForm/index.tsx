@@ -29,15 +29,43 @@ interface SaleProductLine {
 }
 
 const ORDER_TYPES = [
-  { value: "Mesa", label: "Mesa", color: "bg-blue-100 text-blue-700 border-blue-300" },
-  { value: "Para llevar", label: "Para llevar", color: "bg-amber-100 text-amber-700 border-amber-300" },
-  { value: "Delivery", label: "Delivery", color: "bg-green-100 text-green-700 border-green-300" },
+  {
+    value: "Mesa",
+    label: "Mesa",
+    color: "bg-blue-100 text-blue-700 border-blue-300",
+  },
+  {
+    value: "Para llevar",
+    label: "Para llevar",
+    color: "bg-amber-100 text-amber-700 border-amber-300",
+  },
+  {
+    value: "Delivery",
+    label: "Delivery",
+    color: "bg-green-100 text-green-700 border-green-300",
+  },
 ];
 
-const PAYMENT_METHODS: { value: PaymentMethod; label: string; color: string }[] = [
-  { value: "Efectivo", label: "Efectivo", color: "bg-green-100 text-green-700 border-green-300" },
-  { value: "Yape", label: "Yape", color: "bg-purple-100 text-purple-700 border-purple-300" },
-  { value: "Efectivo + Yape", label: "Efectivo + Yape", color: "bg-indigo-100 text-indigo-700 border-indigo-300" },
+const PAYMENT_METHODS: {
+  value: PaymentMethod;
+  label: string;
+  color: string;
+}[] = [
+  {
+    value: "Efectivo",
+    label: "Efectivo",
+    color: "bg-green-100 text-green-700 border-green-300",
+  },
+  {
+    value: "Yape",
+    label: "Yape",
+    color: "bg-purple-100 text-purple-700 border-purple-300",
+  },
+  {
+    value: "Efectivo + Yape",
+    label: "Efectivo + Yape",
+    color: "bg-indigo-100 text-indigo-700 border-indigo-300",
+  },
 ];
 
 export default function SaleForm({
@@ -53,8 +81,10 @@ export default function SaleForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderType, setOrderType] = useState("Mesa");
   const [searchProduct, setSearchProduct] = useState("");
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
-  const [productQuantity, setProductQuantity] = useState("");
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(
+    null,
+  );
+  const [productQuantity, setProductQuantity] = useState("1");
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedTemperatura, setSelectedTemperatura] = useState<string>("");
   const [selectedTipoLeche, setSelectedTipoLeche] = useState<string>("");
@@ -83,7 +113,7 @@ export default function SaleForm({
             subtotal: sp.quantity * sp.unit_price,
             temperatura: sp.temperatura,
             tipo_leche: sp.tipo_leche,
-          }))
+          })),
         );
         if (sale.payment_method) {
           setRegisterPayment(true);
@@ -108,7 +138,7 @@ export default function SaleForm({
       }
       setSearchProduct("");
       setSelectedProductId(null);
-      setProductQuantity("");
+      setProductQuantity("1");
       setShowDropdown(false);
       setSelectedTemperatura("");
       setSelectedTipoLeche("");
@@ -118,7 +148,7 @@ export default function SaleForm({
   if (!isOpen) return null;
 
   const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchProduct.toLowerCase())
+    product.name.toLowerCase().includes(searchProduct.toLowerCase()),
   );
 
   const selectedProduct = selectedProductId
@@ -161,24 +191,33 @@ export default function SaleForm({
       return;
     }
 
-    const temp = needsTemp ? selectedTemperatura : (product.temperatura === "caliente" || product.temperatura === "frío" ? product.temperatura : null);
-    const milk = needsMilk ? (selectedTipoLeche || "entera") : null;
+    const temp = needsTemp
+      ? selectedTemperatura
+      : product.temperatura === "caliente" || product.temperatura === "frío"
+        ? product.temperatura
+        : null;
+    const milk = needsMilk ? selectedTipoLeche || "entera" : null;
 
     // Dedup by product_id + temperatura + tipo_leche
     const existing = saleProducts.find(
-      (p) => p.product_id === selectedProductId && p.temperatura === temp && p.tipo_leche === milk
+      (p) =>
+        p.product_id === selectedProductId &&
+        p.temperatura === temp &&
+        p.tipo_leche === milk,
     );
     if (existing) {
       setSaleProducts(
         saleProducts.map((p) =>
-          p.product_id === selectedProductId && p.temperatura === temp && p.tipo_leche === milk
+          p.product_id === selectedProductId &&
+          p.temperatura === temp &&
+          p.tipo_leche === milk
             ? {
                 ...p,
                 quantity: p.quantity + quantity,
                 subtotal: (p.quantity + quantity) * p.unit_price,
               }
-            : p
-        )
+            : p,
+        ),
       );
     } else {
       setSaleProducts([
@@ -197,7 +236,7 @@ export default function SaleForm({
 
     setSearchProduct("");
     setSelectedProductId(null);
-    setProductQuantity("");
+    setProductQuantity("1");
     setSelectedTemperatura("");
     setSelectedTipoLeche("");
   };
@@ -249,14 +288,14 @@ export default function SaleForm({
               paymentMethod === "Efectivo"
                 ? totalPrice
                 : paymentMethod === "Efectivo + Yape"
-                ? parseFloat(cashAmount)
-                : null,
+                  ? parseFloat(cashAmount)
+                  : null,
             yape_amount:
               paymentMethod === "Yape"
                 ? totalPrice
                 : paymentMethod === "Efectivo + Yape"
-                ? parseFloat(yapeAmount)
-                : null,
+                  ? parseFloat(yapeAmount)
+                  : null,
           }
         : {
             payment_method: null,
@@ -283,7 +322,14 @@ export default function SaleForm({
       if (isEditMode && sale) {
         const { error } = await supabase
           .from("sales")
-          .update({ order_type: orderType, total_price: totalPrice, customer_id: customerId, table_number: orderType === "Mesa" ? parseInt(tableNumber) || null : null, ...paymentFields })
+          .update({
+            order_type: orderType,
+            total_price: totalPrice,
+            customer_id: customerId,
+            table_number:
+              orderType === "Mesa" ? parseInt(tableNumber) || null : null,
+            ...paymentFields,
+          })
           .eq("id", sale.id);
 
         if (error) throw error;
@@ -300,7 +346,7 @@ export default function SaleForm({
               unit_price: p.unit_price,
               temperatura: p.temperatura,
               tipo_leche: p.tipo_leche,
-            }))
+            })),
           );
 
         if (productsError) throw productsError;
@@ -311,7 +357,8 @@ export default function SaleForm({
             order_type: orderType,
             total_price: totalPrice,
             customer_id: customerId,
-            table_number: orderType === "Mesa" ? parseInt(tableNumber) || null : null,
+            table_number:
+              orderType === "Mesa" ? parseInt(tableNumber) || null : null,
             user_id: user?.id ?? null,
             ...paymentFields,
           })
@@ -330,7 +377,7 @@ export default function SaleForm({
               unit_price: p.unit_price,
               temperatura: p.temperatura,
               tipo_leche: p.tipo_leche,
-            }))
+            })),
           );
 
         if (productsError) throw productsError;
@@ -384,7 +431,11 @@ export default function SaleForm({
             action: "crear_transaccion",
             targetTable: "transactions",
             targetDescription: `Venta #${saleNumber} - ${paymentMethod} - S/ ${totalPrice.toFixed(2)}`,
-            details: { venta_id: newSale.id, metodo: paymentMethod, total: totalPrice },
+            details: {
+              venta_id: newSale.id,
+              metodo: paymentMethod,
+              total: totalPrice,
+            },
           });
         }
       }
@@ -447,7 +498,8 @@ export default function SaleForm({
       {/* DNI del cliente (opcional) */}
       <div>
         <label className="block text-sm font-medium text-slate-900 mb-1.5">
-          DNI del cliente <span className="text-slate-500 text-xs">(opcional)</span>
+          DNI del cliente{" "}
+          <span className="text-slate-500 text-xs">(opcional)</span>
         </label>
         <input
           type="number"
@@ -517,7 +569,9 @@ export default function SaleForm({
           {/* Conditional option selectors */}
           {selectedProduct && selectedProduct.temperatura === "ambos" && (
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1.5">Temperatura</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                Temperatura
+              </label>
               <div className="flex gap-2">
                 {["caliente", "frío"].map((opt) => (
                   <button
@@ -539,7 +593,9 @@ export default function SaleForm({
 
           {selectedProduct && selectedProduct.tipo_leche !== null && (
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1.5">Tipo de leche</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                Tipo de leche
+              </label>
               <div className="flex gap-2">
                 {["entera", "deslactosada"].map((opt) => (
                   <button
@@ -593,19 +649,36 @@ export default function SaleForm({
             {/* Mobile card list */}
             <div className="space-y-2 md:hidden">
               {saleProducts.map((item, idx) => (
-                <div key={`${item.product_id}-${item.temperatura}-${item.tipo_leche}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <div
+                  key={`${item.product_id}-${item.temperatura}-${item.tipo_leche}`}
+                  className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
+                >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-900 capitalize truncate">{item.product_name}</p>
+                    <p className="text-sm font-medium text-slate-900 capitalize truncate">
+                      {item.product_name}
+                    </p>
                     {(item.temperatura || item.tipo_leche) && (
                       <div className="flex gap-1 mt-0.5">
-                        {item.temperatura && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">{item.temperatura}</span>}
-                        {item.tipo_leche && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">{item.tipo_leche}</span>}
+                        {item.temperatura && (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
+                            {item.temperatura}
+                          </span>
+                        )}
+                        {item.tipo_leche && (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">
+                            {item.tipo_leche}
+                          </span>
+                        )}
                       </div>
                     )}
-                    <p className="text-xs text-slate-500">{item.quantity} × S/ {item.unit_price.toFixed(2)}</p>
+                    <p className="text-xs text-slate-500">
+                      {item.quantity} × S/ {item.unit_price.toFixed(2)}
+                    </p>
                   </div>
                   <div className="flex items-center gap-3 ml-3">
-                    <span className="text-sm font-semibold text-green-600">S/ {item.subtotal.toFixed(2)}</span>
+                    <span className="text-sm font-semibold text-green-600">
+                      S/ {item.subtotal.toFixed(2)}
+                    </span>
                     <button
                       type="button"
                       onClick={() => handleRemoveProduct(idx)}
@@ -620,7 +693,9 @@ export default function SaleForm({
               {/* Mobile total */}
               <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg font-semibold">
                 <span className="text-sm text-green-900">Total:</span>
-                <span className="text-sm text-green-700">S/ {totalPrice.toFixed(2)}</span>
+                <span className="text-sm text-green-700">
+                  S/ {totalPrice.toFixed(2)}
+                </span>
               </div>
             </div>
 
@@ -656,8 +731,16 @@ export default function SaleForm({
                         {item.product_name}
                         {(item.temperatura || item.tipo_leche) && (
                           <div className="flex gap-1 mt-0.5">
-                            {item.temperatura && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">{item.temperatura}</span>}
-                            {item.tipo_leche && <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">{item.tipo_leche}</span>}
+                            {item.temperatura && (
+                              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
+                                {item.temperatura}
+                              </span>
+                            )}
+                            {item.tipo_leche && (
+                              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">
+                                {item.tipo_leche}
+                              </span>
+                            )}
                           </div>
                         )}
                       </td>
@@ -755,7 +838,9 @@ export default function SaleForm({
                     Efectivo
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">S/</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
+                      S/
+                    </span>
                     <input
                       type="number"
                       min="0"
@@ -779,7 +864,9 @@ export default function SaleForm({
                     Yape
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">S/</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
+                      S/
+                    </span>
                     <input
                       type="number"
                       min="0"
@@ -801,7 +888,9 @@ export default function SaleForm({
               </div>
             ) : (
               <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-                <span className="text-sm text-green-700">Total en {paymentMethod}:</span>
+                <span className="text-sm text-green-700">
+                  Total en {paymentMethod}:
+                </span>
                 <span className="ml-2 font-bold text-green-800">
                   S/ {totalPrice.toFixed(2)}
                 </span>
@@ -834,9 +923,7 @@ export default function SaleForm({
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {formFields}
-        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">{formFields}</div>
 
         {/* Bottom bar */}
         <div className="shrink-0 px-4 py-3 border-t border-slate-200 bg-white">
@@ -849,8 +936,8 @@ export default function SaleForm({
             {isSubmitting
               ? "Guardando..."
               : isEditMode
-              ? "Actualizar"
-              : "Registrar venta"}
+                ? "Actualizar"
+                : "Registrar venta"}
           </button>
         </div>
       </div>
@@ -900,8 +987,8 @@ export default function SaleForm({
                 {isSubmitting
                   ? "Guardando..."
                   : isEditMode
-                  ? "Actualizar"
-                  : "Registrar venta"}
+                    ? "Actualizar"
+                    : "Registrar venta"}
               </button>
             </div>
           </div>

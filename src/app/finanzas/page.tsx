@@ -47,7 +47,7 @@ export default function FinanzasPage() {
   const [accountFilter, setAccountFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState<TransactionType | "">("");
   const [showTransfer, setShowTransfer] = useState(false);
-  const [showExpense, setShowExpense] = useState(false);
+  const [expenseAccountId, setExpenseAccountId] = useState<number | null>(null);
   const [showIncome, setShowIncome] = useState(false);
   const [showBalance, setShowBalance] = useState(false);
 
@@ -102,7 +102,7 @@ export default function FinanzasPage() {
             {cajaBalance < 0 && <p className="text-xs text-red-600 mt-1">Saldo negativo</p>}
             <div className="grid grid-cols-2 gap-2 mt-4">
               <button
-                onClick={() => setShowExpense(true)}
+                onClick={() => setExpenseAccountId(cajaAccount!.id)}
                 className="flex items-center justify-center gap-1.5 px-3 py-3 text-xs font-medium bg-white border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors min-h-[44px]"
               >
                 <MinusCircle className="w-4 h-4" />
@@ -131,7 +131,7 @@ export default function FinanzasPage() {
             {isAdmin && (
               <div className="grid grid-cols-2 gap-2 mt-4">
                 <button
-                  onClick={() => setShowExpense(true)}
+                  onClick={() => setExpenseAccountId(bancoAccount!.id)}
                   className="flex items-center justify-center gap-1.5 px-3 py-3 text-xs font-medium bg-white border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors min-h-[44px]"
                 >
                   <MinusCircle className="w-4 h-4" />
@@ -264,7 +264,7 @@ export default function FinanzasPage() {
 
       {/* Modals */}
       <TransferForm isOpen={showTransfer} onClose={() => setShowTransfer(false)} onSuccess={handleSuccess} />
-      <ExpenseForm isOpen={showExpense} onClose={() => setShowExpense(false)} onSuccess={handleSuccess} />
+      <ExpenseForm isOpen={expenseAccountId !== null} onClose={() => setExpenseAccountId(null)} onSuccess={handleSuccess} accountId={expenseAccountId!} />
       <ExtraIncomeForm isOpen={showIncome} onClose={() => setShowIncome(false)} onSuccess={handleSuccess} />
       <InitialBalanceForm isOpen={showBalance} onClose={() => setShowBalance(false)} onSuccess={handleSuccess} />
     </section>
