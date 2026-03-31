@@ -40,6 +40,7 @@ src/
 │   ├── compras/      # Purchase management
 │   ├── finanzas/     # Financial dashboard (admin only)
 │   ├── estadisticas/ # Statistics dashboard (admin only)
+│   ├── auditoria/    # Audit log viewer (admin only)
 │   ├── users/        # User management (admin only)
 │   ├── login/        # Authentication (email/password + Google OAuth)
 │   └── auth/callback # OAuth callback
@@ -51,7 +52,11 @@ src/
 │   └── AuthGuard.tsx # Auth + role-based access wrapper
 ├── hooks/            # SWR-based data hooks (useCategories, useProducts, useAuth, useSales, useAccounts, useTransactions, etc.)
 ├── types/            # TypeScript types including auto-generated Supabase types (database.ts)
-└── utils/supabase/   # Supabase client (client.ts for browser, server.ts for SSR, middleware.ts)
+└── utils/
+    ├── supabase/     # Supabase client (client.ts for browser, server.ts for SSR, middleware.ts)
+    ├── auditLog.ts   # Audit logging helper (logAudit)
+    ├── saleNumber.ts # Sequential sale number generator
+    └── purchaseNumber.ts # Sequential purchase number generator
 ```
 
 ## Key Patterns
@@ -70,7 +75,7 @@ src/
 - Middleware in `src/middleware.ts` redirects unauthenticated users to `/login`
 - **Roles**: `admin`, `cocinero` (chef), `barista`
 - `useAuth` hook returns `{ user, profile, role, isAdmin, isPending, isInactive, signOut, hasRole }`
-- Admin-only pages (`ingredients`, `recipes`, `finanzas`, `estadisticas`, `users`) redirect non-admins
+- Admin-only pages (`ingredients`, `recipes`, `finanzas`, `estadisticas`, `auditoria`, `users`) redirect non-admins
 - Root `/` redirects by role: admin → `/categories`, others → `/sales`
 
 ## Database Schema (key tables)
@@ -82,6 +87,7 @@ src/
 - **customers** — name, dni, phone
 - **accounts** (type: "caja"/"banco", balance) + **transactions** (ingreso_venta, egreso_compra, transferencia_in/out, gasto, ingreso_extra)
 - **purchases** + **purchase_items**
+- **audit_logs** — action tracking (userId, action, targetTable, targetId, targetDescription)
 
 Types in `src/types/` wrap auto-generated Supabase types: `export type Category = Tables<"categories">`
 
