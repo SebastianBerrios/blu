@@ -44,6 +44,7 @@ export default function Compras() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPurchase, setSelectedPurchase] = useState<PurchaseWithItems | undefined>();
   const [expandedPurchaseId, setExpandedPurchaseId] = useState<number | null>(null);
+  const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
 
   const groupedPurchases = useMemo(
     () => groupPurchasesByDate(purchases),
@@ -89,6 +90,15 @@ export default function Compras() {
 
   const toggleExpand = (purchaseId: number) => {
     setExpandedPurchaseId((prev) => (prev === purchaseId ? null : purchaseId));
+  };
+
+  const toggleDateGroup = (date: string) => {
+    setCollapsedDates(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date);
+      else next.add(date);
+      return next;
+    });
   };
 
   return (
@@ -139,16 +149,28 @@ export default function Compras() {
 
               {groupedPurchases.map((group) => (
                 <div key={group.date}>
-                  <div className="flex justify-between items-center px-3 md:px-4 py-2.5 md:py-3 bg-primary-100 rounded-lg mb-2">
-                    <span className="font-semibold text-primary-900 capitalize text-sm md:text-base">
-                      {formatDate(group.date)}
-                    </span>
-                    <span className="font-bold text-green-700 text-sm">
-                      Total: S/ {group.dailyTotal.toFixed(2)}
-                    </span>
+                  <div
+                    className="flex justify-between items-center px-3 md:px-4 py-2.5 md:py-3 bg-primary-100 rounded-lg mb-2 cursor-pointer select-none"
+                    onClick={() => toggleDateGroup(group.date)}
+                  >
+                    <div className="flex items-center gap-2">
+                      {collapsedDates.has(group.date) ? (
+                        <ChevronDown className="w-4 h-4 text-primary-700" />
+                      ) : (
+                        <ChevronUp className="w-4 h-4 text-primary-700" />
+                      )}
+                      <span className="font-semibold text-primary-900 capitalize text-sm md:text-base">
+                        {formatDate(group.date)}
+                      </span>
+                    </div>
+                    {isAdmin && (
+                      <span className="font-bold text-green-700 text-sm">
+                        Total: S/ {group.dailyTotal.toFixed(2)}
+                      </span>
+                    )}
                   </div>
 
-                  <div className="space-y-2">
+                  {!collapsedDates.has(group.date) && <div className="space-y-2">
                     {group.purchases.map((purchase) => {
                       const isExpanded = expandedPurchaseId === purchase.id;
 
@@ -301,7 +323,7 @@ export default function Compras() {
                         </div>
                       );
                     })}
-                  </div>
+                  </div>}
                 </div>
               ))}
             </div>
