@@ -29,7 +29,7 @@ interface NavTab {
 const COMMON_TABS: NavTab[] = [
   { href: "/sales", label: "Ventas", icon: TrendingUp },
   { href: "/pedidos", label: "Pedidos", icon: ClipboardList },
-  { href: "/products", label: "Productos", icon: ShoppingBasket },
+  { href: "/compras", label: "Compras", icon: ShoppingCart },
 ];
 
 const ADMIN_TABS: NavTab[] = [
@@ -51,7 +51,8 @@ const MORE_ITEMS: MoreItem[] = [
   { href: "/ingredients", label: "Ingredientes", icon: ChefHat, adminOnly: true },
   { href: "/recipes", label: "Recetas", icon: BookOpen, adminOnly: true },
   { href: "/compras", label: "Compras", icon: ShoppingCart },
-  { href: "/finanzas", label: "Finanzas", icon: Wallet },
+  { href: "/products", label: "Productos", icon: ShoppingBasket },
+  { href: "/finanzas", label: "Finanzas", icon: Wallet, adminOnly: true },
   { href: "/estadisticas", label: "Estadísticas", icon: BarChart3, adminOnly: true },
   { href: "/auditoria", label: "Auditoría", icon: ScrollText, adminOnly: true },
   { href: "/users", label: "Usuarios", icon: Users, adminOnly: true },
