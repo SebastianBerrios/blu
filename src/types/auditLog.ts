@@ -9,7 +9,10 @@ export type AuditAction =
   | "cambiar_estado_pedido"
   | "cambiar_rol"
   | "cambiar_estado_usuario"
-  | "configurar_saldo";
+  | "configurar_saldo"
+  | "ajustar_inventario"
+  | "editar_ingredientes_receta"
+  | "crear_receta_producto";
 
 export type AuditTargetTable =
   | "categories"
@@ -21,7 +24,8 @@ export type AuditTargetTable =
   | "transactions"
   | "sale_products"
   | "user_profiles"
-  | "accounts";
+  | "accounts"
+  | "inventory_movements";
 
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   eliminar: "Eliminación",
@@ -31,6 +35,9 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   cambiar_rol: "Cambio de rol",
   cambiar_estado_usuario: "Estado de usuario",
   configurar_saldo: "Configuración de saldo",
+  ajustar_inventario: "Ajuste de inventario",
+  editar_ingredientes_receta: "Edición de ingredientes de receta",
+  crear_receta_producto: "Creación de receta para producto",
 };
 
 export const AUDIT_TABLE_LABELS: Record<AuditTargetTable, string> = {
@@ -44,4 +51,5 @@ export const AUDIT_TABLE_LABELS: Record<AuditTargetTable, string> = {
   sale_products: "Productos de venta",
   user_profiles: "Usuarios",
   accounts: "Cuentas",
+  inventory_movements: "Inventario",
 };

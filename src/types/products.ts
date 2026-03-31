@@ -10,6 +10,7 @@ export interface CreateProduct {
   price: number;
   temperatura?: string | null;
   tipo_leche?: string | null;
+  recipe_id?: number | null;
 }
 
 export interface UpdateProductPrice {

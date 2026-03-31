@@ -103,8 +103,26 @@ export default function ProductForm({
           temperatura: product.temperatura ?? "",
           tipo_leche: product.tipo_leche ?? "",
         });
-        setRecipeBatchCost(0);
-        setRecipeYield(1);
+
+        if (product.recipe_id) {
+          const linked = recipes.find((r) => r.id === product.recipe_id);
+          if (linked) {
+            setSelectedRecipeId(linked.id);
+            setSearchRecipe(linked.name);
+            setRecipeBatchCost(linked.manufacturing_cost ?? 0);
+            setRecipeYield(linked.quantity ?? 1);
+          } else {
+            setSelectedRecipeId(null);
+            setSearchRecipe("");
+            setRecipeBatchCost(0);
+            setRecipeYield(1);
+          }
+        } else {
+          setSelectedRecipeId(null);
+          setSearchRecipe("");
+          setRecipeBatchCost(0);
+          setRecipeYield(1);
+        }
       } else {
         reset({
           name: "",
@@ -114,14 +132,14 @@ export default function ProductForm({
           temperatura: "",
           tipo_leche: "",
         });
+        setSelectedRecipeId(null);
+        setSearchRecipe("");
         setRecipeBatchCost(0);
         setRecipeYield(1);
       }
-      setSelectedRecipeId(null);
-      setSearchRecipe("");
       setSelectedOptionTitle(TARGET_PERCENTAGE_OPTIONS[0].title);
     }
-  }, [isOpen, product, reset]);
+  }, [isOpen, product, recipes, reset]);
 
   const filteredRecipes = recipes.filter((recipe) =>
     recipe.name.toLowerCase().includes(searchRecipe.toLowerCase())
@@ -186,6 +204,7 @@ export default function ProductForm({
         suggested_price: Number(suggestedPrice),
         temperatura: data.temperatura || null,
         tipo_leche: data.tipo_leche || null,
+        recipe_id: selectedRecipeId ?? null,
       };
 
       if (isEditMode) {

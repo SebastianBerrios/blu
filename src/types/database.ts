@@ -152,6 +152,7 @@ export type Database = {
           manufacturing_cost: number | null
           name: string
           price: number
+          recipe_id: number | null
           suggested_price: number | null
           temperatura: string | null
           tipo_leche: string | null
@@ -162,6 +163,7 @@ export type Database = {
           manufacturing_cost?: number | null
           name: string
           price: number
+          recipe_id?: number | null
           suggested_price?: number | null
           temperatura?: string | null
           tipo_leche?: string | null
@@ -172,6 +174,7 @@ export type Database = {
           manufacturing_cost?: number | null
           name?: string
           price?: number
+          recipe_id?: number | null
           suggested_price?: number | null
           temperatura?: string | null
           tipo_leche?: string | null
@@ -182,6 +185,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
         ]

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import {
   SquarePen,
   Trash2,
+  Lock,
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
@@ -23,6 +24,7 @@ interface DataTableProps<T> {
   isLoading?: boolean;
   onEdit?: (item: T) => void;
   onDelete?: (item: T) => void;
+  canEdit?: (item: T) => boolean;
   renderCard?: (item: T, onEdit?: (item: T) => void, onDelete?: (item: T) => void) => React.ReactNode;
 }
 
@@ -34,6 +36,7 @@ export default function DataTable<T extends { id: number; name: string }>({
   isLoading = false,
   onEdit,
   onDelete,
+  canEdit,
   renderCard,
 }: DataTableProps<T>) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -123,7 +126,7 @@ export default function DataTable<T extends { id: number; name: string }>({
         <div className="md:hidden divide-y divide-slate-100">
           {sortedData.map((item) => (
             <div key={item.id}>
-              {renderCard(item, onEdit, onDelete)}
+              {renderCard(item, onEdit && (!canEdit || canEdit(item)) ? onEdit : undefined, onDelete)}
             </div>
           ))}
         </div>
@@ -187,7 +190,7 @@ export default function DataTable<T extends { id: number; name: string }>({
                   {(onEdit || onDelete) && (
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
-                        {onEdit && (
+                        {onEdit && (!canEdit || canEdit(item)) && (
                           <button
                             onClick={() => onEdit(item)}
                             className="p-3 text-primary-700 hover:bg-primary-100 rounded-lg transition-colors"
@@ -195,6 +198,11 @@ export default function DataTable<T extends { id: number; name: string }>({
                           >
                             <SquarePen className="w-5 h-5" />
                           </button>
+                        )}
+                        {onEdit && canEdit && !canEdit(item) && (
+                          <span className="p-3 text-slate-300" title="Restringido">
+                            <Lock className="w-5 h-5" />
+                          </span>
                         )}
                         {onDelete && (
                           <button

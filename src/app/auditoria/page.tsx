@@ -24,6 +24,9 @@ const ACTION_COLORS: Record<AuditAction, string> = {
   cambiar_rol: "bg-purple-100 text-purple-700",
   cambiar_estado_usuario: "bg-amber-100 text-amber-700",
   configurar_saldo: "bg-orange-100 text-orange-700",
+  ajustar_inventario: "bg-teal-100 text-teal-700",
+  editar_ingredientes_receta: "bg-indigo-100 text-indigo-700",
+  crear_receta_producto: "bg-emerald-100 text-emerald-700",
 };
 
 function formatDate(dateStr: string): string {

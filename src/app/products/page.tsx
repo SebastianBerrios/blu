@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { ShoppingBasket, SquarePen, Trash2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { ShoppingBasket, SquarePen, Trash2, BookOpen, Lock } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useProducts } from "@/hooks/useProducts";
+import { useRecipes } from "@/hooks/useRecipes";
+import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/utils/auditLog";
-import type { Product } from "@/types";
+import type { Product, Recipe } from "@/types";
 import ProductForm from "@/components/forms/ProductForm";
+import RecipeForm from "@/components/forms/RecipeForm";
 import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
 import PageHeader from "@/components/ui/PageHeader";
@@ -15,9 +18,32 @@ import FAB from "@/components/ui/FAB";
 
 export default function Products() {
   const { products, error, isLoading, mutate } = useProducts();
+  const { recipes, mutate: mutateRecipes } = useRecipes();
+  const { categories } = useCategories();
   const { isAdmin, user, profile } = useAuth();
+
+  const RESTRICTED_CATEGORY_NAMES = useMemo(() => new Set([
+    "cookies", "brownies", "muffins", "tartaletas",
+    "cuchareables", "alfajores", "tortas y cakes",
+  ]), []);
+
+  const restrictedCategoryIds = useMemo(() => {
+    return new Set(
+      categories
+        .filter((c) => RESTRICTED_CATEGORY_NAMES.has(c.name.toLowerCase()))
+        .map((c) => c.id)
+    );
+  }, [categories, RESTRICTED_CATEGORY_NAMES]);
+
+  const canEditRecipe = (product: Product) =>
+    !product.category_id || !restrictedCategoryIds.has(product.category_id);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>();
+
+  // Recipe modal state for non-admins
+  const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
+  const [selectedProductForRecipe, setSelectedProductForRecipe] = useState<Product | undefined>();
+  const [selectedRecipeForEdit, setSelectedRecipeForEdit] = useState<Recipe | undefined>();
 
   const handleCreate = () => {
     setSelectedProduct(undefined);
@@ -45,6 +71,26 @@ export default function Products() {
     mutate();
   };
 
+  const handleEditRecipe = (product: Product) => {
+    setSelectedProductForRecipe(product);
+    const foundRecipe = product.recipe_id
+      ? recipes.find((r) => r.id === product.recipe_id)
+      : undefined;
+    setSelectedRecipeForEdit(foundRecipe);
+    setIsRecipeModalOpen(true);
+  };
+
+  const handleCloseRecipeModal = () => {
+    setIsRecipeModalOpen(false);
+    setSelectedProductForRecipe(undefined);
+    setSelectedRecipeForEdit(undefined);
+  };
+
+  const handleRecipeSuccess = () => {
+    mutate();
+    mutateRecipes();
+  };
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedProduct(undefined);
@@ -56,7 +102,7 @@ export default function Products() {
 
   const columns = isAdmin
     ? ["N°", "Producto", "Costo de Fabricación", "Precio sugerido", "Precio Venta", "Acciones"]
-    : ["N°", "Producto", "Precio Venta"];
+    : ["N°", "Producto", "Precio Venta", "Receta"];
 
   const dataKeys: (keyof Product)[] = isAdmin
     ? ["id", "name", "manufacturing_cost", "suggested_price", "price"]
@@ -92,8 +138,9 @@ export default function Products() {
             dataKeys={dataKeys}
             data={products || []}
             isLoading={isLoading}
-            onEdit={isAdmin ? handleEdit : undefined}
+            onEdit={isAdmin ? handleEdit : handleEditRecipe}
             onDelete={isAdmin ? handleDelete : undefined}
+            canEdit={isAdmin ? undefined : canEditRecipe}
             renderCard={(item, onEditFn, onDeleteFn) => (
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex-1 min-w-0">
@@ -119,12 +166,17 @@ export default function Products() {
                     </div>
                   )}
                 </div>
-                {(onEditFn || onDeleteFn) && (
+                {(onEditFn || onDeleteFn || !isAdmin) && (
                   <div className="flex items-center gap-1 shrink-0">
                     {onEditFn && (
                       <button onClick={() => onEditFn(item)} className="p-3 text-primary-700 hover:bg-primary-50 rounded-lg">
-                        <SquarePen className="w-5 h-5" />
+                        {isAdmin ? <SquarePen className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
                       </button>
+                    )}
+                    {!onEditFn && !isAdmin && (
+                      <span className="p-3 text-slate-300">
+                        <Lock className="w-5 h-5" />
+                      </span>
                     )}
                     {onDeleteFn && (
                       <button onClick={() => onDeleteFn(item)} className="p-3 text-red-700 hover:bg-red-50 rounded-lg">
@@ -147,6 +199,18 @@ export default function Products() {
           onClose={handleCloseModal}
           onSuccess={handleSuccess}
           product={selectedProduct}
+        />
+      )}
+
+      {!isAdmin && (
+        <RecipeForm
+          isOpen={isRecipeModalOpen}
+          onClose={handleCloseRecipeModal}
+          onSuccess={handleRecipeSuccess}
+          recipe={selectedRecipeForEdit}
+          hidePrice={true}
+          readOnlyMeta={!!selectedRecipeForEdit}
+          productId={selectedProductForRecipe?.id}
         />
       )}
     </>

@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { ArrowLeft, X, Trash2 } from "lucide-react";
+import { ArrowLeft, X, Trash2, SquarePen } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useIngredients } from "@/hooks/useIngredients";
+import { useAuth } from "@/hooks/useAuth";
+import { logAudit } from "@/utils/auditLog";
 import type {
   Recipe,
   CreateRecipe,
@@ -16,6 +18,9 @@ interface RecipeFormProps {
   onClose: () => void;
   onSuccess: () => void;
   recipe?: Recipe;
+  hidePrice?: boolean;
+  readOnlyMeta?: boolean;
+  productId?: number;
 }
 
 interface RecipeIngredient {
@@ -34,6 +39,9 @@ export default function RecipeForm({
   onClose,
   onSuccess,
   recipe,
+  hidePrice = false,
+  readOnlyMeta = false,
+  productId,
 }: RecipeFormProps) {
   const isEditMode = !!recipe;
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,9 +56,13 @@ export default function RecipeForm({
   >([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [totalCost, setTotalCost] = useState(0);
-  const [addAsIngredient, setAddAsIngredient] = useState<boolean>(true);
+  const [addAsIngredient, setAddAsIngredient] = useState<boolean>(false);
+  const [editingIngredientId, setEditingIngredientId] = useState<number | null>(null);
+
+  const originalIngredientsRef = useRef<RecipeIngredient[]>([]);
 
   const { ingredients } = useIngredients();
+  const { user, profile, isAdmin } = useAuth();
   const { register, handleSubmit, reset, setValue } = useForm<CreateRecipe>();
 
   const convertToBaseUnit = (
@@ -180,6 +192,7 @@ export default function RecipeForm({
             }
           );
           setRecipeIngredients(formattedIngredients);
+          originalIngredientsRef.current = formattedIngredients;
         }
       }
     };
@@ -200,20 +213,22 @@ export default function RecipeForm({
       } else {
         reset({
           name: "",
-          description: "",
-          quantity: 0,
-          unit_of_measure: "",
+          description: hidePrice ? "-" : "",
+          quantity: hidePrice ? 1 : 0,
+          unit_of_measure: hidePrice ? "und" : "",
           manufacturing_cost: 0,
         });
         setRecipeIngredients([]);
+        originalIngredientsRef.current = [];
       }
-      setAddAsIngredient(true);
+      setAddAsIngredient(readOnlyMeta || hidePrice ? false : true);
       setSearchIngredient("");
       setSelectedIngredientId(null);
       setIngredientQuantity("");
       setIngredientUnit("");
+      setEditingIngredientId(null);
     }
-  }, [isOpen, recipe, reset]);
+  }, [isOpen, recipe, reset, readOnlyMeta, hidePrice]);
 
   if (!isOpen) return null;
 
@@ -246,14 +261,6 @@ export default function RecipeForm({
     );
     if (!ingredient) return;
 
-    const exists = recipeIngredients.some(
-      (item) => item.ingredient_id === selectedIngredientId
-    );
-    if (exists) {
-      alert("Este ingrediente ya está agregado a la receta");
-      return;
-    }
-
     const equivalentPrice = calculateIngredientCost(
       parseFloat(ingredientQuantity),
       ingredientUnit,
@@ -262,18 +269,66 @@ export default function RecipeForm({
       ingredient.unit_of_measure
     );
 
-    const newIngredient: RecipeIngredient = {
-      ingredient_id: selectedIngredientId,
-      ingredient_name: ingredient.name,
-      quantity: parseFloat(ingredientQuantity),
-      unit_of_measure: ingredientUnit,
-      ingredient_price: ingredient.price,
-      ingredient_unit: ingredient.unit_of_measure,
-      ingredient_quantity_stock: ingredient.quantity,
-      equivalent_price: equivalentPrice,
-    };
+    if (editingIngredientId) {
+      // Update existing ingredient
+      setRecipeIngredients(
+        recipeIngredients.map((item) =>
+          item.ingredient_id === editingIngredientId
+            ? {
+                ...item,
+                ingredient_id: selectedIngredientId,
+                ingredient_name: ingredient.name,
+                quantity: parseFloat(ingredientQuantity),
+                unit_of_measure: ingredientUnit,
+                ingredient_price: ingredient.price,
+                ingredient_unit: ingredient.unit_of_measure,
+                ingredient_quantity_stock: ingredient.quantity,
+                equivalent_price: equivalentPrice,
+              }
+            : item
+        )
+      );
+      setEditingIngredientId(null);
+    } else {
+      // Check for duplicates only when adding
+      const exists = recipeIngredients.some(
+        (item) => item.ingredient_id === selectedIngredientId
+      );
+      if (exists) {
+        alert("Este ingrediente ya está agregado a la receta");
+        return;
+      }
 
-    setRecipeIngredients([...recipeIngredients, newIngredient]);
+      const newIngredient: RecipeIngredient = {
+        ingredient_id: selectedIngredientId,
+        ingredient_name: ingredient.name,
+        quantity: parseFloat(ingredientQuantity),
+        unit_of_measure: ingredientUnit,
+        ingredient_price: ingredient.price,
+        ingredient_unit: ingredient.unit_of_measure,
+        ingredient_quantity_stock: ingredient.quantity,
+        equivalent_price: equivalentPrice,
+      };
+
+      setRecipeIngredients([...recipeIngredients, newIngredient]);
+    }
+
+    setSearchIngredient("");
+    setSelectedIngredientId(null);
+    setIngredientQuantity("");
+    setIngredientUnit("");
+  };
+
+  const handleEditIngredient = (item: RecipeIngredient) => {
+    setEditingIngredientId(item.ingredient_id);
+    setSearchIngredient(item.ingredient_name);
+    setSelectedIngredientId(item.ingredient_id);
+    setIngredientQuantity(String(item.quantity));
+    setIngredientUnit(item.unit_of_measure);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingIngredientId(null);
     setSearchIngredient("");
     setSelectedIngredientId(null);
     setIngredientQuantity("");
@@ -281,9 +336,43 @@ export default function RecipeForm({
   };
 
   const handleRemoveIngredient = (ingredientId: number) => {
+    if (editingIngredientId === ingredientId) {
+      handleCancelEdit();
+    }
     setRecipeIngredients(
       recipeIngredients.filter((item) => item.ingredient_id !== ingredientId)
     );
+  };
+
+  const computeIngredientDiff = () => {
+    const original = originalIngredientsRef.current;
+    const originalMap = new Map(original.map((i) => [i.ingredient_id, i]));
+    const currentMap = new Map(recipeIngredients.map((i) => [i.ingredient_id, i]));
+
+    const added: { name: string; quantity: number; unit: string }[] = [];
+    const removed: { name: string; quantity: number; unit: string }[] = [];
+    const modified: { name: string; from: string; to: string }[] = [];
+
+    for (const curr of recipeIngredients) {
+      const orig = originalMap.get(curr.ingredient_id);
+      if (!orig) {
+        added.push({ name: curr.ingredient_name, quantity: curr.quantity, unit: curr.unit_of_measure });
+      } else if (orig.quantity !== curr.quantity || orig.unit_of_measure !== curr.unit_of_measure) {
+        modified.push({
+          name: curr.ingredient_name,
+          from: `${orig.quantity} ${orig.unit_of_measure}`,
+          to: `${curr.quantity} ${curr.unit_of_measure}`,
+        });
+      }
+    }
+
+    for (const orig of original) {
+      if (!currentMap.has(orig.ingredient_id)) {
+        removed.push({ name: orig.ingredient_name, quantity: orig.quantity, unit: orig.unit_of_measure });
+      }
+    }
+
+    return { added, removed, modified };
   };
 
   const onSubmit: SubmitHandler<CreateRecipe> = async (data) => {
@@ -301,6 +390,72 @@ export default function RecipeForm({
 
     try {
       const supabase = createClient();
+
+      // Non-admin edit mode: only update cost + ingredients
+      if (readOnlyMeta && isEditMode && recipe) {
+        // 1. Update only manufacturing_cost on recipe
+        const { error: recipeError } = await supabase
+          .from("recipes")
+          .update({ manufacturing_cost: Number(data.manufacturing_cost) })
+          .eq("id", recipe.id);
+        if (recipeError) throw recipeError;
+
+        // 2. Delete + re-insert recipe_ingredients
+        await supabase
+          .from("recipe_ingredients")
+          .delete()
+          .eq("recipe_id", recipe.id);
+
+        const ingredientsToInsert = recipeIngredients.map((ingredient) => ({
+          recipe_id: recipe.id,
+          recipe_ingredients_id: ingredient.ingredient_id,
+          quantity: ingredient.quantity,
+          unit_of_measure: ingredient.unit_of_measure,
+        }));
+
+        const { error: ingredientsError } = await supabase
+          .from("recipe_ingredients")
+          .insert(ingredientsToInsert);
+        if (ingredientsError) throw ingredientsError;
+
+        // 3. Update ingredient-recipe price in ingredients table
+        await supabase
+          .from("ingredients")
+          .update({ price: Number(data.manufacturing_cost) })
+          .eq("name", recipe.name.toLowerCase());
+
+        // 4. Update products.manufacturing_cost if productId provided
+        if (productId && recipe.quantity > 0) {
+          const unitCost = Number(data.manufacturing_cost) / recipe.quantity;
+          await supabase
+            .from("products")
+            .update({ manufacturing_cost: Number(unitCost.toFixed(2)) })
+            .eq("id", productId);
+        }
+
+        // 5. Audit log with diff
+        const diff = computeIngredientDiff();
+        logAudit({
+          userId: user?.id ?? null,
+          userName: profile?.full_name ?? null,
+          action: "editar_ingredientes_receta",
+          targetTable: "recipes",
+          targetId: recipe.id,
+          targetDescription: `Receta: ${recipe.name}`,
+          details: {
+            recipe_name: recipe.name,
+            product_id: productId ?? null,
+            new_cost: Number(data.manufacturing_cost),
+            ...diff,
+          },
+        });
+
+        onSuccess();
+        onClose();
+        return;
+      }
+
+      // Standard flow (admin or non-admin create)
       const recipeData = {
         name: data.name.toLowerCase(),
         description: data.description,
@@ -315,10 +470,10 @@ export default function RecipeForm({
         const { error } = await supabase
           .from("recipes")
           .update(recipeData)
-          .eq("id", recipe.id);
+          .eq("id", recipe!.id);
 
         if (error) throw error;
-        recipeId = recipe.id;
+        recipeId = recipe!.id;
 
         await supabase
           .from("recipe_ingredients")
@@ -333,7 +488,7 @@ export default function RecipeForm({
             unit_of_measure: data.unit_of_measure,
             price: Number(data.manufacturing_cost),
           })
-          .eq("name", recipe.name.toLowerCase());
+          .eq("name", recipe!.name.toLowerCase());
       } else {
         const { data: newRecipe, error } = await supabase
           .from("recipes")
@@ -350,6 +505,39 @@ export default function RecipeForm({
             quantity: Number(data.quantity),
             unit_of_measure: data.unit_of_measure,
             price: Number(data.manufacturing_cost),
+          });
+        }
+
+        // Non-admin create: link recipe to product
+        if (productId) {
+          const unitCost = Number(data.quantity) > 0
+            ? Number(data.manufacturing_cost) / Number(data.quantity)
+            : 0;
+          await supabase
+            .from("products")
+            .update({
+              recipe_id: recipeId,
+              manufacturing_cost: Number(unitCost.toFixed(2)),
+            })
+            .eq("id", productId);
+
+          logAudit({
+            userId: user?.id ?? null,
+            userName: profile?.full_name ?? null,
+            action: "crear_receta_producto",
+            targetTable: "recipes",
+            targetId: recipeId,
+            targetDescription: `Receta: ${data.name} para producto #${productId}`,
+            details: {
+              recipe_name: data.name,
+              product_id: productId,
+              total_cost: Number(data.manufacturing_cost),
+              ingredients: recipeIngredients.map((i) => ({
+                name: i.ingredient_name,
+                quantity: i.quantity,
+                unit: i.unit_of_measure,
+              })),
+            },
           });
         }
       }
@@ -377,6 +565,14 @@ export default function RecipeForm({
     }
   };
 
+  const getFormTitle = () => {
+    if (readOnlyMeta && isEditMode) return "Editar Ingredientes";
+    if (!isEditMode && productId) return "Crear Receta";
+    return isEditMode ? "Editar Receta" : "Agregar Receta";
+  };
+
+  const formTitle = getFormTitle();
+
   const formFields = (
     <>
       <div>
@@ -390,25 +586,31 @@ export default function RecipeForm({
             maxLength: { value: 50, message: "Máximo 50 caracteres" },
           })}
           disabled={isSubmitting}
-          className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+          readOnly={readOnlyMeta}
+          className={`w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100 ${readOnlyMeta ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""}`}
           placeholder="Ej: Fudge"
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-slate-900 mb-1.5">
-          Descripción de la receta <span className="text-red-600">*</span>
-        </label>
-        <textarea
-          {...register("description", {
-            required: "La descripción es requerida",
-          })}
-          disabled={isSubmitting}
-          rows={3}
-          className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-          placeholder="Ej: Mezclar la leche con la leche condensada..."
-        />
-      </div>
+      {hidePrice ? (
+        <input type="hidden" {...register("description")} />
+      ) : (
+        <div>
+          <label className="block text-sm font-medium text-slate-900 mb-1.5">
+            Descripción de la receta <span className="text-red-600">*</span>
+          </label>
+          <textarea
+            {...register("description", {
+              required: "La descripción es requerida",
+            })}
+            disabled={isSubmitting}
+            readOnly={readOnlyMeta}
+            rows={3}
+            className={`w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100 ${readOnlyMeta ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""}`}
+            placeholder="Ej: Mezclar la leche con la leche condensada..."
+          />
+        </div>
+      )}
 
       <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
         <label className="block text-sm font-medium text-slate-900 mb-3">
@@ -509,8 +711,17 @@ export default function RecipeForm({
             disabled={isSubmitting}
             className="w-full bg-primary-900 py-3 min-h-[44px] text-white rounded-lg hover:bg-primary-800 disabled:bg-gray-400 transition-colors font-medium"
           >
-            Agregar ingrediente
+            {editingIngredientId ? "Actualizar ingrediente" : "Agregar ingrediente"}
           </button>
+          {editingIngredientId && (
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className="w-full text-sm text-slate-500 hover:text-slate-700 transition-colors py-1"
+            >
+              Cancelar edición
+            </button>
+          )}
         </div>
 
         {recipeIngredients.length > 0 && (
@@ -528,17 +739,24 @@ export default function RecipeForm({
                     <p className="text-xs text-slate-500">{item.quantity} {item.unit_of_measure}</p>
                   </div>
                   <div className="flex items-center gap-3 ml-3">
-                    <span className="text-sm font-semibold text-green-600">S/ {item.equivalent_price?.toFixed(2) || "0.00"}</span>
+                    {!hidePrice && (
+                      <span className="text-sm font-semibold text-green-600">S/ {item.equivalent_price?.toFixed(2) || "0.00"}</span>
+                    )}
+                    <button type="button" onClick={() => handleEditIngredient(item)} disabled={isSubmitting} className="p-2.5 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors disabled:opacity-50">
+                      <SquarePen className="w-4 h-4" />
+                    </button>
                     <button type="button" onClick={() => handleRemoveIngredient(item.ingredient_id)} disabled={isSubmitting} className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
               ))}
-              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                <span className="text-sm font-semibold text-green-900">Total de ingredientes:</span>
-                <span className="text-sm font-semibold text-green-700">S/ {totalCost.toFixed(2)}</span>
-              </div>
+              {!hidePrice && (
+                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                  <span className="text-sm font-semibold text-green-900">Total de ingredientes:</span>
+                  <span className="text-sm font-semibold text-green-700">S/ {totalCost.toFixed(2)}</span>
+                </div>
+              )}
             </div>
 
             {/* Desktop table */}
@@ -555,11 +773,13 @@ export default function RecipeForm({
                     <th className="px-4 py-2 text-left text-xs font-medium text-slate-700 uppercase">
                       Unidad
                     </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-slate-700 uppercase">
-                      Precio
-                    </th>
+                    {!hidePrice && (
+                      <th className="px-4 py-2 text-right text-xs font-medium text-slate-700 uppercase">
+                        Precio
+                      </th>
+                    )}
                     <th className="px-4 py-2 text-center text-xs font-medium text-slate-700 uppercase">
-                      Acción
+                      Acciones
                     </th>
                   </tr>
                 </thead>
@@ -578,38 +798,53 @@ export default function RecipeForm({
                       <td className="px-4 py-3 text-sm text-slate-900">
                         {item.unit_of_measure}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-900 text-right font-semibold">
-                        <span className="text-green-600">
-                          S/ {item.equivalent_price?.toFixed(2) || "0.00"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleRemoveIngredient(item.ingredient_id)
-                          }
-                          disabled={isSubmitting}
-                          className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                          title="Eliminar ingrediente"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      {!hidePrice && (
+                        <td className="px-4 py-3 text-sm text-slate-900 text-right font-semibold">
+                          <span className="text-green-600">
+                            S/ {item.equivalent_price?.toFixed(2) || "0.00"}
+                          </span>
+                        </td>
+                      )}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleEditIngredient(item)}
+                            disabled={isSubmitting}
+                            className="p-2.5 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors disabled:opacity-50"
+                            title="Editar ingrediente"
+                          >
+                            <SquarePen className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleRemoveIngredient(item.ingredient_id)
+                            }
+                            disabled={isSubmitting}
+                            className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                            title="Eliminar ingrediente"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
-                  <tr className="bg-green-50 font-semibold">
-                    <td
-                      colSpan={3}
-                      className="px-4 py-3 text-sm text-right text-green-900"
-                    >
-                      Total de ingredientes:
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right text-green-700">
-                      S/ {totalCost.toFixed(2)}
-                    </td>
-                    <td></td>
-                  </tr>
+                  {!hidePrice && (
+                    <tr className="bg-green-50 font-semibold">
+                      <td
+                        colSpan={3}
+                        className="px-4 py-3 text-sm text-right text-green-900"
+                      >
+                        Total de ingredientes:
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-green-700">
+                        S/ {totalCost.toFixed(2)}
+                      </td>
+                      <td></td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -617,30 +852,39 @@ export default function RecipeForm({
         )}
       </div>
 
-      <div className="border-2 border-green-300 rounded-lg p-4 bg-linear-to-br from-green-50 to-white">
-        <label className="block text-sm font-medium text-green-900 mb-1.5">
-          Costo de fabricación (calculado automáticamente)
-        </label>
-        <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">
-            S/
-          </span>
-          <input
-            type="number"
-            step="0.01"
-            {...register("manufacturing_cost")}
-            disabled
-            className="w-full pl-8 pr-4 py-3 border-2 border-green-300 rounded-lg bg-white text-gray-800 font-semibold text-lg cursor-not-allowed"
-            placeholder="0.00"
-          />
+      {!hidePrice && (
+        <div className="border-2 border-green-300 rounded-lg p-4 bg-linear-to-br from-green-50 to-white">
+          <label className="block text-sm font-medium text-green-900 mb-1.5">
+            Costo de fabricación (calculado automáticamente)
+          </label>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">
+              S/
+            </span>
+            <input
+              type="number"
+              step="0.01"
+              {...register("manufacturing_cost")}
+              disabled
+              className="w-full pl-8 pr-4 py-3 border-2 border-green-300 rounded-lg bg-white text-gray-800 font-semibold text-lg cursor-not-allowed"
+              placeholder="0.00"
+            />
+          </div>
+          <p className="text-xs text-green-700 mt-2">
+            Este costo se calcula automaticamente sumando los precios de
+            todos los ingredientes
+          </p>
         </div>
-        <p className="text-xs text-green-700 mt-2">
-          Este costo se calcula automaticamente sumando los precios de
-          todos los ingredientes
-        </p>
-      </div>
+      )}
 
-      {addAsIngredient && (
+      {hidePrice && (
+        <>
+          <input type="hidden" {...register("quantity")} />
+          <input type="hidden" {...register("unit_of_measure")} />
+        </>
+      )}
+
+      {!hidePrice && (addAsIngredient || !readOnlyMeta) && (
         <div className="border-2 border-blue-300 rounded-lg p-4 bg-linear-to-br from-blue-50 to-white">
           <h3 className="text-base font-semibold text-blue-900 mb-3">
             Rendimiento de la Receta
@@ -657,8 +901,8 @@ export default function RecipeForm({
                   required: "La cantidad es requerida",
                   min: { value: 0.01, message: "Debe ser mayor a 0" },
                 })}
-                disabled={isSubmitting}
-                className="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100"
+                disabled={isSubmitting || readOnlyMeta}
+                className={`w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 ${readOnlyMeta ? "text-gray-500 cursor-not-allowed" : ""}`}
                 placeholder="150"
               />
             </div>
@@ -670,8 +914,8 @@ export default function RecipeForm({
                 {...register("unit_of_measure", {
                   required: "La unidad de medida es requerida",
                 })}
-                disabled={isSubmitting}
-                className="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100"
+                disabled={isSubmitting || readOnlyMeta}
+                className={`w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 ${readOnlyMeta ? "text-gray-500 cursor-not-allowed" : ""}`}
               >
                 <option value="">Seleccionar</option>
                 <option value="kg">kg</option>
@@ -682,24 +926,26 @@ export default function RecipeForm({
               </select>
             </div>
           </div>
-          <div className="bg-blue-100 rounded-lg p-3 border border-blue-200 mt-3">
-            <p className="text-xs text-blue-800">
-              <strong>Ejemplo:</strong> Si tu receta produce 150g de fudge,
-              ingresa:
-            </p>
-            <ul className="text-xs text-blue-700 mt-2 space-y-1 ml-4">
-              <li>
-                • Cantidad: <strong>150</strong>
-              </li>
-              <li>
-                • Unidad: <strong>g</strong>
-              </li>
-            </ul>
-          </div>
+          {!readOnlyMeta && (
+            <div className="bg-blue-100 rounded-lg p-3 border border-blue-200 mt-3">
+              <p className="text-xs text-blue-800">
+                <strong>Ejemplo:</strong> Si tu receta produce 150g de fudge,
+                ingresa:
+              </p>
+              <ul className="text-xs text-blue-700 mt-2 space-y-1 ml-4">
+                <li>
+                  • Cantidad: <strong>150</strong>
+                </li>
+                <li>
+                  • Unidad: <strong>g</strong>
+                </li>
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
-      {!isEditMode && (
+      {!isEditMode && !readOnlyMeta && isAdmin && (
         <div className="border border-purple-200 rounded-lg p-4 bg-purple-50 flex items-start justify-between gap-4">
           <div>
             <label className="block text-sm font-medium text-purple-900 mb-1.5">
@@ -745,7 +991,7 @@ export default function RecipeForm({
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h2 className="text-lg font-semibold text-slate-900">
-            {isEditMode ? "Editar Receta" : "Agregar Receta"}
+            {formTitle}
           </h2>
           <div className="w-9" />
         </div>
@@ -782,7 +1028,7 @@ export default function RecipeForm({
         >
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl sticky top-0 z-10">
             <h2 className="text-xl font-semibold text-slate-900">
-              {isEditMode ? "Editar Receta" : "Agregar Receta"}
+              {formTitle}
             </h2>
             <button
               type="button"
