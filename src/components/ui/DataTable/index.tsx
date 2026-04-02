@@ -8,6 +8,7 @@ import {
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
+  ArrowUpDown,
   Search,
   Inbox,
 } from "lucide-react";
@@ -42,6 +43,7 @@ export default function DataTable<T extends { id: number; name: string }>({
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<keyof T | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+  const [showMobileSort, setShowMobileSort] = useState(false);
 
   const filteredData = useMemo(() => {
     if (!searchQuery.trim()) return data;
@@ -104,6 +106,59 @@ export default function DataTable<T extends { id: number; name: string }>({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full md:w-auto pl-9 pr-4 py-3 md:py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white placeholder-slate-400"
               />
+            </div>
+            {/* Mobile sort button */}
+            <div className="relative md:hidden">
+              <button
+                onClick={() => setShowMobileSort(!showMobileSort)}
+                className={`flex items-center gap-1.5 px-3 py-3 text-sm border rounded-lg transition-colors ${
+                  sortKey
+                    ? "border-primary-300 bg-primary-50 text-primary-700"
+                    : "border-slate-200 bg-white text-slate-600"
+                }`}
+              >
+                <ArrowUpDown className="w-4 h-4" />
+                <span className="whitespace-nowrap">
+                  {sortKey && sortDirection
+                    ? sortDirection === "asc" ? "A-Z" : "Z-A"
+                    : "Ordenar"}
+                </span>
+              </button>
+              {showMobileSort && (
+                <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-20 min-w-[200px]">
+                  {columns.map((column, idx) => {
+                    if (idx >= dataKeys.length) return null;
+                    const isActive = sortKey === dataKeys[idx];
+                    return (
+                      <button
+                        key={column}
+                        onClick={() => {
+                          handleSort(idx);
+                          setShowMobileSort(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-4 py-3 text-sm transition-colors ${
+                          isActive
+                            ? "bg-primary-50 text-primary-700"
+                            : "text-slate-700 hover:bg-slate-50"
+                        } ${idx === 0 ? "rounded-t-lg" : ""} ${
+                          idx === Math.min(columns.length, dataKeys.length) - 1
+                            ? "rounded-b-lg"
+                            : "border-b border-slate-100"
+                        }`}
+                      >
+                        <span>{column}</span>
+                        <span className="text-xs text-slate-400">
+                          {isActive && sortDirection === "asc"
+                            ? "A-Z ↑"
+                            : isActive && sortDirection === "desc"
+                            ? "Z-A ↓"
+                            : "—"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <span className="text-sm text-slate-500 whitespace-nowrap hidden md:inline">
               {isLoading
