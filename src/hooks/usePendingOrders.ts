@@ -146,6 +146,12 @@ export const usePendingOrders = () => {
 
       if (updateError) throw updateError;
 
+      await supabase.rpc("deduct_inventory_for_delivery", {
+        p_sale_product_id: itemId,
+        p_user_id: user?.id ?? null,
+        p_user_name: profile?.full_name ?? null,
+      });
+
       logAudit({
         userId: user?.id ?? null,
         userName: profile?.full_name ?? null,
@@ -163,6 +169,13 @@ export const usePendingOrders = () => {
   const markAllAsDelivered = useCallback(
     async (saleId: number) => {
       const supabase = createClient();
+
+      const { data: pendingItems } = await supabase
+        .from("sale_products")
+        .select("id")
+        .eq("sale_id", saleId)
+        .eq("status", "Pendiente");
+
       const { error: updateError } = await supabase
         .from("sale_products")
         .update({ status: "Entregado" })
@@ -170,6 +183,16 @@ export const usePendingOrders = () => {
         .eq("status", "Pendiente");
 
       if (updateError) throw updateError;
+
+      if (pendingItems) {
+        for (const item of pendingItems) {
+          await supabase.rpc("deduct_inventory_for_delivery", {
+            p_sale_product_id: item.id,
+            p_user_id: user?.id ?? null,
+            p_user_name: profile?.full_name ?? null,
+          });
+        }
+      }
 
       const saleNumber = await getSaleNumber(saleId);
 

@@ -12,7 +12,12 @@ export type AuditAction =
   | "configurar_saldo"
   | "ajustar_inventario"
   | "editar_ingredientes_receta"
-  | "crear_receta_producto";
+  | "crear_receta_producto"
+  | "crear"
+  | "actualizar"
+  | "aprobar_permiso"
+  | "rechazar_permiso"
+  | "registrar_horas_extra";
 
 export type AuditTargetTable =
   | "categories"
@@ -25,7 +30,11 @@ export type AuditTargetTable =
   | "sale_products"
   | "user_profiles"
   | "accounts"
-  | "inventory_movements";
+  | "inventory_movements"
+  | "schedule_templates"
+  | "schedule_overrides"
+  | "time_off_requests"
+  | "extra_hours_log";
 
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   eliminar: "Eliminación",
@@ -38,6 +47,11 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   ajustar_inventario: "Ajuste de inventario",
   editar_ingredientes_receta: "Edición de ingredientes de receta",
   crear_receta_producto: "Creación de receta para producto",
+  crear: "Creación",
+  actualizar: "Actualización",
+  aprobar_permiso: "Aprobación de permiso",
+  rechazar_permiso: "Rechazo de permiso",
+  registrar_horas_extra: "Registro de horas extra",
 };
 
 export const AUDIT_TABLE_LABELS: Record<AuditTargetTable, string> = {
@@ -52,4 +66,8 @@ export const AUDIT_TABLE_LABELS: Record<AuditTargetTable, string> = {
   user_profiles: "Usuarios",
   accounts: "Cuentas",
   inventory_movements: "Inventario",
+  schedule_templates: "Horarios",
+  schedule_overrides: "Excepciones de horario",
+  time_off_requests: "Solicitudes de permiso",
+  extra_hours_log: "Horas extra",
 };

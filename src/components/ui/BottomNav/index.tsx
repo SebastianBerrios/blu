@@ -16,6 +16,8 @@ import {
   BarChart3,
   Users,
   ScrollText,
+  Package,
+  CalendarDays,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import BottomSheet from "@/components/ui/BottomSheet";
@@ -52,6 +54,8 @@ const MORE_ITEMS: MoreItem[] = [
   { href: "/recipes", label: "Recetas", icon: BookOpen, adminOnly: true },
   { href: "/compras", label: "Compras", icon: ShoppingCart },
   { href: "/products", label: "Productos", icon: ShoppingBasket },
+  { href: "/inventario", label: "Inventario", icon: Package },
+  { href: "/horario", label: "Horario", icon: CalendarDays },
   { href: "/finanzas", label: "Finanzas", icon: Wallet, adminOnly: true },
   { href: "/estadisticas", label: "Estadísticas", icon: BarChart3, adminOnly: true },
   { href: "/auditoria", label: "Auditoría", icon: ScrollText, adminOnly: true },

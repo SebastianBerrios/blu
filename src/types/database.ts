@@ -121,6 +121,54 @@ export type Database = {
         }
         Relationships: []
       }
+      extra_hours_log: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string
+          hours: number
+          id: number
+          reference_id: number | null
+          reference_type: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description: string
+          hours: number
+          id?: never
+          reference_id?: number | null
+          reference_type?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string
+          hours?: number
+          id?: never
+          reference_id?: number | null
+          reference_type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extra_hours_log_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extra_hours_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ingredients: {
         Row: {
           id: number
@@ -144,6 +192,57 @@ export type Database = {
           unit_of_measure?: string
         }
         Relationships: []
+      }
+      inventory_movements: {
+        Row: {
+          created_at: string
+          id: number
+          ingredient_id: number
+          new_quantity: number
+          old_quantity: number
+          reason: string
+          reference_id: number | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          ingredient_id: number
+          new_quantity: number
+          old_quantity: number
+          reason?: string
+          reference_id?: number | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          ingredient_id?: number
+          new_quantity?: number
+          old_quantity?: number
+          reason?: string
+          reference_id?: number | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -454,6 +553,168 @@ export type Database = {
           },
         ]
       }
+      schedule_overrides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          end_time: string | null
+          id: number
+          is_day_off: boolean
+          override_date: string
+          reason: string | null
+          start_time: string | null
+          time_off_request_id: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          end_time?: string | null
+          id?: never
+          is_day_off?: boolean
+          override_date: string
+          reason?: string | null
+          start_time?: string | null
+          time_off_request_id?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          end_time?: string | null
+          id?: never
+          is_day_off?: boolean
+          override_date?: string
+          reason?: string | null
+          start_time?: string | null
+          time_off_request_id?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_overrides_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_overrides_time_off_request_id_fkey"
+            columns: ["time_off_request_id"]
+            isOneToOne: false
+            referencedRelation: "time_off_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_overrides_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_templates: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: number
+          start_time: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: never
+          start_time: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: never
+          start_time?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_off_requests: {
+        Row: {
+          created_at: string
+          end_time: string | null
+          hours_requested: number
+          id: number
+          is_full_day: boolean
+          reason: string | null
+          requested_date: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_time: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_time?: string | null
+          hours_requested: number
+          id?: never
+          is_full_day?: boolean
+          reason?: string | null
+          requested_date: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_time?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string | null
+          hours_requested?: number
+          id?: never
+          is_full_day?: boolean
+          reason?: string | null
+          requested_date?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_time?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_off_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_off_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           account_id: number
@@ -543,7 +804,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_time_off_request: {
+        Args: {
+          p_admin_id: string
+          p_request_id: number
+          p_review_note?: string
+        }
+        Returns: undefined
+      }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
+      deduct_inventory_for_delivery: {
+        Args: {
+          p_sale_product_id: number
+          p_user_id?: string
+          p_user_name?: string
+        }
+        Returns: undefined
+      }
       record_transaction: {
         Args: {
           p_account_id: number

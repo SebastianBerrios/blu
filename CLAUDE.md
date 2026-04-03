@@ -4,16 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Blu is a café/bakery business management system. It manages ingredients, recipes, products, categories, and sales with real-time cost calculations and price suggestions. The UI is entirely in Spanish.
+Blu is a café/bakery business management system. It manages ingredients, recipes, products, categories, sales, scheduling, and inventory with real-time cost calculations and price suggestions. The UI is entirely in Spanish (`lang="es"`).
 
 ## Tech Stack
 
 - **Next.js 15** (App Router) + **React 19** with TypeScript strict mode
 - **Tailwind CSS 4** (PostCSS plugin) with custom sky-blue theme via CSS variables
-- **Supabase** (PostgreSQL) for database and auth (SSR cookie-based sessions)
-- **SWR** for data fetching/caching, **React Hook Form** for forms
+- **Supabase** (PostgreSQL) for database, auth (SSR cookie-based sessions), and Realtime
+- **SWR** for data fetching/caching, **React Hook Form** for forms (some newer forms use plain `useState`)
 - **js-quantities** for unit conversions (kg/g, l/ml)
 - **Turbopack** for dev and build
+- **Inter** font (Google Fonts)
 
 ## Commands
 
@@ -30,7 +31,7 @@ Blu is a café/bakery business management system. It manages ingredients, recipe
 
 ```
 src/
-├── app/              # Next.js App Router pages
+├── app/              # Next.js App Router pages (all "use client")
 │   ├── categories/   # Category management
 │   ├── products/     # Product management
 │   ├── ingredients/  # Ingredient inventory (admin only)
@@ -41,31 +42,60 @@ src/
 │   ├── finanzas/     # Financial dashboard (admin only)
 │   ├── estadisticas/ # Statistics dashboard (admin only)
 │   ├── auditoria/    # Audit log viewer (admin only)
+│   ├── inventario/   # Inventory stock management + movement history (all roles)
+│   ├── horario/      # Schedule, time-off requests, extra hours (all roles)
 │   ├── users/        # User management (admin only)
 │   ├── login/        # Authentication (email/password + Google OAuth)
 │   └── auth/callback # OAuth callback
 ├── components/
-│   ├── forms/        # Modal form components (CategoryForm, ProductForm, SaleForm, PurchaseForm, etc.)
+│   ├── forms/        # Modal form components
 │   ├── ui/           # Reusable UI (Button, DataTable, Spinner, PageHeader, EmptyState, FAB, BottomNav, BottomSheet)
 │   ├── SideBar/      # Desktop navigation sidebar
 │   ├── AppShell.tsx  # Layout wrapper (sidebar + bottom nav)
-│   └── AuthGuard.tsx # Auth + role-based access wrapper
-├── hooks/            # SWR-based data hooks (useCategories, useProducts, useAuth, useSales, useAccounts, useTransactions, etc.)
-├── types/            # TypeScript types including auto-generated Supabase types (database.ts)
+│   └── AuthGuard.tsx # Auth + role-based access wrapper (handles loading/pending/inactive states)
+├── hooks/            # SWR-based data hooks
+├── types/            # TypeScript types (database.ts is auto-generated, domain types in separate files, re-exported from index.ts)
 └── utils/
     ├── supabase/     # Supabase client (client.ts for browser, server.ts for SSR, middleware.ts)
-    ├── auditLog.ts   # Audit logging helper (logAudit)
+    ├── auditLog.ts   # Fire-and-forget audit logging (never throws)
     ├── saleNumber.ts # Sequential sale number generator
     └── purchaseNumber.ts # Sequential purchase number generator
 ```
 
 ## Key Patterns
 
-**Pages**: Client components (`"use client"`) that use a custom SWR hook for data, `useState` for modals/selection, a `DataTable` for display, and a modal `Form` for create/edit. Deletions call Supabase directly then `mutate()` to revalidate.
+### Page Pattern
+All data pages follow this structure:
+1. `"use client"` + SWR hook for data + `useAuth()` for permissions
+2. `useState` for modal open/close and selected item
+3. `PageHeader` → `DataTable` (with `renderCard` for mobile) → modal `Form`
+4. `FAB` for mobile add button
+5. Delete: call Supabase directly → `logAudit()` → `mutate()` to revalidate
+6. Role check: `isAdmin` or `hasRole()` to show/hide actions
 
-**Forms**: Use React Hook Form with `useEffect` to reset on open. Handle both create and edit modes (`isEditMode = !!existingItem`). Call Supabase directly for mutations, then invoke `onSuccess` callback.
+**Tab-based pages** (`horario`, `inventario`) use local `useState` for active tab instead of URL params.
 
-**Data Hooks**: SWR with `revalidateOnFocus: false`, `revalidateOnReconnect: true`, `dedupingInterval: 2000`. Return `{ data, error, isLoading, mutate }`.
+### Form Pattern
+Modal forms accept `{ isOpen, onClose, onSuccess, item? }`:
+- `isEditMode = !!item` — toggles create vs. edit
+- `useForm()` with `reset()` in `useEffect` on `isOpen` change
+- Return `null` if `!isOpen`
+- Backdrop click calls `onClose`, content has `e.stopPropagation()`
+- Submit: call Supabase directly → `onSuccess()` callback (parent calls `mutate()`)
+- Button text: "Guardar" (create) / "Actualizar" (edit)
+
+**Exception**: Schedule/HR forms (`ScheduleTemplateForm`, `ScheduleOverrideForm`, `TimeOffRequestForm`, `ExtraHoursForm`, `TimeOffReviewForm`) use plain `useState` instead of `react-hook-form`. `TimeOffReviewForm` has "Aprobar"/"Rechazar" buttons instead of the standard pattern.
+
+### Data Hooks (SWR)
+All hooks use identical config: `{ revalidateOnFocus: false, revalidateOnReconnect: true, dedupingInterval: 2000 }`.
+Return `{ data: T[], error, isLoading, mutate }` — data defaults to `[]` via `?? []`, never undefined.
+Hooks with filters use composite SWR keys: `["transactions", filters]`.
+
+**Notable hook exceptions**:
+- `usePendingOrders` — subscribes to **Supabase Realtime** (`postgres_changes` on `sale_products`) for live updates. Only hook using Realtime.
+- `useInventory` — returns two separate mutate functions: `mutateIngredients` and `mutateMovements`.
+- `useSalesStats` — uses `dedupingInterval: 5000` (not 2000).
+- `useSchedule`, `useTimeOffRequests`, `useExtraHours` — role-aware hooks that use `[isAdmin, user?.id]` in SWR key, returning `null` key while auth is loading.
 
 **No global state management** — state is local to components or lifted via props.
 
@@ -73,30 +103,51 @@ src/
 
 - Cookie-based SSR sessions via `@supabase/ssr`
 - Middleware in `src/middleware.ts` redirects unauthenticated users to `/login`
-- **Roles**: `admin`, `cocinero` (chef), `barista`
-- `useAuth` hook returns `{ user, profile, role, isAdmin, isPending, isInactive, signOut, hasRole }`
+- **Roles** (`AppRole`): `admin`, `cocinero` (chef), `barista`
+- `useAuth` returns `{ user, profile, role, isAdmin, isPending, isInactive, isLoading, signOut, hasRole, mutate }`
+- `AuthGuard` renders different screens: spinner (loading), null (!user), deactivated message (isInactive), "awaiting approval" (isPending)
 - Admin-only pages (`ingredients`, `recipes`, `finanzas`, `estadisticas`, `auditoria`, `users`) redirect non-admins
+- All-role pages: `sales`, `pedidos`, `compras`, `inventario`, `horario` (with admin-specific actions within)
 - Root `/` redirects by role: admin → `/categories`, others → `/sales`
+- Navigation items have `adminOnly?: true` flag to filter by role in SideBar/BottomNav
 
 ## Database Schema (key tables)
 
 - **user_profiles** — role, full_name, is_active
 - **categories**, **products** (with manufacturing_cost, suggested_price)
 - **ingredients** (quantity, unit_of_measure, price), **recipes**, **recipe_ingredients**
-- **sales** + **sale_products** — order_type (Mesa/Para llevar/Delivery), payment_method (Efectivo/Yape/split), product status (Pendiente/Entregado)
+- **sales** + **sale_products** — order_type (Mesa/Para llevar/Delivery), payment_method (Efectivo/Yape/Efectivo + Yape), product status (Pendiente/Entregado)
 - **customers** — name, dni, phone
-- **accounts** (type: "caja"/"banco", balance) + **transactions** (ingreso_venta, egreso_compra, transferencia_in/out, gasto, ingreso_extra)
+- **accounts** (type: "caja"/"banco", balance) + **transactions** via RPC `record_transaction(p_account_id, p_type, p_amount, p_description, p_reference_id, p_reference_type)`
 - **purchases** + **purchase_items**
 - **audit_logs** — action tracking (userId, action, targetTable, targetId, targetDescription)
+- **inventory_movements** — stock in/out tracking (reason: "manual"/"entrega"/"compra")
+- **schedule_templates** — recurring weekly schedule (user_id, day_of_week 0=Mon..5=Sat, start_time, end_time)
+- **schedule_overrides** — one-time schedule changes (override_date, is_day_off, optional time range, linked to time_off_request_id)
+- **time_off_requests** — employee time-off requests (status: pendiente/aprobado/rechazado, hours_requested, is_full_day)
+- **extra_hours_log** — credit/debit ledger (positive=credit, negative=debit from approved time-off)
 
-Types in `src/types/` wrap auto-generated Supabase types: `export type Category = Tables<"categories">`
+**Key RPCs**:
+- `record_transaction(...)` — creates a transaction and updates account balance atomically
+- `approve_time_off_request(p_request_id, p_admin_id, p_review_note?)` — atomically approves request, debits hours, and creates a schedule override
+- `deduct_inventory_for_delivery(p_sale_product_id, p_user_id?, p_user_name?)` — deducts recipe ingredients from stock when a sale product is marked "Entregado"
+
+## Type Patterns
+
+Types in `src/types/` wrap auto-generated Supabase types and are re-exported from `src/types/index.ts`:
+- **Base types**: `export type Category = Tables<"categories">`
+- **Extended interfaces**: `SaleWithProducts extends Sale` (adds `sale_products[]`, `creator_name?`), `TransactionWithUser extends Transaction` (adds `user_name`)
+- **Create/Update types**: Separate interfaces like `CreateSale`, `CreateProduct`
+- **Literal unions**: `PaymentMethod = "Efectivo" | "Yape" | "Efectivo + Yape"`, `TransactionType = "ingreso_venta" | "egreso_compra" | ...`, `TimeOffStatus = "pendiente" | "aprobado" | "rechazado"`
+- **Filters**: `SalesFilters`, `TransactionFilters` for hook parameters
+- **Schedule types** in `src/types/schedule.ts`: `ScheduleSlot` (merged template+override for weekly display), `EmployeeBalance`, `DayOfWeek` (0–5, Mon–Sat, 6-day work week), `DAY_LABELS`
 
 ## UI Components
 
-- **DataTable**: Generic `<T extends { id: number; name: string }>`, supports search, sort, mobile card view via `renderCard` prop
+- **DataTable**: Generic `<T extends { id: number; name: string }>`. Props: `columns`, `dataKeys`, `data`, `isLoading?`, `onEdit?`, `onDelete?`, `canEdit?(item)` (shows lock icon if false), `renderCard?(item, onEdit?, onDelete?)`. Features: search (Spanish locale-aware), sortable columns, mobile card view via `renderCard`
 - **Button**: Variants (primary/secondary/ghost/danger), sizes (sm/md/lg)
-- **BottomNav**: Mobile navigation, shows different items by role; "More" opens BottomSheet
-- **SideBar**: Desktop only (`md:flex`), icon-based navigation
+- **BottomNav**: Mobile-only navigation, role-filtered; "More" opens BottomSheet with additional items
+- **SideBar**: Desktop only (`hidden md:flex`), icon-based, role-filtered
 - **FAB**: Floating action button for mobile add actions
 
 ## Naming Conventions
@@ -108,11 +159,27 @@ Types in `src/types/` wrap auto-generated Supabase types: `export type Category 
 
 ## Styling
 
-Tailwind utility-first, mobile-first responsive design (`md:` for desktop). Custom theme colors defined as CSS variables in `globals.css`:
+Tailwind utility-first, mobile-first responsive design (`md:` breakpoint for desktop). Root layout uses `h-dvh` for full-screen. Custom theme colors defined as CSS variables in `globals.css`:
 - **Primary** (sky blue): `--color-primary-50` through `--color-primary-900`
 - **Accent** (amber/toffee): `--color-accent-50` through `--color-accent-700`
+- Role colors in schedule: `cocinero` (sky), `barista` (amber), `admin` (purple)
+- Form focus: `focus:ring-2 focus:ring-primary-500 focus:border-transparent`
 - Icons via **Lucide React**
 - Charts via **Chart.js** + **react-chartjs-2** (used in estadisticas)
+- Spanish locale used for sorting (`localeCompare("es")`) and date formatting
+
+## Arquitectura del Proyecto
+
+- **Feature-Based Architecture pragmática** (migración gradual desde flat structure)
+- **Capas**: `types` → `services` → `hooks` → `components` → `pages` (nunca al revés)
+- **Código nuevo**: usar `features/[nombre]/` con service layer obligatorio — componentes nunca llaman `createClient()` directamente
+- **Código existente**: migrar solo cuando se toca significativamente — cambios menores respetan el patrón actual
+- **Shared utilities**: en `utils/helpers/` cuando se usa en 3+ lugares, en `utils/constants/` para constantes compartidas
+- **Límites de tamaño**: Page <200 LOC, Form <300 LOC, Hook <200 LOC, Service <150 LOC
+- **Error handling** (código nuevo): Service throws → Hook catches → Component muestra error inline (no `alert()`)
+- **Para cualquier trabajo visual** (componentes, páginas, forms, modales, tablas, dashboards, o cualquier elemento de UI): consultar la skill `frontend-design` antes de escribir código de UI
+- Ver `.claude/skills/cafeteria-architecture/SKILL.md` para reglas completas
+- Ver `.claude/skills/cafeteria-architecture/references/migration.md` para el plan de migración gradual
 
 ## Environment Variables
 
