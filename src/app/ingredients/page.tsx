@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import { ChefHat, SquarePen, Trash2 } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
 import { useIngredients } from "@/hooks/useIngredients";
 import { useAuth } from "@/hooks/useAuth";
-import { logAudit } from "@/utils/auditLog";
+import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import type { Ingredient } from "@/types";
 import IngredientForm from "@/components/forms/IngredientForm";
 import DataTable from "@/components/ui/DataTable";
@@ -38,18 +37,14 @@ export default function Ingredients() {
   };
 
   const handleDelete = async (ingredient: Ingredient) => {
-    const supabase = createClient();
-    const { error } = await supabase.from("ingredients").delete().eq("id", ingredient.id);
-    if (!error) {
-      logAudit({
-        userId: user?.id ?? null,
-        userName: profile?.full_name ?? null,
-        action: "eliminar",
-        targetTable: "ingredients",
-        targetId: ingredient.id,
-        targetDescription: `Ingrediente: ${ingredient.name}`,
-      });
-    }
+    await deleteWithAudit({
+      table: "ingredients",
+      id: ingredient.id,
+      userId: user?.id ?? null,
+      userName: profile?.full_name ?? null,
+      auditTable: "ingredients",
+      description: `Ingrediente: ${ingredient.name}`,
+    });
     mutate();
   };
 

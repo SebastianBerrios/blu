@@ -9,12 +9,10 @@ import {
   Trash2,
   Banknote,
 } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
 import { useSales, groupSalesByDate } from "@/hooks/useSales";
 import { useProducts } from "@/hooks/useProducts";
 import { useAuth } from "@/hooks/useAuth";
-import { logAudit } from "@/utils/auditLog";
-import { getSaleNumber } from "@/utils/saleNumber";
+import { deleteSale } from "@/features/ventas/services/salesService";
 import type { SaleWithProducts } from "@/types";
 import SaleForm from "@/components/forms/SaleForm";
 import PaymentModal from "@/components/forms/PaymentModal";
@@ -60,19 +58,7 @@ export default function Sales() {
 
   const handleDelete = async (sale: SaleWithProducts) => {
     if (!confirm("¿Estás seguro de eliminar esta venta?")) return;
-    const saleNumber = await getSaleNumber(sale.id);
-    const supabase = createClient();
-    const { error } = await supabase.from("sales").delete().eq("id", sale.id);
-    if (!error) {
-      logAudit({
-        userId: user?.id ?? null,
-        userName: profile?.full_name ?? null,
-        action: "eliminar",
-        targetTable: "sales",
-        targetId: sale.id,
-        targetDescription: `Venta #${saleNumber} - S/ ${sale.total_price.toFixed(2)}`,
-      });
-    }
+    await deleteSale(sale.id, user?.id ?? null, profile?.full_name ?? null);
     mutate();
   };
 

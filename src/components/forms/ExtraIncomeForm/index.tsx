@@ -24,23 +24,25 @@ export default function ExtraIncomeForm({
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const accountId = selectedAccountId ?? cajaAccount?.id ?? null;
 
   const handleSubmit = async () => {
+    setSubmitError(null);
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
-      alert("Ingresa un monto válido");
+      setSubmitError("Ingresa un monto válido");
       return;
     }
     if (!description.trim()) {
-      alert("Ingresa una descripción del ingreso");
+      setSubmitError("Ingresa una descripción del ingreso");
       return;
     }
     if (!accountId) {
-      alert("Selecciona una cuenta");
+      setSubmitError("Selecciona una cuenta");
       return;
     }
 
@@ -66,7 +68,7 @@ export default function ExtraIncomeForm({
       onClose();
     } catch (error) {
       console.error("Error al registrar ingreso:", error);
-      alert("Ocurrió un error al registrar el ingreso");
+      setSubmitError(error instanceof Error ? error.message : "Ocurrió un error al registrar el ingreso");
     } finally {
       setIsSubmitting(false);
     }
@@ -171,6 +173,12 @@ export default function ExtraIncomeForm({
               placeholder="Ej: Venta de equipos usados"
             />
           </div>
+
+          {submitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{submitError}</p>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button

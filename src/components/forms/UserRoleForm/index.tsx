@@ -24,6 +24,7 @@ export default function UserRoleForm({
   user,
 }: UserRoleFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const { user: currentUser, profile: currentProfile } = useAuth();
 
   const { register, handleSubmit, reset } = useForm<FormData>();
@@ -39,6 +40,7 @@ export default function UserRoleForm({
   if (!isOpen || !user) return null;
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
+    setSubmitError(null);
     setIsSubmitting(true);
 
     try {
@@ -68,6 +70,7 @@ export default function UserRoleForm({
       onClose();
     } catch (error) {
       console.error("Error al asignar rol:", error);
+      setSubmitError(error instanceof Error ? error.message : "Error al asignar rol");
     } finally {
       setIsSubmitting(false);
     }
@@ -124,6 +127,12 @@ export default function UserRoleForm({
               <option value="admin">Administrador</option>
             </select>
           </div>
+
+          {submitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{submitError}</p>
+            </div>
+          )}
 
           {/* Buttons */}
           <div className="flex gap-3 pt-4">

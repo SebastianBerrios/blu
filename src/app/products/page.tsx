@@ -2,12 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { ShoppingBasket, SquarePen, Trash2, BookOpen, Lock } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
 import { useProducts } from "@/hooks/useProducts";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
-import { logAudit } from "@/utils/auditLog";
+import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import type { Product, Recipe } from "@/types";
 import ProductForm from "@/components/forms/ProductForm";
 import RecipeForm from "@/components/forms/RecipeForm";
@@ -56,18 +55,14 @@ export default function Products() {
   };
 
   const handleDelete = async (product: Product) => {
-    const supabase = createClient();
-    const { error } = await supabase.from("products").delete().eq("id", product.id);
-    if (!error) {
-      logAudit({
-        userId: user?.id ?? null,
-        userName: profile?.full_name ?? null,
-        action: "eliminar",
-        targetTable: "products",
-        targetId: product.id,
-        targetDescription: `Producto: ${product.name}`,
-      });
-    }
+    await deleteWithAudit({
+      table: "products",
+      id: product.id,
+      userId: user?.id ?? null,
+      userName: profile?.full_name ?? null,
+      auditTable: "products",
+      description: `Producto: ${product.name}`,
+    });
     mutate();
   };
 

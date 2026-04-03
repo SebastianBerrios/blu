@@ -173,6 +173,30 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
   }
 }
 
+export async function deleteSale(
+  saleId: number,
+  userId: string | null,
+  userName: string | null,
+): Promise<void> {
+  const saleNumber = await getSaleNumber(saleId);
+  const supabase = createClient();
+  const { data: sale } = await supabase
+    .from("sales")
+    .select("total_price")
+    .eq("id", saleId)
+    .single();
+  const { error } = await supabase.from("sales").delete().eq("id", saleId);
+  if (error) throw new Error(`Error al eliminar venta: ${error.message}`);
+  logAudit({
+    userId,
+    userName,
+    action: "eliminar",
+    targetTable: "sales",
+    targetId: saleId,
+    targetDescription: `Venta #${saleNumber} - S/ ${sale?.total_price?.toFixed(2) ?? "?"}`,
+  });
+}
+
 export async function updateSale(
   saleId: number,
   params: SaleSubmitParams,

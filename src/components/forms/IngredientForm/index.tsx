@@ -19,6 +19,7 @@ export default function IngredientForm({
 }: IngredientFormProps) {
   const isEditMode = !!ingredient;
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const { register, handleSubmit, reset } = useForm<CreateIngredient>();
 
@@ -45,6 +46,7 @@ export default function IngredientForm({
   if (!isOpen) return null;
 
   const onSubmit: SubmitHandler<CreateIngredient> = async (data) => {
+    setSubmitError(null);
     setIsSubmitting(true);
 
     try {
@@ -76,6 +78,7 @@ export default function IngredientForm({
       onClose();
     } catch (error) {
       console.error("Error al guardar ingrediente:", error);
+      setSubmitError(error instanceof Error ? error.message : "Error al guardar ingrediente");
     } finally {
       setIsSubmitting(false);
     }
@@ -181,6 +184,12 @@ export default function IngredientForm({
               placeholder="50.00"
             />
           </div>
+
+          {submitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{submitError}</p>
+            </div>
+          )}
 
           {/* Botones */}
           <div className="flex gap-3 pt-4">

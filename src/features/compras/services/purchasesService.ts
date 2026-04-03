@@ -135,6 +135,30 @@ export async function createPurchase(params: CreatePurchaseParams): Promise<void
   }
 }
 
+export async function deletePurchase(
+  purchaseId: number,
+  userId: string | null,
+  userName: string | null,
+): Promise<void> {
+  const purchaseNumber = await getPurchaseNumber(purchaseId);
+  const supabase = createClient();
+  const { data: purchase } = await supabase
+    .from("purchases")
+    .select("total")
+    .eq("id", purchaseId)
+    .single();
+  const { error } = await supabase.from("purchases").delete().eq("id", purchaseId);
+  if (error) throw new Error(`Error al eliminar compra: ${error.message}`);
+  logAudit({
+    userId,
+    userName,
+    action: "eliminar",
+    targetTable: "purchases",
+    targetId: purchaseId,
+    targetDescription: `Compra #${purchaseNumber} - S/ ${purchase?.total?.toFixed(2) ?? "?"}`,
+  });
+}
+
 export async function updatePurchase(params: UpdatePurchaseParams): Promise<void> {
   const supabase = createClient();
 

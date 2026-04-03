@@ -36,6 +36,7 @@ export default function ProductForm({
 }: ProductFormProps) {
   const isEditMode = !!product;
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Estados para Receta y Rendimiento
   const [searchRecipe, setSearchRecipe] = useState("");
@@ -194,6 +195,7 @@ export default function ProductForm({
 
   const onSubmit: SubmitHandler<CreateProduct> = async (data) => {
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       const supabase = createClient();
       const productData = {
@@ -221,6 +223,7 @@ export default function ProductForm({
       onClose();
     } catch (error) {
       console.error("Error al guardar producto:", error);
+      setSubmitError(error instanceof Error ? error.message : "Error al guardar producto");
     } finally {
       setIsSubmitting(false);
     }
@@ -565,6 +568,12 @@ export default function ProductForm({
           className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5"
         >
           {formFields}
+
+          {submitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{submitError}</p>
+            </div>
+          )}
 
           {/* Desktop action buttons */}
           <div className="hidden md:flex gap-3 pt-4 sticky bottom-0 bg-white pb-2 border-t border-gray-100">

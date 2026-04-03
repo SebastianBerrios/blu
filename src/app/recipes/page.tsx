@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import { BookOpen, SquarePen, Trash2 } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useAuth } from "@/hooks/useAuth";
-import { logAudit } from "@/utils/auditLog";
+import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import type { Recipe } from "@/types";
 import RecipeForm from "@/components/forms/RecipeForm";
 import DataTable from "@/components/ui/DataTable";
@@ -36,18 +35,14 @@ export default function Recipes() {
   };
 
   const handleDelete = async (recipe: Recipe) => {
-    const supabase = createClient();
-    const { error } = await supabase.from("recipes").delete().eq("id", recipe.id);
-    if (!error) {
-      logAudit({
-        userId: user?.id ?? null,
-        userName: profile?.full_name ?? null,
-        action: "eliminar",
-        targetTable: "recipes",
-        targetId: recipe.id,
-        targetDescription: `Receta: ${recipe.name}`,
-      });
-    }
+    await deleteWithAudit({
+      table: "recipes",
+      id: recipe.id,
+      userId: user?.id ?? null,
+      userName: profile?.full_name ?? null,
+      auditTable: "recipes",
+      description: `Receta: ${recipe.name}`,
+    });
     mutate();
   };
 

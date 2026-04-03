@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import { FolderOpen, SquarePen, Trash2 } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
 import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
-import { logAudit } from "@/utils/auditLog";
+import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import type { Category } from "@/types";
 import CategoryForm from "@/components/forms/CategoryForm";
 import DataTable from "@/components/ui/DataTable";
@@ -33,18 +32,14 @@ export default function Categories() {
   };
 
   const handleDelete = async (category: Category) => {
-    const supabase = createClient();
-    const { error } = await supabase.from("categories").delete().eq("id", category.id);
-    if (!error) {
-      logAudit({
-        userId: user?.id ?? null,
-        userName: profile?.full_name ?? null,
-        action: "eliminar",
-        targetTable: "categories",
-        targetId: category.id,
-        targetDescription: `Categoría: ${category.name}`,
-      });
-    }
+    await deleteWithAudit({
+      table: "categories",
+      id: category.id,
+      userId: user?.id ?? null,
+      userName: profile?.full_name ?? null,
+      auditTable: "categories",
+      description: `Categoría: ${category.name}`,
+    });
     mutate();
   };
 

@@ -9,12 +9,10 @@ import {
   Trash2,
   Truck,
 } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
 import { usePurchases, groupPurchasesByDate } from "@/hooks/usePurchases";
 import { useIngredients } from "@/hooks/useIngredients";
 import { useAuth } from "@/hooks/useAuth";
-import { logAudit } from "@/utils/auditLog";
-import { getPurchaseNumber } from "@/utils/purchaseNumber";
+import { deletePurchase } from "@/features/compras/services/purchasesService";
 import type { PurchaseWithItems } from "@/types";
 import PurchaseForm from "@/components/forms/PurchaseForm";
 import Button from "@/components/ui/Button";
@@ -50,19 +48,7 @@ export default function Compras() {
 
   const handleDelete = async (purchase: PurchaseWithItems) => {
     if (!confirm("¿Estás seguro de eliminar esta compra?")) return;
-    const supabase = createClient();
-    const purchaseNumber = await getPurchaseNumber(purchase.id);
-    const { error } = await supabase.from("purchases").delete().eq("id", purchase.id);
-    if (!error) {
-      logAudit({
-        userId: user?.id ?? null,
-        userName: profile?.full_name ?? null,
-        action: "eliminar",
-        targetTable: "purchases",
-        targetId: purchase.id,
-        targetDescription: `Compra #${purchaseNumber} - S/ ${purchase.total.toFixed(2)}`,
-      });
-    }
+    await deletePurchase(purchase.id, user?.id ?? null, profile?.full_name ?? null);
     mutate();
   };
 

@@ -28,14 +28,16 @@ function OrderCard({
   completed?: boolean;
 }) {
   const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleDeliver = async (itemId: number) => {
     const key = `item-${itemId}`;
     setLoading(key);
+    setError(null);
     try {
       await onDeliver(itemId);
     } catch {
-      alert("Error al marcar como entregado");
+      setError("Error al marcar como entregado");
     } finally {
       setLoading(null);
     }
@@ -43,10 +45,11 @@ function OrderCard({
 
   const handleDeliverAll = async () => {
     setLoading("all");
+    setError(null);
     try {
       await onDeliverAll(sale.id);
     } catch {
-      alert("Error al marcar todos como entregados");
+      setError("Error al marcar todos como entregados");
     } finally {
       setLoading(null);
     }
@@ -160,6 +163,12 @@ function OrderCard({
           );
         })}
       </div>
+
+      {error && (
+        <div className="px-4 md:px-5 py-2 border-t border-red-100">
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
 
       {/* Card footer */}
       {sale.pending_count > 0 && (

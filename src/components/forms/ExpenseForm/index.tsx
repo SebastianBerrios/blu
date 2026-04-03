@@ -25,11 +25,13 @@ export default function ExpenseForm({
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setAmount("");
       setDescription("");
+      setSubmitError(null);
     }
   }, [isOpen]);
 
@@ -38,13 +40,14 @@ export default function ExpenseForm({
   const accountName = accountId === cajaAccount?.id ? "Caja" : "Banco";
 
   const handleSubmit = async () => {
+    setSubmitError(null);
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
-      alert("Ingresa un monto válido");
+      setSubmitError("Ingresa un monto válido");
       return;
     }
     if (!description.trim()) {
-      alert("Ingresa una descripción del gasto");
+      setSubmitError("Ingresa una descripción del gasto");
       return;
     }
 
@@ -70,7 +73,7 @@ export default function ExpenseForm({
       onClose();
     } catch (error) {
       console.error("Error al registrar gasto:", error);
-      alert("Ocurrió un error al registrar el gasto");
+      setSubmitError(error instanceof Error ? error.message : "Ocurrió un error al registrar el gasto");
     } finally {
       setIsSubmitting(false);
     }
@@ -148,6 +151,12 @@ export default function ExpenseForm({
               placeholder="Ej: Compra de servilletas"
             />
           </div>
+
+          {submitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{submitError}</p>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button

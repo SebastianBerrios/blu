@@ -19,6 +19,7 @@ export default function CategoryForm({
 }: CategoryFormProps) {
   const isEditMode = !!category;
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const { register, handleSubmit, reset } = useForm<CreateCategory>();
 
@@ -39,6 +40,7 @@ export default function CategoryForm({
   if (!isOpen) return null;
 
   const onSubmit: SubmitHandler<CreateCategory> = async (data) => {
+    setSubmitError(null);
     setIsSubmitting(true);
 
     try {
@@ -67,6 +69,7 @@ export default function CategoryForm({
       onClose();
     } catch (error) {
       console.error("Error al guardar categoria:", error);
+      setSubmitError(error instanceof Error ? error.message : "Error al guardar categoría");
     } finally {
       setIsSubmitting(false);
     }
@@ -114,6 +117,12 @@ export default function CategoryForm({
               placeholder="Ej: Cafes"
             />
           </div>
+
+          {submitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{submitError}</p>
+            </div>
+          )}
 
           {/* Botones */}
           <div className="flex gap-3 pt-4">

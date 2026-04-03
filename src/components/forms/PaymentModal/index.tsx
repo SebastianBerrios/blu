@@ -35,6 +35,7 @@ export default function PaymentModal({
   const [cashAmount, setCashAmount] = useState("");
   const [yapeAmount, setYapeAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -57,6 +58,7 @@ export default function PaymentModal({
   };
 
   const handleSubmit = async () => {
+    setSubmitError(null);
     let cash: number | null = null;
     let yape: number | null = null;
 
@@ -68,11 +70,11 @@ export default function PaymentModal({
       cash = parseFloat(cashAmount);
       yape = parseFloat(yapeAmount);
       if (isNaN(cash) || isNaN(yape) || cash < 0 || yape < 0) {
-        alert("Ingresa montos válidos");
+        setSubmitError("Ingresa montos válidos");
         return;
       }
       if (Math.abs(cash + yape - sale.total_price) > 0.01) {
-        alert("Los montos deben sumar el total de la venta");
+        setSubmitError("Los montos deben sumar el total de la venta");
         return;
       }
     }
@@ -129,7 +131,7 @@ export default function PaymentModal({
       onClose();
     } catch (error) {
       console.error("Error al registrar pago:", error);
-      alert("Ocurrió un error al registrar el pago");
+      setSubmitError(error instanceof Error ? error.message : "Ocurrió un error al registrar el pago");
     } finally {
       setIsSubmitting(false);
     }
@@ -245,6 +247,12 @@ export default function PaymentModal({
               <span className="block text-lg font-bold text-green-800 mt-1">
                 S/ {sale.total_price.toFixed(2)}
               </span>
+            </div>
+          )}
+
+          {submitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{submitError}</p>
             </div>
           )}
 

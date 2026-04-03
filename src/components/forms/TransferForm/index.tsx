@@ -23,17 +23,19 @@ export default function TransferForm({
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleSubmit = async () => {
+    setSubmitError(null);
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
-      alert("Ingresa un monto válido");
+      setSubmitError("Ingresa un monto válido");
       return;
     }
     if (!cajaAccount || !bancoAccount) {
-      alert("Error: cuentas no disponibles");
+      setSubmitError("Error: cuentas no disponibles");
       return;
     }
 
@@ -70,7 +72,7 @@ export default function TransferForm({
       onClose();
     } catch (error) {
       console.error("Error al transferir:", error);
-      alert("Ocurrió un error al realizar la transferencia");
+      setSubmitError(error instanceof Error ? error.message : "Ocurrió un error al realizar la transferencia");
     } finally {
       setIsSubmitting(false);
     }
@@ -138,6 +140,12 @@ export default function TransferForm({
               placeholder="Ej: Depósito del día"
             />
           </div>
+
+          {submitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{submitError}</p>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button

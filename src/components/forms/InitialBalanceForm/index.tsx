@@ -23,10 +23,12 @@ export default function InitialBalanceForm({
   const [cajaBalance, setCajaBalance] = useState("");
   const [bancoBalance, setBancoBalance] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleSubmit = async () => {
+    setSubmitError(null);
     setIsSubmitting(true);
     try {
       const supabase = createClient();
@@ -64,7 +66,7 @@ export default function InitialBalanceForm({
       onClose();
     } catch (error) {
       console.error("Error al configurar saldos:", error);
-      alert("Ocurrió un error al configurar los saldos");
+      setSubmitError(error instanceof Error ? error.message : "Ocurrió un error al configurar los saldos");
     } finally {
       setIsSubmitting(false);
     }
@@ -143,6 +145,12 @@ export default function InitialBalanceForm({
               />
             </div>
           </div>
+
+          {submitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{submitError}</p>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button

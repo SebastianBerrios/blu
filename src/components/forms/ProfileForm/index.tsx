@@ -22,6 +22,7 @@ export default function ProfileForm({
   profile,
 }: ProfileFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const { register, handleSubmit, reset } = useForm<ProfileFormData>();
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export default function ProfileForm({
   if (!isOpen) return null;
 
   const onSubmit: SubmitHandler<ProfileFormData> = async (data) => {
+    setSubmitError(null);
     setIsSubmitting(true);
 
     try {
@@ -51,6 +53,7 @@ export default function ProfileForm({
       onClose();
     } catch (error) {
       console.error("Error al actualizar perfil:", error);
+      setSubmitError(error instanceof Error ? error.message : "Error al actualizar perfil");
     } finally {
       setIsSubmitting(false);
     }
@@ -97,6 +100,12 @@ export default function ProfileForm({
               placeholder="Ej: Juan Pérez"
             />
           </div>
+
+          {submitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{submitError}</p>
+            </div>
+          )}
 
           {/* Botones */}
           <div className="flex gap-3 pt-4">
