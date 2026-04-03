@@ -14,7 +14,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useTransactions } from "@/hooks/useTransactions";
-import { toLocalDateKey } from "@/hooks/useSales";
+import { toLocalDateKey } from "@/utils/helpers/groupByDate";
 import type { TransactionType } from "@/types";
 import TransferForm from "@/components/forms/TransferForm";
 import ExpenseForm from "@/components/forms/ExpenseForm";

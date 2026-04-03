@@ -162,7 +162,7 @@ export default function EstadisticasPage() {
                 {revenueByDay.length > 0 ? (
                   <Line
                     data={{
-                      labels: revenueByDay.map((d) => formatDate(d.date)),
+                      labels: revenueByDay.map((d) => formatDateChart(d.date)),
                       datasets: [{
                         label: "Ingresos",
                         data: revenueByDay.map((d) => d.revenue),
@@ -274,7 +274,7 @@ export default function EstadisticasPage() {
                 {revenueVsExpenses.length > 0 ? (
                   <Line
                     data={{
-                      labels: revenueVsExpenses.map((d) => formatDate(d.date)),
+                      labels: revenueVsExpenses.map((d) => formatDateChart(d.date)),
                       datasets: [
                         {
                           label: "Ingresos",
@@ -385,7 +385,4 @@ function EmptyChart() {
   );
 }
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr + "T12:00:00");
-  return d.toLocaleDateString("es-PE", { day: "2-digit", month: "short" });
-}
+import { formatDateChart } from "@/utils/helpers/dateFormatters";

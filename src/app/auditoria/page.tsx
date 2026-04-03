@@ -9,12 +9,13 @@ import {
   AUDIT_TABLE_LABELS,
   type AuditAction,
   type AuditTargetTable,
-  type AuditLog,
 } from "@/types/auditLog";
 import PageHeader from "@/components/ui/PageHeader";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { redirect } from "next/navigation";
+import { formatDateLong, formatTime } from "@/utils/helpers/dateFormatters";
+import { groupByDate } from "@/utils/helpers/groupByDate";
 
 const ACTION_COLORS: Record<AuditAction, string> = {
   eliminar: "bg-red-100 text-red-700",
@@ -27,33 +28,12 @@ const ACTION_COLORS: Record<AuditAction, string> = {
   ajustar_inventario: "bg-teal-100 text-teal-700",
   editar_ingredientes_receta: "bg-indigo-100 text-indigo-700",
   crear_receta_producto: "bg-emerald-100 text-emerald-700",
+  crear: "bg-cyan-100 text-cyan-700",
+  actualizar: "bg-blue-100 text-blue-700",
+  aprobar_permiso: "bg-green-100 text-green-700",
+  rechazar_permiso: "bg-red-100 text-red-700",
+  registrar_horas_extra: "bg-amber-100 text-amber-700",
 };
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const months = [
-    "enero", "febrero", "marzo", "abril", "mayo", "junio",
-    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
-  ];
-  return `${date.getDate()} de ${months[date.getMonth()]} de ${date.getFullYear()}`;
-}
-
-function formatTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
-}
-
-function groupLogsByDate(logs: AuditLog[]): { date: string; logs: AuditLog[] }[] {
-  const groups: Record<string, AuditLog[]> = {};
-  for (const log of logs) {
-    const date = new Date(log.created_at).toISOString().split("T")[0];
-    if (!groups[date]) groups[date] = [];
-    groups[date].push(log);
-  }
-  return Object.entries(groups)
-    .sort(([a], [b]) => b.localeCompare(a))
-    .map(([date, logs]) => ({ date, logs }));
-}
 
 export default function AuditoriaPage() {
   const { isAdmin, isLoading: authLoading } = useAuth();
@@ -73,7 +53,10 @@ export default function AuditoriaPage() {
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  const groupedLogs = useMemo(() => groupLogsByDate(logs), [logs]);
+  const groupedLogs = useMemo(
+    () => groupByDate(logs, (log) => log.created_at).map(({ date, items }) => ({ date, logs: items })),
+    [logs]
+  );
 
   const hasFilters = filterAction || filterTable || filterStartDate || filterEndDate;
 
@@ -181,7 +164,7 @@ export default function AuditoriaPage() {
               <div key={group.date}>
                 <div className="px-3 md:px-4 py-2.5 md:py-3 bg-primary-100 rounded-lg mb-2">
                   <span className="font-semibold text-primary-900 capitalize text-sm md:text-base">
-                    {formatDate(group.date)}
+                    {formatDateLong(group.date)}
                   </span>
                   <span className="ml-3 text-sm text-primary-700">
                     {group.logs.length} registro{group.logs.length !== 1 ? "s" : ""}

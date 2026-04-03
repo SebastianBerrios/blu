@@ -8,19 +8,13 @@ import Spinner from "@/components/ui/Spinner";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 
+import { formatTime } from "@/utils/helpers/dateFormatters";
+
 const ORDER_TYPE_BADGE: Record<string, string> = {
   Mesa: "bg-blue-100 text-blue-700",
   "Para llevar": "bg-amber-100 text-amber-700",
   Delivery: "bg-green-100 text-green-700",
 };
-
-function formatTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleTimeString("es-PE", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function OrderCard({
   sale,

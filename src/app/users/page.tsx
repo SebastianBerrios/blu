@@ -11,6 +11,7 @@ import UserRoleForm from "@/components/forms/UserRoleForm";
 import Spinner from "@/components/ui/Spinner";
 import PageHeader from "@/components/ui/PageHeader";
 import { redirect } from "next/navigation";
+import { formatDateMedium } from "@/utils/helpers/dateFormatters";
 
 const ROLE_BADGE: Record<string, string> = {
   admin: "bg-purple-100 text-purple-700",
@@ -78,14 +79,6 @@ export default function UsersPage() {
     mutate();
   };
 
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "-";
-    return new Date(dateStr).toLocaleDateString("es-PE", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
 
   return (
     <>
@@ -207,7 +200,7 @@ export default function UsersPage() {
                             <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">Inactivo</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-700 text-center">{formatDate(user.created_at)}</td>
+                        <td className="px-6 py-4 text-sm text-slate-700 text-center">{formatDateMedium(user.created_at)}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-center gap-2">
                             <button

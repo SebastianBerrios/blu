@@ -1,7 +1,7 @@
 import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { toLocalDateKey } from "@/hooks/useSales";
+import { groupByDate } from "@/utils/helpers/groupByDate";
 import type { PurchaseWithItems, PurchasesGroupedByDate } from "@/types";
 
 const fetchPurchases = async (
@@ -68,21 +68,11 @@ const fetchPurchases = async (
 export function groupPurchasesByDate(
   purchases: PurchaseWithItems[]
 ): PurchasesGroupedByDate[] {
-  const groups: Record<string, PurchaseWithItems[]> = {};
-
-  for (const purchase of purchases) {
-    const dateKey = toLocalDateKey(purchase.created_at);
-    if (!groups[dateKey]) groups[dateKey] = [];
-    groups[dateKey].push(purchase);
-  }
-
-  return Object.entries(groups)
-    .sort(([a], [b]) => b.localeCompare(a))
-    .map(([date, purchases]) => ({
-      date,
-      dailyTotal: purchases.reduce((sum, p) => sum + p.total, 0),
-      purchases,
-    }));
+  return groupByDate(purchases, (p) => p.created_at).map(({ date, items }) => ({
+    date,
+    dailyTotal: items.reduce((sum, p) => sum + p.total, 0),
+    purchases: items,
+  }));
 }
 
 export const usePurchases = () => {

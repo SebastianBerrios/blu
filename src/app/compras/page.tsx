@@ -22,20 +22,7 @@ import Spinner from "@/components/ui/Spinner";
 import PageHeader from "@/components/ui/PageHeader";
 import FAB from "@/components/ui/FAB";
 import EmptyState from "@/components/ui/EmptyState";
-
-function formatDate(dateStr: string): string {
-  const [year, month, day] = dateStr.split("-");
-  const months = [
-    "enero", "febrero", "marzo", "abril", "mayo", "junio",
-    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
-  ];
-  return `${parseInt(day)} de ${months[parseInt(month) - 1]} de ${year}`;
-}
-
-function formatTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
-}
+import { formatDateLong, formatTime } from "@/utils/helpers/dateFormatters";
 
 export default function Compras() {
   const { purchases, error, isLoading, mutate } = usePurchases();
@@ -160,7 +147,7 @@ export default function Compras() {
                         <ChevronUp className="w-4 h-4 text-primary-700" />
                       )}
                       <span className="font-semibold text-primary-900 capitalize text-sm md:text-base">
-                        {formatDate(group.date)}
+                        {formatDateLong(group.date)}
                       </span>
                     </div>
                     {isAdmin && (

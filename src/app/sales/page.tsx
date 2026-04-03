@@ -23,39 +23,13 @@ import Spinner from "@/components/ui/Spinner";
 import PageHeader from "@/components/ui/PageHeader";
 import FAB from "@/components/ui/FAB";
 import EmptyState from "@/components/ui/EmptyState";
+import { formatDateLong, formatTime } from "@/utils/helpers/dateFormatters";
 
 const ORDER_TYPE_BADGE: Record<string, string> = {
   Mesa: "bg-blue-100 text-blue-700",
   "Para llevar": "bg-amber-100 text-amber-700",
   Delivery: "bg-green-100 text-green-700",
 };
-
-function formatDate(dateStr: string): string {
-  const [year, month, day] = dateStr.split("-");
-  const months = [
-    "enero",
-    "febrero",
-    "marzo",
-    "abril",
-    "mayo",
-    "junio",
-    "julio",
-    "agosto",
-    "septiembre",
-    "octubre",
-    "noviembre",
-    "diciembre",
-  ];
-  return `${parseInt(day)} de ${months[parseInt(month) - 1]} de ${year}`;
-}
-
-function formatTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleTimeString("es-PE", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default function Sales() {
   const { isAdmin, user, profile } = useAuth();
@@ -191,7 +165,7 @@ export default function Sales() {
                         <ChevronUp className="w-4 h-4 text-primary-700" />
                       )}
                       <span className="font-semibold text-primary-900 capitalize text-sm md:text-base">
-                        {formatDate(group.date)}
+                        {formatDateLong(group.date)}
                       </span>
                     </div>
                     {isAdmin && (

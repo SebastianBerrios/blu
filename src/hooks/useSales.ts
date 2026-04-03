@@ -1,11 +1,9 @@
 import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
+import { toLocalDateKey, groupByDate } from "@/utils/helpers/groupByDate";
 import type { SaleWithProducts, SalesGroupedByDate } from "@/types";
 
-export function toLocalDateKey(isoString: string): string {
-  const d = new Date(isoString);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
+export { toLocalDateKey };
 
 function getTodayStart(): string {
   const now = new Date();
@@ -94,21 +92,11 @@ const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
 export function groupSalesByDate(
   sales: SaleWithProducts[]
 ): SalesGroupedByDate[] {
-  const groups: Record<string, SaleWithProducts[]> = {};
-
-  for (const sale of sales) {
-    const dateKey = toLocalDateKey(sale.sale_date);
-    if (!groups[dateKey]) groups[dateKey] = [];
-    groups[dateKey].push(sale);
-  }
-
-  return Object.entries(groups)
-    .sort(([a], [b]) => b.localeCompare(a))
-    .map(([date, sales]) => ({
-      date,
-      dailyTotal: sales.reduce((sum, s) => sum + s.total_price, 0),
-      sales,
-    }));
+  return groupByDate(sales, (s) => s.sale_date).map(({ date, items }) => ({
+    date,
+    dailyTotal: items.reduce((sum, s) => sum + s.total_price, 0),
+    sales: items,
+  }));
 }
 
 export const useSales = ({ todayOnly = false }: { todayOnly?: boolean } = {}) => {

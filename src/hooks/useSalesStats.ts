@@ -10,7 +10,7 @@ import type {
   RevenueVsExpenses,
   DateRange,
 } from "@/types";
-import { toLocalDateKey } from "@/hooks/useSales";
+import { toLocalDateKey } from "@/utils/helpers/groupByDate";
 
 interface SaleRow {
   id: number;
