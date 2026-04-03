@@ -32,7 +32,7 @@ export default function UserRoleForm({
   useEffect(() => {
     if (isOpen && user) {
       reset({
-        role: user.role ?? ("barista" as AppRole),
+        role: user.role ?? "barista",
       });
     }
   }, [isOpen, user, reset]);
