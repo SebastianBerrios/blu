@@ -121,6 +121,53 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_tasks: {
+        Row: {
+          category: string
+          created_at: string | null
+          days_of_week: number[] | null
+          frequency: string
+          id: number
+          is_active: boolean | null
+          sort_order: number | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          days_of_week?: number[] | null
+          frequency: string
+          id?: never
+          is_active?: boolean | null
+          sort_order?: number | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          days_of_week?: number[] | null
+          frequency?: string
+          id?: never
+          is_active?: boolean | null
+          sort_order?: number | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_tasks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       extra_hours_log: {
         Row: {
           created_at: string
@@ -248,6 +295,7 @@ export type Database = {
         Row: {
           category_id: number | null
           id: number
+          is_available: boolean
           manufacturing_cost: number | null
           name: string
           price: number
@@ -259,6 +307,7 @@ export type Database = {
         Insert: {
           category_id?: number | null
           id?: never
+          is_available?: boolean
           manufacturing_cost?: number | null
           name: string
           price: number
@@ -270,6 +319,7 @@ export type Database = {
         Update: {
           category_id?: number | null
           id?: never
+          is_available?: boolean
           manufacturing_cost?: number | null
           name?: string
           price?: number
@@ -559,7 +609,9 @@ export type Database = {
           created_by: string | null
           end_time: string | null
           id: number
+          is_absence: boolean | null
           is_day_off: boolean
+          is_extra_shift: boolean | null
           override_date: string
           reason: string | null
           start_time: string | null
@@ -571,7 +623,9 @@ export type Database = {
           created_by?: string | null
           end_time?: string | null
           id?: never
+          is_absence?: boolean | null
           is_day_off?: boolean
+          is_extra_shift?: boolean | null
           override_date: string
           reason?: string | null
           start_time?: string | null
@@ -583,7 +637,9 @@ export type Database = {
           created_by?: string | null
           end_time?: string | null
           id?: never
+          is_absence?: boolean | null
           is_day_off?: boolean
+          is_extra_shift?: boolean | null
           override_date?: string
           reason?: string | null
           start_time?: string | null
@@ -645,6 +701,55 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "schedule_templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_completions: {
+        Row: {
+          completed_at: string | null
+          completed_by: string | null
+          completion_date: string
+          id: number
+          task_id: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_by?: string | null
+          completion_date: string
+          id?: never
+          task_id: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_by?: string | null
+          completion_date?: string
+          id?: never
+          task_id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_completions_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_completions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "employee_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_completions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"

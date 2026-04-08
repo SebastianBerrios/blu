@@ -15,3 +15,4 @@ export * from "./stats";
 export * from "./auditLog";
 export * from "./inventoryMovements";
 export * from "./schedule";
+export * from "./activity";

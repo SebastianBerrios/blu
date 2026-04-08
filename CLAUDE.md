@@ -33,7 +33,7 @@ Blu is a café/bakery business management system. It manages ingredients, recipe
 src/
 ├── app/              # Next.js App Router pages (all "use client")
 │   ├── categories/   # Category management
-│   ├── products/     # Product management
+│   ├── products/     # Product management (uses features/productos/ for AvailabilityTab)
 │   ├── ingredients/  # Ingredient inventory (admin only)
 │   ├── recipes/      # Recipe management (admin only)
 │   ├── sales/        # Sales/orders
@@ -47,16 +47,24 @@ src/
 │   ├── users/        # User management (admin only)
 │   ├── login/        # Authentication (email/password + Google OAuth)
 │   └── auth/callback # OAuth callback
+├── features/         # Feature-based modules (new code goes here)
+│   ├── ventas/       # Sales sub-components (PaymentSection, ProductSelector) + salesService
+│   ├── recetas/      # Recipe sub-components (IngredientSelector/List) + recipesService
+│   ├── compras/      # Purchase sub-components (ItemSelector/List) + purchasesService
+│   ├── inventario/   # StockTab, HistorialTab + inventoryService
+│   ├── horario/      # ScheduleTab, MonthlyCalendarGrid, BalanceTab, RequestsTab + scheduleService
+│   └── productos/    # AvailabilityTab + productAvailabilityService
 ├── components/
-│   ├── forms/        # Modal form components
+│   ├── forms/        # Modal form components (legacy + schedule/HR forms)
 │   ├── ui/           # Reusable UI (Button, DataTable, Spinner, PageHeader, EmptyState, FAB, BottomNav, BottomSheet)
 │   ├── SideBar/      # Desktop navigation sidebar
 │   ├── AppShell.tsx  # Layout wrapper (sidebar + bottom nav)
 │   └── AuthGuard.tsx # Auth + role-based access wrapper (handles loading/pending/inactive states)
-├── hooks/            # SWR-based data hooks
+├── hooks/            # SWR-based data hooks + useModalState utility hook
 ├── types/            # TypeScript types (database.ts is auto-generated, domain types in separate files, re-exported from index.ts)
 └── utils/
     ├── supabase/     # Supabase client (client.ts for browser, server.ts for SSR, middleware.ts)
+    ├── helpers/      # Shared utilities: dateFormatters, groupByDate, deleteWithAudit (barrel: index.ts)
     ├── auditLog.ts   # Fire-and-forget audit logging (never throws)
     ├── saleNumber.ts # Sequential sale number generator
     └── purchaseNumber.ts # Sequential purchase number generator
@@ -67,10 +75,10 @@ src/
 ### Page Pattern
 All data pages follow this structure:
 1. `"use client"` + SWR hook for data + `useAuth()` for permissions
-2. `useState` for modal open/close and selected item
+2. `useState` for modal open/close and selected item (new code can use `useModalState<T>()` hook)
 3. `PageHeader` → `DataTable` (with `renderCard` for mobile) → modal `Form`
 4. `FAB` for mobile add button
-5. Delete: call Supabase directly → `logAudit()` → `mutate()` to revalidate
+5. Delete: use `deleteWithAudit()` helper (new code) or call Supabase directly → `logAudit()` → `mutate()` (legacy)
 6. Role check: `isAdmin` or `hasRole()` to show/hide actions
 
 **Tab-based pages** (`horario`, `inventario`) use local `useState` for active tab instead of URL params.
@@ -95,7 +103,9 @@ Hooks with filters use composite SWR keys: `["transactions", filters]`.
 - `usePendingOrders` — subscribes to **Supabase Realtime** (`postgres_changes` on `sale_products`) for live updates. Only hook using Realtime.
 - `useInventory` — returns two separate mutate functions: `mutateIngredients` and `mutateMovements`.
 - `useSalesStats` — uses `dedupingInterval: 5000` (not 2000).
-- `useSchedule`, `useTimeOffRequests`, `useExtraHours` — role-aware hooks that use `[isAdmin, user?.id]` in SWR key, returning `null` key while auth is loading.
+- `useSchedule`, `useMonthSchedule`, `useTimeOffRequests`, `useExtraHours` — role-aware hooks that use `[isAdmin, user?.id]` in SWR key, returning `null` key while auth is loading.
+- `useModalState<T>()` — generic modal state hook (not SWR). Use for new code; existing pages keep their `useState` pattern.
+- `useAuditLogs`, `useAccounts`, `useTransactions` — standard SWR hooks with filter support.
 
 **No global state management** — state is local to components or lifted via props.
 
@@ -170,16 +180,16 @@ Tailwind utility-first, mobile-first responsive design (`md:` breakpoint for des
 
 ## Arquitectura del Proyecto
 
-- **Feature-Based Architecture pragmática** (migración gradual desde flat structure)
+- **Feature-Based Architecture pragmática** — migration Phases 0–3 complete (helpers extracted, god forms decomposed, services created, barrel exports done)
 - **Capas**: `types` → `services` → `hooks` → `components` → `pages` (nunca al revés)
 - **Código nuevo**: usar `features/[nombre]/` con service layer obligatorio — componentes nunca llaman `createClient()` directamente
 - **Código existente**: migrar solo cuando se toca significativamente — cambios menores respetan el patrón actual
-- **Shared utilities**: en `utils/helpers/` cuando se usa en 3+ lugares, en `utils/constants/` para constantes compartidas
+- **Shared utilities**: `utils/helpers/` has `dateFormatters.ts`, `groupByDate.ts`, `deleteWithAudit.ts` (barrel: `index.ts`)
 - **Límites de tamaño**: Page <200 LOC, Form <300 LOC, Hook <200 LOC, Service <150 LOC
 - **Error handling** (código nuevo): Service throws → Hook catches → Component muestra error inline (no `alert()`)
 - **Para cualquier trabajo visual** (componentes, páginas, forms, modales, tablas, dashboards, o cualquier elemento de UI): consultar la skill `frontend-design` antes de escribir código de UI
+- **Feature modules**: `ventas`, `recetas`, `compras`, `inventario`, `horario`, `productos` — each with `components/`, `services/`, barrel `index.ts`
 - Ver `.claude/skills/cafeteria-architecture/SKILL.md` para reglas completas
-- Ver `.claude/skills/cafeteria-architecture/references/migration.md` para el plan de migración gradual
 
 ## Environment Variables
 

@@ -33,6 +33,8 @@ const ACTION_COLORS: Record<AuditAction, string> = {
   aprobar_permiso: "bg-green-100 text-green-700",
   rechazar_permiso: "bg-red-100 text-red-700",
   registrar_horas_extra: "bg-amber-100 text-amber-700",
+  marcar_inasistencia: "bg-red-100 text-red-700",
+  cambiar_disponibilidad: "bg-emerald-100 text-emerald-700",
 };
 
 export default function AuditoriaPage() {

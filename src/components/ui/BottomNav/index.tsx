@@ -18,6 +18,7 @@ import {
   ScrollText,
   Package,
   CalendarDays,
+  ClipboardCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import BottomSheet from "@/components/ui/BottomSheet";
@@ -56,6 +57,7 @@ const MORE_ITEMS: MoreItem[] = [
   { href: "/products", label: "Productos", icon: ShoppingBasket },
   { href: "/inventario", label: "Inventario", icon: Package },
   { href: "/horario", label: "Horario", icon: CalendarDays },
+  { href: "/actividades", label: "Actividades", icon: ClipboardCheck },
   { href: "/finanzas", label: "Finanzas", icon: Wallet, adminOnly: true },
   { href: "/estadisticas", label: "Estadísticas", icon: BarChart3, adminOnly: true },
   { href: "/auditoria", label: "Auditoría", icon: ScrollText, adminOnly: true },

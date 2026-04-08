@@ -20,6 +20,7 @@ import {
   ScrollText,
   Package,
   CalendarDays,
+  ClipboardCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import ProfileForm from "@/components/forms/ProfileForm";
@@ -42,6 +43,7 @@ const allNavItems: NavItem[] = [
   { id: 6, nav: "/compras", name: "Compras", icon: ShoppingCart },
   { id: 12, nav: "/inventario", name: "Inventario", icon: Package },
   { id: 13, nav: "/horario", name: "Horario", icon: CalendarDays },
+  { id: 14, nav: "/actividades", name: "Actividades", icon: ClipboardCheck },
   { id: 9, nav: "/finanzas", name: "Finanzas", icon: Wallet, adminOnly: true },
   { id: 10, nav: "/estadisticas", name: "Estadisticas", icon: BarChart3, adminOnly: true },
   { id: 11, nav: "/auditoria", name: "Auditoría", icon: ScrollText, adminOnly: true },

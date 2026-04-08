@@ -10,6 +10,7 @@ import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import type { Product, Recipe } from "@/types";
 import ProductForm from "@/components/forms/ProductForm";
 import RecipeForm from "@/components/forms/RecipeForm";
+import AvailabilityTab from "@/features/productos/components/AvailabilityTab";
 import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
 import PageHeader from "@/components/ui/PageHeader";
@@ -36,6 +37,7 @@ export default function Products() {
 
   const canEditRecipe = (product: Product) =>
     !product.category_id || !restrictedCategoryIds.has(product.category_id);
+  const [activeTab, setActiveTab] = useState<"productos" | "disponibilidad">("productos");
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>();
 
@@ -111,13 +113,39 @@ export default function Products() {
           subtitle="Gestiona los productos de tu cafetería"
           icon={<ShoppingBasket className="w-6 h-6 text-primary-700" />}
           action={
-            isAdmin ? (
+            isAdmin && activeTab === "productos" ? (
               <Button variant="primary" icon={true} onClick={handleCreate}>
                 Agregar producto
               </Button>
             ) : undefined
           }
         />
+
+        {/* Tab switcher */}
+        <div className="px-4 md:px-6 pt-4 shrink-0">
+          <div className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit">
+            <button
+              onClick={() => setActiveTab("productos")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === "productos"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Productos
+            </button>
+            <button
+              onClick={() => setActiveTab("disponibilidad")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === "disponibilidad"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Disponibilidad
+            </button>
+          </div>
+        </div>
 
         <div className="flex-1 px-4 py-4 md:px-6 md:py-6 overflow-auto">
           {error && (
@@ -127,7 +155,17 @@ export default function Products() {
               </p>
             </div>
           )}
-          <DataTable<Product>
+          {activeTab === "disponibilidad" && (
+            <AvailabilityTab
+              products={products}
+              categories={categories}
+              isAdmin={isAdmin}
+              user={user}
+              profile={profile}
+              mutate={mutate}
+            />
+          )}
+          {activeTab === "productos" && <DataTable<Product>
             title="Lista de Productos"
             columns={columns}
             dataKeys={dataKeys}
@@ -182,11 +220,11 @@ export default function Products() {
                 )}
               </div>
             )}
-          />
+          />}
         </div>
       </section>
 
-      {isAdmin && <FAB onClick={handleCreate} label="Agregar producto" />}
+      {isAdmin && activeTab === "productos" && <FAB onClick={handleCreate} label="Agregar producto" />}
 
       {isAdmin && (
         <ProductForm

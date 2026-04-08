@@ -17,7 +17,9 @@ export type AuditAction =
   | "actualizar"
   | "aprobar_permiso"
   | "rechazar_permiso"
-  | "registrar_horas_extra";
+  | "registrar_horas_extra"
+  | "marcar_inasistencia"
+  | "cambiar_disponibilidad";
 
 export type AuditTargetTable =
   | "categories"
@@ -34,7 +36,9 @@ export type AuditTargetTable =
   | "schedule_templates"
   | "schedule_overrides"
   | "time_off_requests"
-  | "extra_hours_log";
+  | "extra_hours_log"
+  | "employee_tasks"
+  | "task_completions";
 
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   eliminar: "Eliminación",
@@ -52,6 +56,8 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   aprobar_permiso: "Aprobación de permiso",
   rechazar_permiso: "Rechazo de permiso",
   registrar_horas_extra: "Registro de horas extra",
+  marcar_inasistencia: "Inasistencia",
+  cambiar_disponibilidad: "Cambio de disponibilidad",
 };
 
 export const AUDIT_TABLE_LABELS: Record<AuditTargetTable, string> = {
@@ -70,4 +76,6 @@ export const AUDIT_TABLE_LABELS: Record<AuditTargetTable, string> = {
   schedule_overrides: "Excepciones de horario",
   time_off_requests: "Solicitudes de permiso",
   extra_hours_log: "Horas extra",
+  employee_tasks: "Tareas de empleados",
+  task_completions: "Completaciones de tareas",
 };
