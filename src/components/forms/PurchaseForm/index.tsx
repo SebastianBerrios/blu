@@ -12,6 +12,10 @@ import {
 } from "@/features/compras/services/purchasesService";
 import ItemSelector from "@/features/compras/components/ItemSelector";
 import ItemList from "@/features/compras/components/ItemList";
+import AccountSelector from "@/features/compras/components/AccountSelector";
+import DeliverySection from "@/features/compras/components/DeliverySection";
+import YapeChangeSection from "@/features/compras/components/YapeChangeSection";
+import PurchaseTotalDisplay from "@/features/compras/components/PurchaseTotalDisplay";
 
 interface PurchaseFormProps {
   isOpen: boolean;
@@ -147,57 +151,19 @@ export default function PurchaseForm({
 
   const formFields = (
     <>
-      {/* Cuenta de pago */}
-      <div>
-        <label className="block text-sm font-medium text-slate-900 mb-2">
-          Pagar desde <span className="text-red-600">*</span>
-        </label>
-        <div className="flex gap-2">
-          {!cajaAccount && !bancoAccount && (
-            <p className="text-sm text-red-600">
-              No hay cuentas configuradas. Contacta al administrador.
-            </p>
-          )}
-          {cajaAccount && (
-            <button
-              type="button"
-              onClick={() => setSelectedAccountId(cajaAccount.id)}
-              disabled={isSubmitting}
-              className={`flex-1 px-4 py-3 min-h-[44px] rounded-lg border-2 font-medium transition-all ${
-                selectedAccountId === cajaAccount.id
-                  ? "bg-green-100 text-green-700 border-green-300"
-                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-              }`}
-            >
-              Caja
-            </button>
-          )}
-          {bancoAccount && (
-            <button
-              type="button"
-              onClick={() => {
-                if (isAdmin) {
-                  setSelectedAccountId(bancoAccount.id);
-                  setHasYapeChange(false);
-                  setYapeChange("");
-                }
-              }}
-              disabled={isSubmitting || !isAdmin}
-              title={!isAdmin ? "Solo administradores pueden usar la cuenta bancaria" : undefined}
-              className={`flex-1 px-4 py-3 min-h-[44px] rounded-lg border-2 font-medium transition-all ${
-                selectedAccountId === bancoAccount.id
-                  ? "bg-blue-100 text-blue-700 border-blue-300"
-                  : !isAdmin
-                  ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-              }`}
-            >
-              Cuenta Bancaria
-              {!isAdmin && <span className="block text-xs mt-0.5">Solo admin</span>}
-            </button>
-          )}
-        </div>
-      </div>
+      <AccountSelector
+        cajaAccount={cajaAccount}
+        bancoAccount={bancoAccount}
+        selectedAccountId={selectedAccountId}
+        onSelect={setSelectedAccountId}
+        onSelectBanco={(id) => {
+          setSelectedAccountId(id);
+          setHasYapeChange(false);
+          setYapeChange("");
+        }}
+        isAdmin={isAdmin}
+        isSubmitting={isSubmitting}
+      />
 
       {/* Agregar ítems */}
       <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
@@ -223,90 +189,23 @@ export default function PurchaseForm({
         />
       </div>
 
-      {/* Delivery */}
-      <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={hasDelivery}
-            onChange={(e) => setHasDelivery(e.target.checked)}
-            disabled={isSubmitting}
-            className="w-4 h-4 rounded border-primary-300 text-primary-600 focus:ring-primary-500"
-          />
-          <span className="text-sm font-medium text-slate-900">
-            Tiene delivery
-          </span>
-        </label>
-
-        {hasDelivery && (
-          <div className="mt-3">
-            <label className="block text-sm font-medium text-slate-900 mb-1.5">
-              Costo de delivery
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
-                S/
-              </span>
-              <input
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={deliveryCost}
-                onChange={(e) => setDeliveryCost(e.target.value)}
-                disabled={isSubmitting}
-                className="w-full pl-9 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-                placeholder="0.00"
-              />
-            </div>
-          </div>
-        )}
-      </div>
+      <DeliverySection
+        hasDelivery={hasDelivery}
+        deliveryCost={deliveryCost}
+        onToggleDelivery={setHasDelivery}
+        onChangeCost={setDeliveryCost}
+        isSubmitting={isSubmitting}
+      />
 
       {/* Vuelto por Yape (solo Caja, solo modo crear) */}
       {!isEditMode && cajaAccount && selectedAccountId === cajaAccount.id && (
-        <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={hasYapeChange}
-              onChange={(e) => {
-                setHasYapeChange(e.target.checked);
-                if (!e.target.checked) setYapeChange("");
-              }}
-              disabled={isSubmitting}
-              className="w-4 h-4 rounded border-primary-300 text-primary-600 focus:ring-primary-500"
-            />
-            <span className="text-sm font-medium text-slate-900">
-              Vuelto por Yape
-            </span>
-          </label>
-
-          {hasYapeChange && (
-            <div className="mt-3">
-              <label className="block text-sm font-medium text-slate-900 mb-1.5">
-                Monto del vuelto
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
-                  S/
-                </span>
-                <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  value={yapeChange}
-                  onChange={(e) => setYapeChange(e.target.value)}
-                  disabled={isSubmitting}
-                  className="w-full pl-9 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-                  placeholder="0.00"
-                />
-              </div>
-              <p className="text-xs text-slate-500 mt-1.5">
-                El vuelto que el vendedor te devolvió por Yape (se registra en la Cuenta Bancaria)
-              </p>
-            </div>
-          )}
-        </div>
+        <YapeChangeSection
+          hasYapeChange={hasYapeChange}
+          yapeChange={yapeChange}
+          onToggle={setHasYapeChange}
+          onChange={setYapeChange}
+          isSubmitting={isSubmitting}
+        />
       )}
 
       {/* Notas */}
@@ -326,31 +225,16 @@ export default function PurchaseForm({
 
       {/* Total */}
       {items.length > 0 && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-          {hasYapeChange && !isEditMode && cajaAccount && selectedAccountId === cajaAccount.id && parseFloat(yapeChange) > 0 ? (
-            <div className="space-y-1">
-              <div className="flex justify-between text-sm text-slate-600">
-                <span>Total compra:</span>
-                <span className="font-medium">S/ {total.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm text-red-700">
-                <span>Caja descuenta:</span>
-                <span className="font-medium">S/ {(total + (parseFloat(yapeChange) || 0)).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm text-blue-700">
-                <span>Banco recibe (vuelto Yape):</span>
-                <span className="font-medium">S/ {(parseFloat(yapeChange) || 0).toFixed(2)}</span>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center">
-              <span className="text-sm text-green-700">Total de la compra:</span>
-              <span className="ml-2 font-bold text-green-800 text-lg">
-                S/ {total.toFixed(2)}
-              </span>
-            </div>
-          )}
-        </div>
+        <PurchaseTotalDisplay
+          total={total}
+          yapeChange={yapeChange}
+          showYapeBreakdown={
+            hasYapeChange &&
+            !isEditMode &&
+            !!cajaAccount &&
+            selectedAccountId === cajaAccount.id
+          }
+        />
       )}
 
       {/* Inline error */}

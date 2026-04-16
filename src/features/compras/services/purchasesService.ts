@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/client";
 import { logAudit } from "@/utils/auditLog";
+import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import { recordTransaction } from "@/hooks/useTransactions";
 import { getPurchaseNumber } from "@/utils/purchaseNumber";
 import type { PurchaseItemLine } from "@/types";
@@ -38,10 +39,7 @@ export function validatePurchaseForm(params: {
     if (yapeAmount <= 0) {
       return "Ingresa un monto válido para el vuelto por Yape";
     }
-    if (yapeAmount >= params.total) {
-      return "El vuelto no puede ser mayor o igual al total de la compra";
-    }
-    if (!params.hasBancoAccount) {
+if (!params.hasBancoAccount) {
       return "No hay cuenta bancaria configurada para recibir el vuelto";
     }
   }
@@ -147,15 +145,14 @@ export async function deletePurchase(
     .select("total")
     .eq("id", purchaseId)
     .single();
-  const { error } = await supabase.from("purchases").delete().eq("id", purchaseId);
-  if (error) throw new Error(`Error al eliminar compra: ${error.message}`);
-  logAudit({
+
+  await deleteWithAudit({
+    table: "purchases",
+    id: purchaseId,
     userId,
     userName,
-    action: "eliminar",
-    targetTable: "purchases",
-    targetId: purchaseId,
-    targetDescription: `Compra #${purchaseNumber} - S/ ${purchase?.total?.toFixed(2) ?? "?"}`,
+    auditTable: "purchases",
+    description: `Compra #${purchaseNumber} - S/ ${purchase?.total?.toFixed(2) ?? "?"}`,
   });
 }
 
