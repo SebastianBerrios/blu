@@ -1,14 +1,20 @@
 import { useState, useEffect } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { X } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
-import type { CreateIngredient, Ingredient } from "@/types";
+import { toast } from "sonner";
+import {
+  buildIngredientPayload,
+  createIngredient,
+  updateIngredient,
+} from "@/features/ingredientes";
+import type { CreateIngredient, Ingredient, IngredientGroup } from "@/types";
 
 interface IngredientFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   ingredient?: Ingredient;
+  groups?: IngredientGroup[];
 }
 
 export default function IngredientForm({
@@ -16,6 +22,7 @@ export default function IngredientForm({
   onClose,
   onSuccess,
   ingredient,
+  groups,
 }: IngredientFormProps) {
   const isEditMode = !!ingredient;
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,6 +38,7 @@ export default function IngredientForm({
           quantity: ingredient.quantity,
           unit_of_measure: ingredient.unit_of_measure,
           price: ingredient.price,
+          group_id: ingredient.group_id ?? undefined,
         });
       } else {
         reset({
@@ -38,6 +46,7 @@ export default function IngredientForm({
           quantity: 0,
           unit_of_measure: "",
           price: 0,
+          group_id: undefined,
         });
       }
     }
@@ -50,35 +59,23 @@ export default function IngredientForm({
     setIsSubmitting(true);
 
     try {
-      const supabase = createClient();
-
-      const ingredientData = {
-        name: data.name.toLowerCase(),
-        quantity: Number(data.quantity),
-        unit_of_measure: data.unit_of_measure,
-        price: Number(data.price),
-      };
+      const payload = buildIngredientPayload(data);
 
       if (isEditMode) {
-        const { error } = await supabase
-          .from("ingredients")
-          .update(ingredientData)
-          .eq("id", ingredient.id);
-
-        if (error) throw error;
+        await updateIngredient(ingredient.id, payload);
+        toast.success("Ingrediente actualizado");
       } else {
-        const { error } = await supabase
-          .from("ingredients")
-          .insert(ingredientData);
-
-        if (error) throw error;
+        await createIngredient(payload);
+        toast.success("Ingrediente creado");
       }
 
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Error al guardar ingrediente:", error);
-      setSubmitError(error instanceof Error ? error.message : "Error al guardar ingrediente");
+      const msg = error instanceof Error ? error.message : "Error al guardar ingrediente";
+      setSubmitError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -184,6 +181,25 @@ export default function IngredientForm({
               placeholder="50.00"
             />
           </div>
+
+          {/* Grupo (opcional) */}
+          {groups && groups.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-slate-900 mb-1.5">
+                Grupo
+              </label>
+              <select
+                {...register("group_id")}
+                disabled={isSubmitting}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+              >
+                <option value="">Sin grupo</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {submitError && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg">

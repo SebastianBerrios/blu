@@ -38,7 +38,8 @@ export type AuditTargetTable =
   | "time_off_requests"
   | "extra_hours_log"
   | "employee_tasks"
-  | "task_completions";
+  | "task_completions"
+  | "ingredient_groups";
 
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   eliminar: "Eliminación",
@@ -78,4 +79,5 @@ export const AUDIT_TABLE_LABELS: Record<AuditTargetTable, string> = {
   extra_hours_log: "Horas extra",
   employee_tasks: "Tareas de empleados",
   task_completions: "Completaciones de tareas",
+  ingredient_groups: "Grupos de ingredientes",
 };

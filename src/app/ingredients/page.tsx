@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChefHat, SquarePen, Trash2 } from "lucide-react";
 import { useIngredients } from "@/hooks/useIngredients";
+import { useInventory } from "@/hooks/useInventory";
 import { useAuth } from "@/hooks/useAuth";
 import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import type { Ingredient } from "@/types";
@@ -16,6 +17,7 @@ import { redirect } from "next/navigation";
 export default function Ingredients() {
   const { isAdmin, isLoading: authLoading, user, profile } = useAuth();
   const { ingredients, error, isLoading, mutate } = useIngredients();
+  const { groups } = useInventory();
 
   if (!authLoading && !isAdmin) {
     redirect("/");
@@ -121,6 +123,7 @@ export default function Ingredients() {
         onClose={handleCloseModal}
         onSuccess={handleSuccess}
         ingredient={selectedIngredient}
+        groups={groups}
       />
     </>
   );
