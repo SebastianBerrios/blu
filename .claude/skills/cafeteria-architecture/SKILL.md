@@ -15,6 +15,32 @@ description: >
 
 > **Regla de oro**: Esta app está en producción y funciona bien. Migrar gradualmente, nunca reescribir. El código nuevo sigue las reglas nuevas; el código existente se migra solo cuando se toca.
 
+## Skill Orchestration
+
+> **Regla de oro de orquestación**: Esta skill (`cafeteria-architecture`) es el **entry point obligatorio** para cualquier tarea en este proyecto (crear, modificar, refactorizar, fix, renombrar, nueva lógica). Después de aplicar las reglas arquitectónicas de aquí, delega a las sub-skills apropiadas según el tipo de tarea.
+
+### Matriz de orquestación
+
+| Tipo de tarea | Skills a invocar (en orden) |
+|---|---|
+| Crear/modificar componente visual, página, form, modal, tabla, dashboard | `cafeteria-architecture` (reglas base) → `frontend-design` (antes de codear UI) → `vercel-react-best-practices` (durante) → `react-doctor` (después) |
+| Crear/modificar hook (SWR o custom) | `cafeteria-architecture` → `vercel-react-best-practices` → `react-doctor` |
+| Crear/modificar service que habla con Supabase | `cafeteria-architecture` → `supabase` → `supabase-postgres-best-practices` (si toca SQL/RPC directo) |
+| Nuevo tipo TS / refactor de tipos | `cafeteria-architecture` (sola) |
+| Cambio de schema / migración / RPC / RLS / policy | `cafeteria-architecture` → `supabase` → `supabase-postgres-best-practices` |
+| Bug fix en UI | `cafeteria-architecture` → `frontend-design` (si cambia visual) → `react-doctor` |
+| Bug fix en lógica React / hooks | `cafeteria-architecture` → `vercel-react-best-practices` → `react-doctor` |
+| Bug fix en DB / query / auth | `cafeteria-architecture` → `supabase` → `supabase-postgres-best-practices` (si es performance) |
+| Renombrar / refactor puro sin cambio funcional | `cafeteria-architecture` (sola) |
+| Optimización de performance React/Next | `cafeteria-architecture` → `vercel-react-best-practices` → `react-doctor` |
+| Optimización de performance Postgres/SQL | `cafeteria-architecture` → `supabase-postgres-best-practices` |
+
+### Cómo invocar
+
+- Usar el tool `Skill` con el nombre exacto (ej. `Skill frontend-design`) o mencionar la skill explícitamente en el razonamiento antes de generar código.
+- Las skills pueden invocarse secuencialmente: terminar una sección de trabajo bajo la guía de una skill antes de pasar a la siguiente.
+- `react-doctor` es built-in de Claude Code (no vive en `.claude/skills/`); las otras cuatro sí están versionadas en el repo.
+
 ## Quick Decision Guide
 
 Antes de escribir código, responde:
@@ -30,8 +56,12 @@ Antes de escribir código, responde:
    - Renderiza UI → Component (`components/` o `features/[nombre]/components/`)
    - Se usa en 3+ lugares → `utils/helpers/` o `utils/constants/`
 
-3. **Es un componente visual o una página?**
-   - **Sí** → Antes de escribir código de UI, consultar la skill `frontend-design` para seguir los estándares de diseño del proyecto.
+3. **¿Qué skills consultar según la tarea?** (ver matriz completa en "Skill Orchestration" arriba)
+   - UI / componente visual → `frontend-design` + `vercel-react-best-practices`
+   - Lógica React (hooks, performance) → `vercel-react-best-practices`
+   - Supabase (DB, auth, queries) → `supabase`
+   - SQL / schema / performance DB → `supabase-postgres-best-practices`
+   - Después de cambios React → `react-doctor`
 
 ## Mapa de Arquitectura Actual
 
@@ -215,7 +245,11 @@ Estas son las convenciones **reales** del proyecto:
 
 1. **Service layer obligatorio** — componentes nunca llaman `createClient()` directamente
 2. **Workflow**: types → services → hooks → components → page
-3. **Al llegar al paso de components y page**: consultar la skill `frontend-design` para seguir los estándares de diseño del proyecto
+3. **Consultar skills según etapa** (ver matriz en "Skill Orchestration"):
+   - Services con Supabase → `supabase` (+ `supabase-postgres-best-practices` si toca SQL/RPC)
+   - Hooks o lógica React → `vercel-react-best-practices`
+   - Components / pages / UI → `frontend-design` (antes de codear) + `vercel-react-best-practices` (durante)
+   - Al terminar cambios React → `react-doctor`
 4. **Respetar límites de tamaño** estrictamente
 5. **Error handling**: Service throws → Hook catches → Component muestra error UI (no `alert()`)
 6. **Tipos explícitos**: Return types en services y funciones exportadas
@@ -261,7 +295,12 @@ Ver `references/migration.md` para el plan de resolución gradual.
 - [ ] Sin `alert()` — usar error state en UI
 - [ ] Sin `createClient()` en componentes (solo en services/hooks)
 - [ ] `logAudit()` en operaciones de escritura
-- [ ] Skill `frontend-design` consultada para UI
+- [ ] Skills consultadas según matriz de orquestación:
+  - [ ] `frontend-design` consultada antes de codear UI
+  - [ ] `vercel-react-best-practices` consultada para hooks/componentes/performance
+  - [ ] `supabase` consultada si el service habla con Supabase
+  - [ ] `supabase-postgres-best-practices` consultada si toca SQL/RPC/schema
+  - [ ] `react-doctor` corrida al terminar cambios React
 
 ## Checklist Rápida: Modificar Código Existente
 

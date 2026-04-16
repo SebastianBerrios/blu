@@ -178,6 +178,18 @@ Tailwind utility-first, mobile-first responsive design (`md:` breakpoint for des
 - Charts via **Chart.js** + **react-chartjs-2** (used in estadisticas)
 - Spanish locale used for sorting (`localeCompare("es")`) and date formatting
 
+## Skill Orchestration (Regla siempre activa)
+
+Para CUALQUIER tarea en este proyecto (crear, modificar, refactorizar, fix, renombrar, nueva lógica), el punto de entrada es **siempre** `/cafeteria-architecture`. Esta skill actúa como orquestador y delega a skills especializadas según el tipo de tarea:
+
+- UI (componentes, páginas, forms, modales, tablas, dashboards) → `/frontend-design`
+- React / Next.js (hooks, data fetching, performance, re-renders) → `/vercel-react-best-practices`
+- Después de cambios React → `/react-doctor`
+- Supabase (DB, auth, RLS, queries, migrations, RPCs) → `/supabase`
+- Postgres performance (SQL, índices, schema) → `/supabase-postgres-best-practices`
+
+Ver `.claude/skills/cafeteria-architecture/SKILL.md` para la matriz completa de qué skills invocar por tipo de tarea.
+
 ## Arquitectura del Proyecto
 
 - **Feature-Based Architecture pragmática** — migration Phases 0–3 complete (helpers extracted, god forms decomposed, services created, barrel exports done)
@@ -187,7 +199,7 @@ Tailwind utility-first, mobile-first responsive design (`md:` breakpoint for des
 - **Shared utilities**: `utils/helpers/` has `dateFormatters.ts`, `groupByDate.ts`, `deleteWithAudit.ts` (barrel: `index.ts`)
 - **Límites de tamaño**: Page <200 LOC, Form <300 LOC, Hook <200 LOC, Service <150 LOC
 - **Error handling** (código nuevo): Service throws → Hook catches → Component muestra error inline (no `alert()`)
-- **Para cualquier trabajo visual** (componentes, páginas, forms, modales, tablas, dashboards, o cualquier elemento de UI): consultar la skill `frontend-design` antes de escribir código de UI
+- **Skills a consultar**: ver sección "Skill Orchestration" arriba — `cafeteria-architecture` es el entry point obligatorio y delega según tipo de tarea
 - **Feature modules**: `ventas`, `recetas`, `compras`, `inventario`, `horario`, `productos` — each with `components/`, `services/`, barrel `index.ts`
 - Ver `.claude/skills/cafeteria-architecture/SKILL.md` para reglas completas
 
