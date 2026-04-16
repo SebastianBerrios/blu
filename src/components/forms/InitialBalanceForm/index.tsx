@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
-import { logAudit } from "@/utils/auditLog";
+import { setInitialBalances } from "@/features/finanzas/services/accountsService";
 
 interface InitialBalanceFormProps {
   isOpen: boolean;
@@ -31,42 +31,25 @@ export default function InitialBalanceForm({
     setSubmitError(null);
     setIsSubmitting(true);
     try {
-      const supabase = createClient();
-
-      if (cajaBalance.trim() && cajaAccount) {
-        const { error } = await supabase
-          .from("accounts")
-          .update({ balance: parseFloat(cajaBalance), updated_at: new Date().toISOString() })
-          .eq("id", cajaAccount.id);
-        if (error) throw error;
-      }
-
-      if (bancoBalance.trim() && bancoAccount) {
-        const { error } = await supabase
-          .from("accounts")
-          .update({ balance: parseFloat(bancoBalance), updated_at: new Date().toISOString() })
-          .eq("id", bancoAccount.id);
-        if (error) throw error;
-      }
-      logAudit({
+      await setInitialBalances({
+        cajaAccountId: cajaAccount?.id ?? null,
+        bancoAccountId: bancoAccount?.id ?? null,
+        cajaBalance: cajaBalance.trim() ? parseFloat(cajaBalance) : null,
+        bancoBalance: bancoBalance.trim() ? parseFloat(bancoBalance) : null,
+        cajaPrevious: cajaAccount ? Number(cajaAccount.balance) : null,
+        bancoPrevious: bancoAccount ? Number(bancoAccount.balance) : null,
         userId: user?.id ?? null,
         userName: profile?.full_name ?? null,
-        action: "configurar_saldo",
-        targetTable: "accounts",
-        targetDescription: "Configuración de saldos",
-        details: {
-          caja: cajaBalance.trim() ? parseFloat(cajaBalance) : undefined,
-          banco: bancoBalance.trim() ? parseFloat(bancoBalance) : undefined,
-          caja_anterior: cajaAccount ? Number(cajaAccount.balance) : undefined,
-          banco_anterior: bancoAccount ? Number(bancoAccount.balance) : undefined,
-        },
       });
 
+      toast.success("Saldos configurados");
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Error al configurar saldos:", error);
-      setSubmitError(error instanceof Error ? error.message : "Ocurrió un error al configurar los saldos");
+      const msg = error instanceof Error ? error.message : "Ocurrió un error al configurar los saldos";
+      setSubmitError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

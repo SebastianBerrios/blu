@@ -21,6 +21,7 @@ import ExpenseForm from "@/components/forms/ExpenseForm";
 import ExtraIncomeForm from "@/components/forms/ExtraIncomeForm";
 import InitialBalanceForm from "@/components/forms/InitialBalanceForm";
 import PageHeader from "@/components/ui/PageHeader";
+import DailySummary from "@/features/finanzas/components/DailySummary";
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   ingreso_venta: { label: "Venta", color: "bg-green-100 text-green-700" },
@@ -50,6 +51,9 @@ export default function FinanzasPage() {
   const [expenseAccountId, setExpenseAccountId] = useState<number | null>(null);
   const [showIncome, setShowIncome] = useState(false);
   const [showBalance, setShowBalance] = useState(false);
+  const [summaryDate, setSummaryDate] = useState(() =>
+    toLocalDateKey(new Date().toISOString()),
+  );
 
   const filteredAccountId =
     accountFilter === "caja"
@@ -88,6 +92,9 @@ export default function FinanzasPage() {
       />
 
       <div className="flex-1 px-4 py-4 md:px-6 md:py-6 overflow-auto space-y-4 md:space-y-6">
+        {/* Daily summary */}
+        <DailySummary date={summaryDate} onDateChange={setSummaryDate} />
+
         {/* Balance cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
           {/* Caja */}
