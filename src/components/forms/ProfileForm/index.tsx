@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { X } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
+import { updateProfile } from "@/features/usuarios";
 import type { UserProfile } from "@/types/auth";
 
 interface ProfileFormProps {
@@ -40,20 +41,15 @@ export default function ProfileForm({
     setIsSubmitting(true);
 
     try {
-      const supabase = createClient();
-
-      const { error } = await supabase
-        .from("user_profiles")
-        .update({ full_name: data.full_name.trim() })
-        .eq("id", profile.id);
-
-      if (error) throw error;
-
+      await updateProfile({ userId: profile.id, fullName: data.full_name });
+      toast.success("Perfil actualizado");
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Error al actualizar perfil:", error);
-      setSubmitError(error instanceof Error ? error.message : "Error al actualizar perfil");
+      const msg = error instanceof Error ? error.message : "Error al actualizar perfil";
+      setSubmitError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

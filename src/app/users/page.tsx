@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { Users, SquarePen, UserCheck, UserX } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 import { useUsers } from "@/hooks/useUsers";
 import { useAuth } from "@/hooks/useAuth";
-import { logAudit } from "@/utils/auditLog";
+import { useConfirm } from "@/hooks/useConfirm";
+import { toggleUserActive } from "@/features/usuarios";
 import type { UserProfile } from "@/types/auth";
 import UserRoleForm from "@/components/forms/UserRoleForm";
 import Spinner from "@/components/ui/Spinner";
@@ -28,6 +29,7 @@ const ROLE_LABEL: Record<string, string> = {
 export default function UsersPage() {
   const { isAdmin, isLoading: authLoading, user: currentUser, profile: currentProfile } = useAuth();
   const { users, error, isLoading, mutate } = useUsers();
+  const confirm = useConfirm();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | undefined>();
 
@@ -41,33 +43,33 @@ export default function UsersPage() {
   };
 
   const handleToggleActive = async (targetUser: UserProfile) => {
-    const newStatus = !targetUser.is_active;
-    const action = newStatus ? "activar" : "desactivar";
-    if (!confirm(`¿Estás seguro de ${action} a ${targetUser.full_name || targetUser.email}?`))
-      return;
+    const newActive = !targetUser.is_active;
+    const action = newActive ? "activar" : "desactivar";
+    const displayName = targetUser.full_name || targetUser.email;
 
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("user_profiles")
-      .update({
-        is_active: newStatus,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", targetUser.id);
+    const ok = await confirm({
+      title: `¿${action.charAt(0).toUpperCase() + action.slice(1)} usuario?`,
+      description: `¿Estás seguro de ${action} a ${displayName}?`,
+      confirmLabel: newActive ? "Activar" : "Desactivar",
+      variant: newActive ? "primary" : "danger",
+    });
+    if (!ok) return;
 
-    if (!error) {
-      logAudit({
-        userId: currentUser?.id ?? null,
-        userName: currentProfile?.full_name ?? null,
-        action: "cambiar_estado_usuario",
-        targetTable: "user_profiles",
-        targetId: targetUser.id,
-        targetDescription: `Usuario ${newStatus ? "activado" : "desactivado"}: ${targetUser.full_name || targetUser.email}`,
-        details: { previous_active: targetUser.is_active, new_active: newStatus },
+    try {
+      await toggleUserActive({
+        targetUserId: targetUser.id,
+        targetDisplayName: displayName,
+        previousActive: !!targetUser.is_active,
+        newActive,
+        adminId: currentUser?.id ?? null,
+        adminName: currentProfile?.full_name ?? null,
       });
+      toast.success(newActive ? "Usuario activado" : "Usuario desactivado");
+      mutate();
+    } catch (err) {
+      console.error("Error al cambiar estado del usuario:", err);
+      toast.error(err instanceof Error ? err.message : "Error al cambiar estado");
     }
-
-    mutate();
   };
 
   const handleCloseModal = () => {

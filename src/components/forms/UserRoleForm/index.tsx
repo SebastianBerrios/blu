@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { X } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { logAudit } from "@/utils/auditLog";
+import { setUserRole } from "@/features/usuarios";
 import type { UserProfile, AppRole } from "@/types/auth";
 
 interface UserRoleFormProps {
@@ -44,33 +44,23 @@ export default function UserRoleForm({
     setIsSubmitting(true);
 
     try {
-      const supabase = createClient();
-
-      const { error } = await supabase
-        .from("user_profiles")
-        .update({
-          role: data.role,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id);
-
-      if (error) throw error;
-
-      logAudit({
-        userId: currentUser?.id ?? null,
-        userName: currentProfile?.full_name ?? null,
-        action: "cambiar_rol",
-        targetTable: "user_profiles",
-        targetId: user.id,
-        targetDescription: `Rol cambiado: ${user.full_name || user.email} → ${data.role}`,
-        details: { rol_anterior: user.role, rol_nuevo: data.role },
+      await setUserRole({
+        targetUserId: user.id,
+        targetDisplayName: user.full_name || user.email || user.id,
+        previousRole: user.role,
+        newRole: data.role,
+        adminId: currentUser?.id ?? null,
+        adminName: currentProfile?.full_name ?? null,
       });
 
+      toast.success("Rol actualizado");
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Error al asignar rol:", error);
-      setSubmitError(error instanceof Error ? error.message : "Error al asignar rol");
+      const msg = error instanceof Error ? error.message : "Error al asignar rol";
+      setSubmitError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
