@@ -14,6 +14,7 @@ export interface SaleProductWithDetails {
   status: SaleProductStatus;
   temperatura: string | null;
   tipo_leche: string | null;
+  loyalty_reward: string | null;
 }
 
 export interface SaleWithProducts extends Sale {

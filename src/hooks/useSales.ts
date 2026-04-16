@@ -27,6 +27,7 @@ const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
       payment_date,
       cash_amount,
       yape_amount,
+      cash_received,
       table_number,
       user_id,
       customers (
@@ -43,6 +44,7 @@ const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
         status,
         temperatura,
         tipo_leche,
+        loyalty_reward,
         products (
           name
         )
@@ -74,6 +76,7 @@ const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
         status: string;
         temperatura: string | null;
         tipo_leche: string | null;
+        loyalty_reward: string | null;
         products: { name: string };
       }>
     ).map((sp) => ({
@@ -85,6 +88,7 @@ const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
       status: sp.status as "Pendiente" | "Entregado",
       temperatura: sp.temperatura,
       tipo_leche: sp.tipo_leche,
+      loyalty_reward: sp.loyalty_reward,
     })),
   }));
 };

@@ -1,20 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
-import { recordTransaction } from "@/hooks/useTransactions";
-import { logAudit } from "@/utils/auditLog";
-import { getSaleNumber } from "@/utils/saleNumber";
-import type { SaleWithProducts, PaymentMethod } from "@/types";
+import { registerPaymentWithRewards } from "@/features/ventas";
+import {
+  applyLoyaltyReward,
+  removeLoyaltyReward,
+} from "@/features/ventas/utils/loyaltyUtils";
+import type {
+  Category,
+  PaymentMethod,
+  Product,
+  SaleWithProducts,
+} from "@/types";
+import type { LoyaltyReward, SaleProductLine } from "@/features/ventas/types";
+import LoyaltyRewardsSection from "@/features/ventas/components/LoyaltyRewardsSection";
 
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   sale: SaleWithProducts;
+  products: Product[];
+  categories: Category[];
 }
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string; color: string }[] = [
@@ -28,105 +38,107 @@ export default function PaymentModal({
   onClose,
   onSuccess,
   sale,
+  products,
+  categories,
 }: PaymentModalProps) {
   const { user, profile } = useAuth();
   const { cajaAccount, bancoAccount } = useAccounts();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Efectivo");
   const [cashAmount, setCashAmount] = useState("");
   const [yapeAmount, setYapeAmount] = useState("");
+  const [cashReceived, setCashReceived] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [saleProducts, setSaleProducts] = useState<SaleProductLine[]>([]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setPaymentMethod("Efectivo");
+    setCashAmount("");
+    setYapeAmount("");
+    setCashReceived("");
+    setSubmitError(null);
+    setSaleProducts(
+      sale.sale_products.map((sp) => {
+        const product = products.find((p) => p.id === sp.product_id);
+        return {
+          product_id: sp.product_id,
+          product_name: sp.product_name,
+          quantity: sp.quantity,
+          unit_price: sp.unit_price,
+          subtotal: sp.quantity * sp.unit_price,
+          temperatura: sp.temperatura,
+          tipo_leche: sp.tipo_leche,
+          category_id: product?.category_id ?? null,
+          loyalty_reward:
+            sp.loyalty_reward === "50_postre" ||
+            sp.loyalty_reward === "bebida_gratis"
+              ? sp.loyalty_reward
+              : null,
+        };
+      }),
+    );
+  }, [isOpen, sale, products]);
 
   if (!isOpen) return null;
 
+  const totalPrice = saleProducts.reduce((sum, p) => sum + p.subtotal, 0);
   const isMixed = paymentMethod === "Efectivo + Yape";
+  const showCashReceived =
+    paymentMethod === "Efectivo" || paymentMethod === "Efectivo + Yape";
+  const effectiveCash =
+    paymentMethod === "Efectivo"
+      ? totalPrice
+      : isMixed
+        ? parseFloat(cashAmount) || 0
+        : 0;
+  const receivedNum = cashReceived ? parseFloat(cashReceived) : effectiveCash;
+  const change =
+    isFinite(receivedNum) && receivedNum > effectiveCash
+      ? receivedNum - effectiveCash
+      : 0;
 
   const handleCashChange = (value: string) => {
     setCashAmount(value);
     const cash = parseFloat(value);
-    if (!isNaN(cash) && cash >= 0 && cash <= sale.total_price) {
-      setYapeAmount((sale.total_price - cash).toFixed(2));
+    if (!isNaN(cash) && cash >= 0 && cash <= totalPrice) {
+      setYapeAmount((totalPrice - cash).toFixed(2));
     }
   };
 
   const handleYapeChange = (value: string) => {
     setYapeAmount(value);
     const yape = parseFloat(value);
-    if (!isNaN(yape) && yape >= 0 && yape <= sale.total_price) {
-      setCashAmount((sale.total_price - yape).toFixed(2));
+    if (!isNaN(yape) && yape >= 0 && yape <= totalPrice) {
+      setCashAmount((totalPrice - yape).toFixed(2));
     }
+  };
+
+  const handleApplyReward = (index: number, reward: LoyaltyReward) => {
+    setSaleProducts((prev) => applyLoyaltyReward(prev, index, reward));
+  };
+
+  const handleRemoveReward = (index: number) => {
+    setSaleProducts((prev) => removeLoyaltyReward(prev, index, products));
   };
 
   const handleSubmit = async () => {
     setSubmitError(null);
-    let cash: number | null = null;
-    let yape: number | null = null;
-
-    if (paymentMethod === "Efectivo") {
-      cash = sale.total_price;
-    } else if (paymentMethod === "Yape") {
-      yape = sale.total_price;
-    } else {
-      cash = parseFloat(cashAmount);
-      yape = parseFloat(yapeAmount);
-      if (isNaN(cash) || isNaN(yape) || cash < 0 || yape < 0) {
-        setSubmitError("Ingresa montos válidos");
-        return;
-      }
-      if (Math.abs(cash + yape - sale.total_price) > 0.01) {
-        setSubmitError("Los montos deben sumar el total de la venta");
-        return;
-      }
-    }
-
     setIsSubmitting(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("sales")
-        .update({
-          payment_method: paymentMethod,
-          payment_date: new Date().toISOString(),
-          cash_amount: cash,
-          yape_amount: yape,
-        })
-        .eq("id", sale.id);
-
-      if (error) throw error;
-
-      const saleNumber = await getSaleNumber(sale.id);
-
-      // Register financial transactions
-      if (cash && cash > 0 && cajaAccount) {
-        await recordTransaction({
-          accountId: cajaAccount.id,
-          type: "ingreso_venta",
-          amount: cash,
-          description: `Venta #${saleNumber} - Efectivo`,
-          referenceId: sale.id,
-          referenceType: "sale",
-        });
-      }
-      if (yape && yape > 0 && bancoAccount) {
-        await recordTransaction({
-          accountId: bancoAccount.id,
-          type: "ingreso_venta",
-          amount: yape,
-          description: `Venta #${saleNumber} - Yape`,
-          referenceId: sale.id,
-          referenceType: "sale",
-        });
-      }
-
-      logAudit({
+      await registerPaymentWithRewards({
+        saleId: sale.id,
+        saleProducts,
+        newTotalPrice: totalPrice,
+        paymentMethod,
+        cashAmount,
+        yapeAmount,
+        cashReceived,
         userId: user?.id ?? null,
         userName: profile?.full_name ?? null,
-        action: "crear_transaccion",
-        targetTable: "transactions",
-        targetDescription: `Pago venta #${saleNumber} - ${paymentMethod} - S/ ${sale.total_price.toFixed(2)}`,
-        details: { venta_id: sale.id, metodo: paymentMethod, total: sale.total_price },
+        cajaAccountId: cajaAccount?.id ?? null,
+        bancoAccountId: bancoAccount?.id ?? null,
       });
-
       onSuccess();
       onClose();
     } catch (error) {
@@ -143,10 +155,10 @@ export default function PaymentModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-md"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl sticky top-0 z-10">
           <h2 className="text-xl font-semibold text-slate-900">
             Registrar Pago
           </h2>
@@ -166,12 +178,21 @@ export default function PaymentModal({
             <div className="text-sm text-slate-700">
               <span className="font-medium">{sale.order_type}</span>
               <span className="mx-2">·</span>
-              <span>{sale.sale_products.length} producto{sale.sale_products.length !== 1 ? "s" : ""}</span>
+              <span>{saleProducts.length} producto{saleProducts.length !== 1 ? "s" : ""}</span>
             </div>
             <span className="text-xl font-bold text-slate-900">
-              S/ {sale.total_price.toFixed(2)}
+              S/ {totalPrice.toFixed(2)}
             </span>
           </div>
+
+          {/* Promociones de fidelidad */}
+          <LoyaltyRewardsSection
+            saleProducts={saleProducts}
+            categories={categories}
+            onApplyReward={handleApplyReward}
+            onRemoveReward={handleRemoveReward}
+            isSubmitting={isSubmitting}
+          />
 
           {/* Método de pago */}
           <div>
@@ -187,6 +208,7 @@ export default function PaymentModal({
                     setPaymentMethod(method.value);
                     setCashAmount("");
                     setYapeAmount("");
+                    setCashReceived("");
                   }}
                   disabled={isSubmitting}
                   className={`flex-1 px-3 py-3 min-h-[44px] rounded-lg border-2 font-medium transition-all text-sm ${
@@ -245,8 +267,37 @@ export default function PaymentModal({
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
               <span className="text-sm text-green-700">Monto total en {paymentMethod}:</span>
               <span className="block text-lg font-bold text-green-800 mt-1">
-                S/ {sale.total_price.toFixed(2)}
+                S/ {totalPrice.toFixed(2)}
               </span>
+            </div>
+          )}
+
+          {showCashReceived && (
+            <div>
+              <label className="block text-sm font-medium text-slate-900 mb-1.5">
+                Efectivo recibido{" "}
+                <span className="text-slate-500 text-xs">(opcional)</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
+                  S/
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={cashReceived}
+                  onChange={(e) => setCashReceived(e.target.value)}
+                  disabled={isSubmitting}
+                  className="w-full pl-9 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+                  placeholder={effectiveCash.toFixed(2)}
+                />
+              </div>
+              {change > 0 && (
+                <p className="mt-2 text-sm font-medium text-amber-700">
+                  Vuelto: S/ {change.toFixed(2)}
+                </p>
+              )}
             </div>
           )}
 
@@ -269,7 +320,7 @@ export default function PaymentModal({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || saleProducts.length === 0}
               className="flex-1 px-4 py-3 min-h-[44px] bg-green-700 text-white font-medium rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
             >
               {isSubmitting ? "Registrando..." : "Registrar pago"}

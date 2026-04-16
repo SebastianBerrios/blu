@@ -91,6 +91,8 @@ export default function ProductSelector({
       subtotal: quantity * product.price,
       temperatura: temp,
       tipo_leche: milk,
+      category_id: product.category_id,
+      loyalty_reward: null,
     });
 
     setSearchProduct("");
@@ -242,15 +244,15 @@ export default function ProductSelector({
           <div className="space-y-2 md:hidden">
             {saleProducts.map((item, idx) => (
               <div
-                key={`${item.product_id}-${item.temperatura}-${item.tipo_leche}`}
+                key={`${item.product_id}-${item.temperatura}-${item.tipo_leche}-${item.loyalty_reward ?? "none"}-${idx}`}
                 className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-900 capitalize truncate">
                     {item.product_name}
                   </p>
-                  {(item.temperatura || item.tipo_leche) && (
-                    <div className="flex gap-1 mt-0.5">
+                  {(item.temperatura || item.tipo_leche || item.loyalty_reward) && (
+                    <div className="flex gap-1 mt-0.5 flex-wrap">
                       {item.temperatura && (
                         <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
                           {item.temperatura}
@@ -259,6 +261,11 @@ export default function ProductSelector({
                       {item.tipo_leche && (
                         <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">
                           {item.tipo_leche}
+                        </span>
+                      )}
+                      {item.loyalty_reward && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
+                          {item.loyalty_reward === "50_postre" ? "50% desc." : "Gratis"}
                         </span>
                       )}
                     </div>
@@ -316,13 +323,13 @@ export default function ProductSelector({
               <tbody className="divide-y divide-slate-200">
                 {saleProducts.map((item, idx) => (
                   <tr
-                    key={`${item.product_id}-${item.temperatura}-${item.tipo_leche}`}
+                    key={`${item.product_id}-${item.temperatura}-${item.tipo_leche}-${item.loyalty_reward ?? "none"}-${idx}`}
                     className="hover:bg-slate-50 transition-colors"
                   >
                     <td className="px-4 py-3 text-sm text-slate-900 capitalize">
                       {item.product_name}
-                      {(item.temperatura || item.tipo_leche) && (
-                        <div className="flex gap-1 mt-0.5">
+                      {(item.temperatura || item.tipo_leche || item.loyalty_reward) && (
+                        <div className="flex gap-1 mt-0.5 flex-wrap">
                           {item.temperatura && (
                             <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
                               {item.temperatura}
@@ -331,6 +338,11 @@ export default function ProductSelector({
                           {item.tipo_leche && (
                             <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">
                               {item.tipo_leche}
+                            </span>
+                          )}
+                          {item.loyalty_reward && (
+                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
+                              {item.loyalty_reward === "50_postre" ? "50% desc." : "Gratis"}
                             </span>
                           )}
                         </div>

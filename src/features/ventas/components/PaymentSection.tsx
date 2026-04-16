@@ -10,10 +10,25 @@ interface PaymentSectionProps {
   setCashAmount: (value: string) => void;
   yapeAmount: string;
   setYapeAmount: (value: string) => void;
+  cashReceived: string;
+  setCashReceived: (value: string) => void;
   totalPrice: number;
   isSubmitting: boolean;
   isEditMode: boolean;
   existingPaymentMethod?: string | null;
+}
+
+function getEffectiveCashAmount(
+  paymentMethod: PaymentMethod,
+  totalPrice: number,
+  cashAmount: string,
+): number {
+  if (paymentMethod === "Efectivo") return totalPrice;
+  if (paymentMethod === "Efectivo + Yape") {
+    const parsed = parseFloat(cashAmount);
+    return isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
 }
 
 export default function PaymentSection({
@@ -25,11 +40,22 @@ export default function PaymentSection({
   setCashAmount,
   yapeAmount,
   setYapeAmount,
+  cashReceived,
+  setCashReceived,
   totalPrice,
   isSubmitting,
   isEditMode,
   existingPaymentMethod,
 }: PaymentSectionProps) {
+  const showCashReceived =
+    paymentMethod === "Efectivo" || paymentMethod === "Efectivo + Yape";
+  const effectiveCash = getEffectiveCashAmount(paymentMethod, totalPrice, cashAmount);
+  const receivedNum = cashReceived ? parseFloat(cashReceived) : effectiveCash;
+  const change =
+    isFinite(receivedNum) && receivedNum > effectiveCash
+      ? receivedNum - effectiveCash
+      : 0;
+
   return (
     <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
       <label className="flex items-center gap-3 cursor-pointer">
@@ -134,6 +160,35 @@ export default function PaymentSection({
               <span className="ml-2 font-bold text-green-800">
                 S/ {totalPrice.toFixed(2)}
               </span>
+            </div>
+          )}
+
+          {showCashReceived && (
+            <div>
+              <label className="block text-sm font-medium text-slate-900 mb-1.5">
+                Efectivo recibido{" "}
+                <span className="text-slate-500 text-xs">(opcional)</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
+                  S/
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={cashReceived}
+                  onChange={(e) => setCashReceived(e.target.value)}
+                  disabled={isSubmitting}
+                  className="w-full pl-9 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+                  placeholder={effectiveCash.toFixed(2)}
+                />
+              </div>
+              {change > 0 && (
+                <p className="mt-2 text-sm font-medium text-amber-700">
+                  Vuelto: S/ {change.toFixed(2)}
+                </p>
+              )}
             </div>
           )}
         </div>

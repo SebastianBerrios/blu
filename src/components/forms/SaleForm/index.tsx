@@ -4,12 +4,17 @@ import { useState, useEffect } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
-import type { Product, SaleWithProducts, PaymentMethod } from "@/types";
-import type { SaleProductLine } from "@/features/ventas/types";
+import type { Category, Product, SaleWithProducts, PaymentMethod } from "@/types";
+import type { LoyaltyReward, SaleProductLine } from "@/features/ventas/types";
 import { ORDER_TYPES } from "@/features/ventas/constants";
-import { createSale, updateSale } from "@/features/ventas/services/salesService";
+import { createSale, updateSale } from "@/features/ventas";
+import {
+  applyLoyaltyReward,
+  removeLoyaltyReward,
+} from "@/features/ventas/utils/loyaltyUtils";
 import ProductSelector from "@/features/ventas/components/ProductSelector";
 import PaymentSection from "@/features/ventas/components/PaymentSection";
+import LoyaltyRewardsSection from "@/features/ventas/components/LoyaltyRewardsSection";
 
 interface SaleFormProps {
   isOpen: boolean;
@@ -17,10 +22,11 @@ interface SaleFormProps {
   onSuccess: () => void;
   sale?: SaleWithProducts;
   products: Product[];
+  categories: Category[];
 }
 
 export default function SaleForm({
-  isOpen, onClose, onSuccess, sale, products,
+  isOpen, onClose, onSuccess, sale, products, categories,
 }: SaleFormProps) {
   const isEditMode = !!sale;
   const { user, profile } = useAuth();
@@ -36,6 +42,7 @@ export default function SaleForm({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Efectivo");
   const [cashAmount, setCashAmount] = useState("");
   const [yapeAmount, setYapeAmount] = useState("");
+  const [cashReceived, setCashReceived] = useState("");
 
   const totalPrice = saleProducts.reduce((sum, p) => sum + p.subtotal, 0);
   const title = isEditMode ? "Editar Venta" : "Registrar Venta";
@@ -53,26 +60,37 @@ export default function SaleForm({
       setTableNumber(sale.table_number ? String(sale.table_number) : "");
       setCustomerDni(sale.customer_dni ? String(sale.customer_dni) : "");
       setSaleProducts(
-        sale.sale_products.map((sp) => ({
-          product_id: sp.product_id,
-          product_name: sp.product_name,
-          quantity: sp.quantity,
-          unit_price: sp.unit_price,
-          subtotal: sp.quantity * sp.unit_price,
-          temperatura: sp.temperatura,
-          tipo_leche: sp.tipo_leche,
-        })),
+        sale.sale_products.map((sp) => {
+          const product = products.find((p) => p.id === sp.product_id);
+          return {
+            product_id: sp.product_id,
+            product_name: sp.product_name,
+            quantity: sp.quantity,
+            unit_price: sp.unit_price,
+            subtotal: sp.quantity * sp.unit_price,
+            temperatura: sp.temperatura,
+            tipo_leche: sp.tipo_leche,
+            category_id: product?.category_id ?? null,
+            loyalty_reward:
+              sp.loyalty_reward === "50_postre" ||
+              sp.loyalty_reward === "bebida_gratis"
+                ? sp.loyalty_reward
+                : null,
+          };
+        }),
       );
       if (sale.payment_method) {
         setRegisterPayment(true);
         setPaymentMethod(sale.payment_method as PaymentMethod);
         setCashAmount(sale.cash_amount ? String(sale.cash_amount) : "");
         setYapeAmount(sale.yape_amount ? String(sale.yape_amount) : "");
+        setCashReceived(sale.cash_received ? String(sale.cash_received) : "");
       } else {
         setRegisterPayment(false);
         setPaymentMethod("Efectivo");
         setCashAmount("");
         setYapeAmount("");
+        setCashReceived("");
       }
     } else {
       setOrderType("Mesa");
@@ -83,8 +101,9 @@ export default function SaleForm({
       setPaymentMethod("Efectivo");
       setCashAmount("");
       setYapeAmount("");
+      setCashReceived("");
     }
-  }, [isOpen, sale]);
+  }, [isOpen, sale, products]);
 
   if (!isOpen) return null;
 
@@ -92,7 +111,8 @@ export default function SaleForm({
     const match = (p: SaleProductLine) =>
       p.product_id === line.product_id &&
       p.temperatura === line.temperatura &&
-      p.tipo_leche === line.tipo_leche;
+      p.tipo_leche === line.tipo_leche &&
+      !p.loyalty_reward;
 
     if (saleProducts.some(match)) {
       setSaleProducts(
@@ -111,10 +131,19 @@ export default function SaleForm({
     setSaleProducts(saleProducts.filter((_, i) => i !== index));
   };
 
+  const handleApplyReward = (index: number, reward: LoyaltyReward) => {
+    setSaleProducts((prev) => applyLoyaltyReward(prev, index, reward));
+  };
+
+  const handleRemoveReward = (index: number) => {
+    setSaleProducts((prev) => removeLoyaltyReward(prev, index, products));
+  };
+
   const handlePaymentMethodChange = (method: PaymentMethod) => {
     setPaymentMethod(method);
     setCashAmount("");
     setYapeAmount("");
+    setCashReceived("");
   };
 
   const handleSubmit = async () => {
@@ -127,7 +156,7 @@ export default function SaleForm({
     try {
       const params = {
         orderType, tableNumber, customerDni, saleProducts, totalPrice,
-        registerPayment, paymentMethod, cashAmount, yapeAmount,
+        registerPayment, paymentMethod, cashAmount, yapeAmount, cashReceived,
         userId: user?.id ?? null,
         userName: profile?.full_name ?? null,
         cajaAccountId: cajaAccount?.id ?? null,
@@ -210,6 +239,13 @@ export default function SaleForm({
         totalPrice={totalPrice}
         isSubmitting={isSubmitting}
       />
+      <LoyaltyRewardsSection
+        saleProducts={saleProducts}
+        categories={categories}
+        onApplyReward={handleApplyReward}
+        onRemoveReward={handleRemoveReward}
+        isSubmitting={isSubmitting}
+      />
       <PaymentSection
         registerPayment={registerPayment}
         onRegisterPaymentChange={setRegisterPayment}
@@ -219,6 +255,8 @@ export default function SaleForm({
         setCashAmount={setCashAmount}
         yapeAmount={yapeAmount}
         setYapeAmount={setYapeAmount}
+        cashReceived={cashReceived}
+        setCashReceived={setCashReceived}
         totalPrice={totalPrice}
         isSubmitting={isSubmitting}
         isEditMode={isEditMode}

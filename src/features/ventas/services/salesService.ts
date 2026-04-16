@@ -1,8 +1,15 @@
 import { createClient } from "@/utils/supabase/client";
 import { recordTransaction } from "@/hooks/useTransactions";
 import { logAudit } from "@/utils/auditLog";
+import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import { getSaleNumber } from "@/utils/saleNumber";
 import type { SaleSubmitParams } from "../types";
+import {
+  buildPaymentFields,
+  validateSplitPayment,
+  validateCashReceived,
+  paymentStateChanged,
+} from "./paymentHelpers";
 
 async function resolveCustomerId(dni: string): Promise<number | null> {
   if (!dni.trim()) return null;
@@ -28,53 +35,7 @@ async function resolveCustomerId(dni: string): Promise<number | null> {
   return newCustomer.id;
 }
 
-function buildPaymentFields(params: SaleSubmitParams) {
-  if (!params.registerPayment) {
-    return {
-      payment_method: null,
-      payment_date: null,
-      cash_amount: null,
-      yape_amount: null,
-    };
-  }
-
-  return {
-    payment_method: params.paymentMethod,
-    payment_date: params.existingPaymentDate ?? new Date().toISOString(),
-    cash_amount:
-      params.paymentMethod === "Efectivo"
-        ? params.totalPrice
-        : params.paymentMethod === "Efectivo + Yape"
-          ? parseFloat(params.cashAmount)
-          : null,
-    yape_amount:
-      params.paymentMethod === "Yape"
-        ? params.totalPrice
-        : params.paymentMethod === "Efectivo + Yape"
-          ? parseFloat(params.yapeAmount)
-          : null,
-  };
-}
-
-function validateSplitPayment(params: SaleSubmitParams): void {
-  if (!params.registerPayment || params.paymentMethod !== "Efectivo + Yape")
-    return;
-
-  const cash = parseFloat(params.cashAmount);
-  const yape = parseFloat(params.yapeAmount);
-
-  if (isNaN(cash) || isNaN(yape) || cash < 0 || yape < 0) {
-    throw new Error("Ingresa montos válidos");
-  }
-  if (Math.abs(cash + yape - params.totalPrice) > 0.01) {
-    throw new Error("Los montos deben sumar el total de la venta");
-  }
-}
-
-function buildSaleProductRows(
-  saleId: number,
-  params: SaleSubmitParams,
-) {
+function buildSaleProductRows(saleId: number, params: SaleSubmitParams) {
   return params.saleProducts.map((p) => ({
     sale_id: saleId,
     product_id: p.product_id,
@@ -82,7 +43,40 @@ function buildSaleProductRows(
     unit_price: p.unit_price,
     temperatura: p.temperatura,
     tipo_leche: p.tipo_leche,
+    loyalty_reward: p.loyalty_reward ?? null,
   }));
+}
+
+export async function recordSaleTransactions(params: {
+  saleId: number;
+  saleNumber: number;
+  cashAmount: number | null;
+  yapeAmount: number | null;
+  cajaAccountId: number | null;
+  bancoAccountId: number | null;
+}): Promise<void> {
+  const { saleId, saleNumber, cashAmount, yapeAmount, cajaAccountId, bancoAccountId } = params;
+
+  if (cashAmount && cashAmount > 0 && cajaAccountId) {
+    await recordTransaction({
+      accountId: cajaAccountId,
+      type: "ingreso_venta",
+      amount: cashAmount,
+      description: `Venta #${saleNumber} - Efectivo`,
+      referenceId: saleId,
+      referenceType: "sale",
+    });
+  }
+  if (yapeAmount && yapeAmount > 0 && bancoAccountId) {
+    await recordTransaction({
+      accountId: bancoAccountId,
+      type: "ingreso_venta",
+      amount: yapeAmount,
+      description: `Venta #${saleNumber} - Yape`,
+      referenceId: saleId,
+      referenceType: "sale",
+    });
+  }
 }
 
 export async function createSale(params: SaleSubmitParams): Promise<void> {
@@ -91,6 +85,7 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
   const supabase = createClient();
   const customerId = await resolveCustomerId(params.customerDni);
   const paymentFields = buildPaymentFields(params);
+  validateCashReceived(paymentFields);
 
   const { data: newSale, error } = await supabase
     .from("sales")
@@ -130,33 +125,19 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
       total: params.totalPrice,
       productos: params.saleProducts.length,
       pago_registrado: params.registerPayment,
+      cash_received: paymentFields.cash_received,
     },
   });
 
   if (params.registerPayment) {
-    const cashAmt = paymentFields.cash_amount;
-    const yapeAmt = paymentFields.yape_amount;
-
-    if (cashAmt && cashAmt > 0 && params.cajaAccountId) {
-      await recordTransaction({
-        accountId: params.cajaAccountId,
-        type: "ingreso_venta",
-        amount: cashAmt,
-        description: `Venta #${saleNumber} - Efectivo`,
-        referenceId: newSale.id,
-        referenceType: "sale",
-      });
-    }
-    if (yapeAmt && yapeAmt > 0 && params.bancoAccountId) {
-      await recordTransaction({
-        accountId: params.bancoAccountId,
-        type: "ingreso_venta",
-        amount: yapeAmt,
-        description: `Venta #${saleNumber} - Yape`,
-        referenceId: newSale.id,
-        referenceType: "sale",
-      });
-    }
+    await recordSaleTransactions({
+      saleId: newSale.id,
+      saleNumber,
+      cashAmount: paymentFields.cash_amount,
+      yapeAmount: paymentFields.yape_amount,
+      cajaAccountId: params.cajaAccountId,
+      bancoAccountId: params.bancoAccountId,
+    });
 
     logAudit({
       userId: params.userId,
@@ -173,39 +154,25 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
   }
 }
 
-export async function deleteSale(
-  saleId: number,
-  userId: string | null,
-  userName: string | null,
-): Promise<void> {
-  const saleNumber = await getSaleNumber(saleId);
-  const supabase = createClient();
-  const { data: sale } = await supabase
-    .from("sales")
-    .select("total_price")
-    .eq("id", saleId)
-    .single();
-  const { error } = await supabase.from("sales").delete().eq("id", saleId);
-  if (error) throw new Error(`Error al eliminar venta: ${error.message}`);
-  logAudit({
-    userId,
-    userName,
-    action: "eliminar",
-    targetTable: "sales",
-    targetId: saleId,
-    targetDescription: `Venta #${saleNumber} - S/ ${sale?.total_price?.toFixed(2) ?? "?"}`,
-  });
-}
-
 export async function updateSale(
   saleId: number,
-  params: SaleSubmitParams,
+  params: SaleSubmitParams
 ): Promise<void> {
   validateSplitPayment(params);
 
   const supabase = createClient();
   const customerId = await resolveCustomerId(params.customerDni);
   const paymentFields = buildPaymentFields(params);
+  validateCashReceived(paymentFields);
+
+  // Fetch existing payment state to detect changes for transaction re-sync
+  const { data: existingSale, error: fetchError } = await supabase
+    .from("sales")
+    .select("payment_method, cash_amount, yape_amount")
+    .eq("id", saleId)
+    .single();
+
+  if (fetchError) throw fetchError;
 
   const { error } = await supabase
     .from("sales")
@@ -230,4 +197,80 @@ export async function updateSale(
     .insert(buildSaleProductRows(saleId, params));
 
   if (productsError) throw productsError;
+
+  // Re-sync transactions if payment state changed
+  const changed = paymentStateChanged(existingSale, paymentFields);
+  if (changed) {
+    const { error: deleteError } = await supabase.rpc("delete_sale_transactions", {
+      p_sale_id: saleId,
+    });
+    if (deleteError) throw deleteError;
+
+    if (paymentFields.payment_method) {
+      const saleNumber = await getSaleNumber(saleId);
+      await recordSaleTransactions({
+        saleId,
+        saleNumber,
+        cashAmount: paymentFields.cash_amount,
+        yapeAmount: paymentFields.yape_amount,
+        cajaAccountId: params.cajaAccountId,
+        bancoAccountId: params.bancoAccountId,
+      });
+
+      logAudit({
+        userId: params.userId,
+        userName: params.userName,
+        action: "actualizar",
+        targetTable: "sales",
+        targetId: saleId,
+        targetDescription: `Venta #${saleNumber} - ${paymentFields.payment_method} - S/ ${params.totalPrice.toFixed(2)}`,
+        details: {
+          transacciones_regeneradas: true,
+          metodo_anterior: existingSale.payment_method,
+          metodo_nuevo: paymentFields.payment_method,
+          cash_amount: paymentFields.cash_amount,
+          yape_amount: paymentFields.yape_amount,
+          cash_received: paymentFields.cash_received,
+        },
+      });
+    } else {
+      const saleNumber = await getSaleNumber(saleId);
+      logAudit({
+        userId: params.userId,
+        userName: params.userName,
+        action: "actualizar",
+        targetTable: "sales",
+        targetId: saleId,
+        targetDescription: `Venta #${saleNumber} - Pago removido`,
+        details: {
+          transacciones_regeneradas: true,
+          metodo_anterior: existingSale.payment_method,
+          metodo_nuevo: null,
+        },
+      });
+    }
+  }
+}
+
+export async function deleteSale(
+  saleId: number,
+  userId: string | null,
+  userName: string | null
+): Promise<void> {
+  const saleNumber = await getSaleNumber(saleId);
+  const supabase = createClient();
+  const { data: sale } = await supabase
+    .from("sales")
+    .select("total_price")
+    .eq("id", saleId)
+    .single();
+
+  await deleteWithAudit({
+    table: "sales",
+    id: saleId,
+    userId,
+    userName,
+    auditTable: "sales",
+    description: `Venta #${saleNumber} - S/ ${sale?.total_price?.toFixed(2) ?? "?"}`,
+  });
 }

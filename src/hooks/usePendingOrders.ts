@@ -35,6 +35,7 @@ const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
       payment_date,
       cash_amount,
       yape_amount,
+      cash_received,
       table_number,
       user_id,
       customers (
@@ -48,6 +49,7 @@ const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
         status,
         temperatura,
         tipo_leche,
+        loyalty_reward,
         products (
           name
         )
@@ -72,6 +74,7 @@ const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
         status: string;
         temperatura: string | null;
         tipo_leche: string | null;
+        loyalty_reward: string | null;
         products: { name: string };
       }>
     ).map((sp) => ({
@@ -83,6 +86,7 @@ const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
       status: sp.status as SaleProductStatus,
       temperatura: sp.temperatura,
       tipo_leche: sp.tipo_leche,
+      loyalty_reward: sp.loyalty_reward,
     }));
 
     const pendingCount = saleProducts.filter(
