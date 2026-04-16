@@ -8,7 +8,7 @@ import {
   deleteTemplatesForDays,
   createTemplates,
   updateTemplate,
-} from "@/features/horario/services/scheduleService";
+} from "@/features/horario";
 
 interface ScheduleTemplateFormProps {
   isOpen: boolean;

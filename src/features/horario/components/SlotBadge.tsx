@@ -9,6 +9,8 @@ interface SlotBadgeProps {
   onEdit: (t: ScheduleTemplate) => void;
   onDelete: (id: number) => void;
   onMarkAbsence: (slot: ScheduleSlot) => void;
+  onEditExtraShift?: (slot: ScheduleSlot) => void;
+  onDeleteExtraShift?: (slot: ScheduleSlot) => void;
 }
 
 export default function SlotBadge({
@@ -19,6 +21,8 @@ export default function SlotBadge({
   onEdit,
   onDelete,
   onMarkAbsence,
+  onEditExtraShift,
+  onDeleteExtraShift,
 }: SlotBadgeProps) {
   const template = !slot.is_override
     ? templates.find(
@@ -83,6 +87,28 @@ export default function SlotBadge({
                 <Trash2 className="w-3 h-3 text-red-500" />
               </button>
             </>
+          )}
+        </div>
+      )}
+      {isAdmin && slot.is_extra_shift && slot.override_id && (
+        <div className="absolute top-0.5 right-0.5 hidden group-hover:flex gap-0.5">
+          {onEditExtraShift && (
+            <button
+              onClick={() => onEditExtraShift(slot)}
+              className="p-0.5 bg-white rounded shadow hover:bg-slate-100"
+              title="Editar turno extra"
+            >
+              <Pencil className="w-3 h-3 text-slate-500" />
+            </button>
+          )}
+          {onDeleteExtraShift && (
+            <button
+              onClick={() => onDeleteExtraShift(slot)}
+              className="p-0.5 bg-white rounded shadow hover:bg-red-50"
+              title="Eliminar turno extra"
+            >
+              <Trash2 className="w-3 h-3 text-red-500" />
+            </button>
           )}
         </div>
       )}

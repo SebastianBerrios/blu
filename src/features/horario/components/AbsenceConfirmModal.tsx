@@ -2,7 +2,7 @@ import { useState } from "react";
 import { X, UserX } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { ScheduleSlot } from "@/types";
-import { markAbsence } from "@/features/horario/services/scheduleService";
+import { markAbsence } from "@/features/horario";
 import Button from "@/components/ui/Button";
 
 interface AbsenceConfirmModalProps {

@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { X, Check, XCircle } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { logAudit } from "@/utils/auditLog";
 import type { TimeOffRequestWithUser } from "@/types";
 import { formatDateWithWeekdayLong } from "@/utils/helpers/dateFormatters";
+import {
+  approveTimeOffRequest,
+  rejectTimeOffRequest,
+} from "@/features/horario";
 
 interface TimeOffReviewFormProps {
   isOpen: boolean;
@@ -36,29 +39,24 @@ export default function TimeOffReviewForm({
     setIsSubmitting(true);
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase.rpc("approve_time_off_request", {
-        p_request_id: request.id,
-        p_admin_id: user.id,
-        p_review_note: reviewNote || null,
+      await approveTimeOffRequest({
+        requestId: request.id,
+        adminId: user.id,
+        adminName: profile?.full_name ?? null,
+        employeeName: request.user_name ?? "",
+        requestedDate: request.requested_date,
+        hoursRequested: request.hours_requested,
+        reviewNote: reviewNote || null,
       });
 
-      if (error) throw error;
-
-      logAudit({
-        userId: user.id,
-        userName: profile?.full_name ?? null,
-        action: "aprobar_permiso",
-        targetTable: "time_off_requests",
-        targetId: request.id,
-        targetDescription: `Permiso aprobado para ${request.user_name}: ${request.requested_date} (${request.hours_requested}h)`,
-      });
-
+      toast.success("Solicitud aprobada");
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Error al aprobar solicitud:", error);
-      setSubmitError(error instanceof Error ? error.message : "Error al aprobar solicitud");
+      const msg = error instanceof Error ? error.message : "Error al aprobar solicitud";
+      setSubmitError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -70,33 +68,23 @@ export default function TimeOffReviewForm({
     setIsSubmitting(true);
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("time_off_requests")
-        .update({
-          status: "rechazado",
-          reviewed_by: user.id,
-          reviewed_at: new Date().toISOString(),
-          review_note: reviewNote || null,
-        })
-        .eq("id", request.id);
-
-      if (error) throw error;
-
-      logAudit({
-        userId: user.id,
-        userName: profile?.full_name ?? null,
-        action: "rechazar_permiso",
-        targetTable: "time_off_requests",
-        targetId: request.id,
-        targetDescription: `Permiso rechazado para ${request.user_name}: ${request.requested_date}`,
+      await rejectTimeOffRequest({
+        requestId: request.id,
+        adminId: user.id,
+        adminName: profile?.full_name ?? null,
+        employeeName: request.user_name ?? "",
+        requestedDate: request.requested_date,
+        reviewNote: reviewNote || null,
       });
 
+      toast.success("Solicitud rechazada");
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Error al rechazar solicitud:", error);
-      setSubmitError(error instanceof Error ? error.message : "Error al rechazar solicitud");
+      const msg = error instanceof Error ? error.message : "Error al rechazar solicitud";
+      setSubmitError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

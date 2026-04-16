@@ -28,6 +28,8 @@ interface ScheduleTabProps {
   onAddOverride: () => void;
   onAddExtraShift: () => void;
   onMarkAbsence: (slot: ScheduleSlot) => void;
+  onEditExtraShift?: (slot: ScheduleSlot) => void;
+  onDeleteExtraShift?: (slot: ScheduleSlot) => void;
   // Monthly view props
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
@@ -52,6 +54,8 @@ export default function ScheduleTab({
   onAddOverride,
   onAddExtraShift,
   onMarkAbsence,
+  onEditExtraShift,
+  onDeleteExtraShift,
   viewMode,
   onViewModeChange,
   monthYear,
@@ -195,6 +199,8 @@ export default function ScheduleTab({
               onEditTemplate={onEditTemplate}
               onDeleteTemplate={onDeleteTemplate}
               onMarkAbsence={onMarkAbsence}
+              onEditExtraShift={onEditExtraShift}
+              onDeleteExtraShift={onDeleteExtraShift}
             />
           </div>
 
@@ -229,6 +235,8 @@ export default function ScheduleTab({
               slots={slots.filter((s) => s.day_of_week === selectedDay)}
               isAdmin={isAdmin}
               onMarkAbsence={onMarkAbsence}
+              onEditExtraShift={onEditExtraShift}
+              onDeleteExtraShift={onDeleteExtraShift}
             />
           </div>
         </>

@@ -13,6 +13,8 @@ interface DesktopScheduleGridProps {
   onEditTemplate: (t: ScheduleTemplate) => void;
   onDeleteTemplate: (id: number) => void;
   onMarkAbsence: (slot: ScheduleSlot) => void;
+  onEditExtraShift?: (slot: ScheduleSlot) => void;
+  onDeleteExtraShift?: (slot: ScheduleSlot) => void;
 }
 
 export default function DesktopScheduleGrid({
@@ -23,6 +25,8 @@ export default function DesktopScheduleGrid({
   onEditTemplate,
   onDeleteTemplate,
   onMarkAbsence,
+  onEditExtraShift,
+  onDeleteExtraShift,
 }: DesktopScheduleGridProps) {
   const usersInSchedule = useMemo(() => {
     const map = new Map<string, { name: string; role: string }>();
@@ -128,6 +132,8 @@ export default function DesktopScheduleGrid({
                               onEdit={onEditTemplate}
                               onDelete={onDeleteTemplate}
                               onMarkAbsence={onMarkAbsence}
+                              onEditExtraShift={onEditExtraShift}
+                              onDeleteExtraShift={onDeleteExtraShift}
                             />
                           ))}
                         </td>
@@ -158,6 +164,8 @@ export default function DesktopScheduleGrid({
                               onEdit={onEditTemplate}
                               onDelete={onDeleteTemplate}
                               onMarkAbsence={onMarkAbsence}
+                              onEditExtraShift={onEditExtraShift}
+                              onDeleteExtraShift={onDeleteExtraShift}
                             />
                           ))}
                         </td>

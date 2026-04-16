@@ -1,4 +1,4 @@
-import { Clock, UserX } from "lucide-react";
+import { Clock, Pencil, Trash2, UserX } from "lucide-react";
 import type { ScheduleSlot } from "@/types";
 import { ROLE_COLORS } from "../constants";
 
@@ -6,9 +6,11 @@ interface MobileDayViewProps {
   slots: ScheduleSlot[];
   isAdmin?: boolean;
   onMarkAbsence?: (slot: ScheduleSlot) => void;
+  onEditExtraShift?: (slot: ScheduleSlot) => void;
+  onDeleteExtraShift?: (slot: ScheduleSlot) => void;
 }
 
-export default function MobileDayView({ slots, isAdmin, onMarkAbsence }: MobileDayViewProps) {
+export default function MobileDayView({ slots, isAdmin, onMarkAbsence, onEditExtraShift, onDeleteExtraShift }: MobileDayViewProps) {
   if (slots.length === 0) {
     return (
       <div className="text-center py-8 text-slate-400">
@@ -82,6 +84,28 @@ export default function MobileDayView({ slots, isAdmin, onMarkAbsence }: MobileD
                       >
                         <UserX className="w-4 h-4" />
                       </button>
+                    )}
+                    {isAdmin && slot.is_extra_shift && slot.override_id && (
+                      <div className="ml-auto flex gap-1">
+                        {onEditExtraShift && (
+                          <button
+                            onClick={() => onEditExtraShift(slot)}
+                            className="p-1 text-slate-500 hover:bg-slate-100 rounded"
+                            title="Editar turno extra"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+                        {onDeleteExtraShift && (
+                          <button
+                            onClick={() => onDeleteExtraShift(slot)}
+                            className="p-1 text-red-500 hover:bg-red-50 rounded"
+                            title="Eliminar turno extra"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 ))}

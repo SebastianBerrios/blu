@@ -1,103 +1,59 @@
 import { createClient } from "@/utils/supabase/client";
 import { logAudit } from "@/utils/auditLog";
-import { DAY_LABELS } from "@/types/schedule";
-import type { DayOfWeek } from "@/types";
 
-export async function deleteTemplate(
-  templateId: number,
-  userId: string | null,
-  userName: string | null
-): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("schedule_templates")
-    .delete()
-    .eq("id", templateId);
-
-  if (error) throw error;
-
-  logAudit({
-    userId,
-    userName,
-    action: "eliminar",
-    targetTable: "schedule_templates",
-    targetId: templateId,
-    targetDescription: "Turno eliminado",
-  });
+function computeShiftHours(startTime: string, endTime: string): number {
+  const [startH, startM] = startTime.split(":").map(Number);
+  const [endH, endM] = endTime.split(":").map(Number);
+  return endH + endM / 60 - (startH + startM / 60);
 }
 
-export async function getExistingTemplates(
-  userId: string,
-  days: DayOfWeek[]
-): Promise<{ id: number; day_of_week: number }[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("schedule_templates")
-    .select("id, day_of_week")
-    .eq("user_id", userId)
-    .in("day_of_week", days);
-
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function deleteTemplatesForDays(
-  userId: string,
-  days: DayOfWeek[],
-  adminId: string | null,
-  adminName: string | null,
-  employeeName: string
-): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("schedule_templates")
-    .delete()
-    .eq("user_id", userId)
-    .in("day_of_week", days);
-
-  if (error) throw error;
-
-  const dayNames = days.map((d) => DAY_LABELS[d]).join(", ");
-  logAudit({
-    userId: adminId,
-    userName: adminName,
-    action: "eliminar",
-    targetTable: "schedule_templates",
-    targetDescription: `Turnos reemplazados (${dayNames}) de ${employeeName}`,
-    details: { days, employee_id: userId },
-  });
-}
-
-export async function createTemplates(params: {
-  userId: string;
-  days: DayOfWeek[];
+export async function createScheduleOverrides(params: {
+  userIds: string[];
+  overrideDate: string;
+  isDayOff: boolean;
   startTime: string;
   endTime: string;
+  reason: string;
+  createdBy: string | null;
   adminId: string | null;
   adminName: string | null;
-  employeeName: string;
+  descriptionName: string;
 }): Promise<void> {
-  const { userId, days, startTime, endTime, adminId, adminName, employeeName } = params;
+  const {
+    userIds,
+    overrideDate,
+    isDayOff,
+    startTime,
+    endTime,
+    reason,
+    createdBy,
+    adminId,
+    adminName,
+    descriptionName,
+  } = params;
   const supabase = createClient();
 
-  const rows = days.map((d) => ({
-    user_id: userId,
-    day_of_week: d,
-    start_time: startTime,
-    end_time: endTime,
+  const rows = userIds.map((uid) => ({
+    user_id: uid,
+    override_date: overrideDate,
+    is_day_off: isDayOff,
+    start_time: isDayOff ? null : startTime,
+    end_time: isDayOff ? null : endTime,
+    reason: reason || null,
+    created_by: createdBy,
   }));
 
-  const { error } = await supabase.from("schedule_templates").insert(rows);
+  const { error } = await supabase.from("schedule_overrides").insert(rows);
   if (error) throw error;
 
-  const dayNames = days.map((d) => DAY_LABELS[d]).join(", ");
   logAudit({
     userId: adminId,
     userName: adminName,
     action: "crear",
-    targetTable: "schedule_templates",
-    targetDescription: `Horario ${dayNames} ${startTime}-${endTime} para ${employeeName}`,
-    details: { days, startTime, endTime, employee_id: userId },
+    targetTable: "schedule_overrides",
+    targetDescription: `Excepción ${overrideDate} para ${descriptionName}: ${
+      isDayOff ? "Día libre" : `${startTime}-${endTime}`
+    }`,
   });
 }
 
@@ -114,11 +70,7 @@ export async function createExtraShift(params: {
   const { userId, date, startTime, endTime, description, adminId, adminName, employeeName } = params;
   const supabase = createClient();
 
-  // Calculate hours
-  const [startH, startM] = startTime.split(":").map(Number);
-  const [endH, endM] = endTime.split(":").map(Number);
-  const hours = endH + endM / 60 - (startH + startM / 60);
-
+  const hours = computeShiftHours(startTime, endTime);
   if (hours <= 0) throw new Error("La hora fin debe ser mayor a la hora inicio");
 
   // 1. Insert schedule override
@@ -165,6 +117,96 @@ export async function createExtraShift(params: {
   });
 }
 
+export async function updateExtraShift(params: {
+  overrideId: number;
+  date: string;
+  startTime: string;
+  endTime: string;
+  description?: string;
+  adminId: string;
+  adminName: string | null;
+  employeeName: string;
+}): Promise<void> {
+  const { overrideId, date, startTime, endTime, description, adminId, adminName, employeeName } = params;
+  const supabase = createClient();
+
+  const hours = computeShiftHours(startTime, endTime);
+  if (hours <= 0) throw new Error("La hora fin debe ser mayor a la hora inicio");
+
+  // 1. Update schedule override
+  const { error: overrideError } = await supabase
+    .from("schedule_overrides")
+    .update({
+      override_date: date,
+      start_time: startTime,
+      end_time: endTime,
+      reason: description || "Turno extra",
+    })
+    .eq("id", overrideId);
+
+  if (overrideError) throw overrideError;
+
+  // 2. Update extra_hours_log
+  const roundedHours = Math.round(hours * 100) / 100;
+  const { error: hoursError } = await supabase
+    .from("extra_hours_log")
+    .update({
+      hours: roundedHours,
+      description: `Turno extra ${date} (${startTime}-${endTime})`,
+    })
+    .eq("reference_type", "extra_shift")
+    .eq("reference_id", overrideId);
+
+  if (hoursError) throw hoursError;
+
+  logAudit({
+    userId: adminId,
+    userName: adminName,
+    action: "actualizar",
+    targetTable: "schedule_overrides",
+    targetId: overrideId,
+    targetDescription: `Turno extra ${date} ${startTime}-${endTime} de ${employeeName} (${roundedHours}h)`,
+    details: { date, startTime, endTime, hours: roundedHours },
+  });
+}
+
+export async function deleteExtraShift(params: {
+  overrideId: number;
+  adminId: string;
+  adminName: string | null;
+  employeeName: string;
+  date: string;
+}): Promise<void> {
+  const { overrideId, adminId, adminName, employeeName, date } = params;
+  const supabase = createClient();
+
+  // 1. Delete associated extra_hours_log entry FIRST
+  const { error: hoursError } = await supabase
+    .from("extra_hours_log")
+    .delete()
+    .eq("reference_type", "extra_shift")
+    .eq("reference_id", overrideId);
+
+  if (hoursError) throw hoursError;
+
+  // 2. Delete the schedule override (only if hours cleanup succeeded)
+  const { error } = await supabase
+    .from("schedule_overrides")
+    .delete()
+    .eq("id", overrideId);
+
+  if (error) throw error;
+
+  logAudit({
+    userId: adminId,
+    userName: adminName,
+    action: "eliminar",
+    targetTable: "schedule_overrides",
+    targetId: overrideId,
+    targetDescription: `Turno extra ${date} eliminado de ${employeeName}`,
+  });
+}
+
 export async function markAbsence(params: {
   userId: string;
   date: string;
@@ -178,11 +220,7 @@ export async function markAbsence(params: {
   const { userId, date, startTime, endTime, reason, adminId, adminName, employeeName } = params;
   const supabase = createClient();
 
-  // Calculate hours
-  const [startH, startM] = startTime.split(":").map(Number);
-  const [endH, endM] = endTime.split(":").map(Number);
-  const hours = endH + endM / 60 - (startH + startM / 60);
-
+  const hours = computeShiftHours(startTime, endTime);
   if (hours <= 0) throw new Error("Turno inválido");
 
   // Check for existing absence on this date for this user
@@ -241,40 +279,5 @@ export async function markAbsence(params: {
     targetId: override.id,
     targetDescription: `Inasistencia ${date} ${startTime}-${endTime} de ${employeeName} (-${roundedHours}h)`,
     details: { employee_id: userId, date, startTime, endTime, hours: roundedHours },
-  });
-}
-
-export async function updateTemplate(params: {
-  templateId: number;
-  userId: string;
-  dayOfWeek: DayOfWeek;
-  startTime: string;
-  endTime: string;
-  adminId: string | null;
-  adminName: string | null;
-  employeeName: string;
-}): Promise<void> {
-  const { templateId, userId, dayOfWeek, startTime, endTime, adminId, adminName, employeeName } = params;
-  const supabase = createClient();
-
-  const { error } = await supabase
-    .from("schedule_templates")
-    .update({
-      user_id: userId,
-      day_of_week: dayOfWeek,
-      start_time: startTime,
-      end_time: endTime,
-    })
-    .eq("id", templateId);
-
-  if (error) throw error;
-
-  logAudit({
-    userId: adminId,
-    userName: adminName,
-    action: "actualizar",
-    targetTable: "schedule_templates",
-    targetId: templateId,
-    targetDescription: `Horario ${DAY_LABELS[dayOfWeek]} ${startTime}-${endTime} para ${employeeName}`,
   });
 }

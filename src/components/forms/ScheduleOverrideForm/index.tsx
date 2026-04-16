@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { logAudit } from "@/utils/auditLog";
 import type { ScheduleUser } from "@/types";
-import { toLocalDateStr } from "@/features/horario/utils/calendarDates";
+import {
+  toLocalDateStr,
+  createScheduleOverrides,
+} from "@/features/horario";
 
 const ALL_USERS_VALUE = "__all__";
 
@@ -58,39 +60,30 @@ export default function ScheduleOverrideForm({
     setIsSubmitting(true);
 
     const targetUsers = isAllUsers ? users : [users.find((u) => u.id === userId)!];
+    const descName = isAllUsers ? "Todos los trabajadores" : (targetUsers[0]?.full_name ?? "");
 
     try {
-      const supabase = createClient();
-
-      for (const targetUser of targetUsers) {
-        const { error } = await supabase.from("schedule_overrides").insert({
-          user_id: targetUser.id,
-          override_date: overrideDate,
-          is_day_off: isDayOff,
-          start_time: isDayOff ? null : startTime,
-          end_time: isDayOff ? null : endTime,
-          reason: reason || null,
-          created_by: user?.id ?? null,
-        });
-
-        if (error) throw error;
-      }
-
-      const descName = isAllUsers ? "Todos los trabajadores" : (targetUsers[0]?.full_name ?? "");
-      logAudit({
-        userId: user?.id ?? null,
-        userName: profile?.full_name ?? null,
-        action: "crear",
-        targetTable: "schedule_overrides",
-        targetId: undefined,
-        targetDescription: `Excepción ${overrideDate} para ${descName}: ${isDayOff ? "Día libre" : `${startTime}-${endTime}`}`,
+      await createScheduleOverrides({
+        userIds: targetUsers.map((u) => u.id),
+        overrideDate,
+        isDayOff,
+        startTime,
+        endTime,
+        reason,
+        createdBy: user?.id ?? null,
+        adminId: user?.id ?? null,
+        adminName: profile?.full_name ?? null,
+        descriptionName: descName,
       });
 
+      toast.success("Excepción creada");
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Error al crear excepción:", error);
-      setSubmitError(error instanceof Error ? error.message : "Error al crear excepción");
+      const msg = error instanceof Error ? error.message : "Error al crear excepción";
+      setSubmitError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

@@ -1,9 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { X, Clock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import type { ScheduleUser } from "@/types";
-import { createExtraShift } from "@/features/horario/services/scheduleService";
-import { toLocalDateStr } from "@/features/horario/utils/calendarDates";
+import type { ScheduleUser, ScheduleSlot } from "@/types";
+import {
+  createExtraShift,
+  updateExtraShift,
+  toLocalDateStr,
+} from "@/features/horario";
 
 const ALL_USERS_VALUE = "__all__";
 
@@ -12,6 +15,7 @@ interface ExtraShiftFormProps {
   onClose: () => void;
   onSuccess: () => void;
   users: ScheduleUser[];
+  item?: ScheduleSlot;
 }
 
 export default function ExtraShiftForm({
@@ -19,10 +23,12 @@ export default function ExtraShiftForm({
   onClose,
   onSuccess,
   users,
+  item,
 }: ExtraShiftFormProps) {
   const { user, profile } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const isEditMode = !!item;
 
   // Form fields
   const [userId, setUserId] = useState("");
@@ -34,16 +40,23 @@ export default function ExtraShiftForm({
   useEffect(() => {
     if (isOpen) {
       setSubmitError(null);
-      setUserId(users[0]?.id ?? "");
-      // Default to tomorrow
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      setDate(toLocalDateStr(tomorrow));
-      setStartTime("08:30");
-      setEndTime("12:30");
-      setDescription("");
+      if (item) {
+        setUserId(item.user_id);
+        setDate(item.date);
+        setStartTime(item.start_time.slice(0, 5));
+        setEndTime(item.end_time.slice(0, 5));
+        setDescription(item.override_reason === "Turno extra" ? "" : item.override_reason ?? "");
+      } else {
+        setUserId(users[0]?.id ?? "");
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        setDate(toLocalDateStr(tomorrow));
+        setStartTime("08:30");
+        setEndTime("12:30");
+        setDescription("");
+      }
     }
-  }, [isOpen, users]);
+  }, [isOpen, users, item]);
 
   const calculatedHours = useMemo(() => {
     if (!startTime || !endTime) return 0;
@@ -55,36 +68,48 @@ export default function ExtraShiftForm({
 
   if (!isOpen) return null;
 
-  const isAllUsers = userId === ALL_USERS_VALUE;
+  const isAllUsers = !isEditMode && userId === ALL_USERS_VALUE;
   const isValid = userId && date && startTime && endTime && calculatedHours > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid || !user) return;
 
-    const targetUsers = isAllUsers ? users : [users.find((u) => u.id === userId)!];
-
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      for (const targetUser of targetUsers) {
-        await createExtraShift({
-          userId: targetUser.id,
+      if (isEditMode && item.override_id) {
+        await updateExtraShift({
+          overrideId: item.override_id,
           date,
           startTime,
           endTime,
           description: description.trim() || undefined,
           adminId: user.id,
           adminName: profile?.full_name ?? null,
-          employeeName: targetUser.full_name ?? "",
+          employeeName: item.user_name,
         });
+      } else {
+        const targetUsers = isAllUsers ? users : [users.find((u) => u.id === userId)!];
+        for (const targetUser of targetUsers) {
+          await createExtraShift({
+            userId: targetUser.id,
+            date,
+            startTime,
+            endTime,
+            description: description.trim() || undefined,
+            adminId: user.id,
+            adminName: profile?.full_name ?? null,
+            employeeName: targetUser.full_name ?? "",
+          });
+        }
       }
       onSuccess();
       onClose();
     } catch (err) {
-      console.error("Error al crear turno extra:", err);
+      console.error("Error al guardar turno extra:", err);
       setSubmitError(
-        err instanceof Error ? err.message : "Error al crear turno extra"
+        err instanceof Error ? err.message : "Error al guardar turno extra"
       );
     } finally {
       setIsSubmitting(false);
@@ -102,7 +127,7 @@ export default function ExtraShiftForm({
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl">
           <h2 className="text-xl font-semibold text-slate-900">
-            Turno Extra
+            {isEditMode ? "Editar Turno Extra" : "Turno Extra"}
           </h2>
           <button
             type="button"
@@ -123,10 +148,12 @@ export default function ExtraShiftForm({
             <select
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isEditMode}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
             >
-              <option value={ALL_USERS_VALUE}>Todos los trabajadores</option>
+              {!isEditMode && (
+                <option value={ALL_USERS_VALUE}>Todos los trabajadores</option>
+              )}
               {users.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.full_name ?? u.id} ({u.role})
@@ -233,7 +260,7 @@ export default function ExtraShiftForm({
               disabled={isSubmitting || !isValid}
               className="flex-1 px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
             >
-              {isSubmitting ? "Guardando..." : "Guardar"}
+              {isSubmitting ? "Guardando..." : isEditMode ? "Actualizar" : "Guardar"}
             </button>
           </div>
         </form>

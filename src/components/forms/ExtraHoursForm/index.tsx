@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { logAudit } from "@/utils/auditLog";
 import type { ScheduleUser } from "@/types";
+import { createExtraHoursEntry } from "@/features/horario";
 
 interface ExtraHoursFormProps {
   isOpen: boolean;
@@ -45,33 +45,25 @@ export default function ExtraHoursForm({
     setIsSubmitting(true);
 
     try {
-      const supabase = createClient();
-      const finalHours = type === "debit" ? -hours : hours;
-      const { error } = await supabase.from("extra_hours_log").insert({
-        user_id: userId,
-        hours: finalHours,
-        description: description.trim(),
-        reference_type: "manual",
-        created_by: user.id,
-      });
-
-      if (error) throw error;
-
       const selectedUser = users.find((u) => u.id === userId);
-      logAudit({
-        userId: user.id,
-        userName: profile?.full_name ?? null,
-        action: "registrar_horas_extra",
-        targetTable: "extra_hours_log",
-        targetId: undefined,
-        targetDescription: `${type === "debit" ? "-" : "+"}${hours}h para ${selectedUser?.full_name ?? ""}: ${description}`,
+      await createExtraHoursEntry({
+        userId,
+        hours,
+        type,
+        description: description.trim(),
+        adminId: user.id,
+        adminName: profile?.full_name ?? null,
+        employeeName: selectedUser?.full_name ?? "",
       });
 
+      toast.success("Horas registradas");
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Error al registrar horas extra:", error);
-      setSubmitError(error instanceof Error ? error.message : "Error al registrar horas extra");
+      const msg = error instanceof Error ? error.message : "Error al registrar horas extra";
+      setSubmitError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

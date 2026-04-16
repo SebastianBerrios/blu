@@ -53,6 +53,7 @@ export interface ScheduleSlot {
   is_extra_shift?: boolean;
   is_absence?: boolean;
   override_reason?: string;
+  override_id?: number;
 }
 
 // Employee balance summary

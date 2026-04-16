@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { toLocalDateStr } from "@/features/horario/utils/calendarDates";
+import {
+  toLocalDateStr,
+  createTimeOffRequest,
+} from "@/features/horario";
 
 interface TimeOffRequestFormProps {
   isOpen: boolean;
@@ -60,24 +63,24 @@ export default function TimeOffRequestForm({
     setIsSubmitting(true);
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase.from("time_off_requests").insert({
-        user_id: user.id,
-        requested_date: requestedDate,
-        is_full_day: isFullDay,
-        start_time: isFullDay ? null : startTime,
-        end_time: isFullDay ? null : endTime,
-        hours_requested: hoursRequested,
+      await createTimeOffRequest({
+        userId: user.id,
+        requestedDate,
+        isFullDay,
+        startTime,
+        endTime,
+        hoursRequested,
         reason: reason || null,
       });
 
-      if (error) throw error;
-
+      toast.success("Solicitud enviada");
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Error al solicitar permiso:", error);
-      setSubmitError(error instanceof Error ? error.message : "Error al solicitar permiso");
+      const msg = error instanceof Error ? error.message : "Error al solicitar permiso";
+      setSubmitError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

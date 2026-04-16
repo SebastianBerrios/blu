@@ -90,6 +90,38 @@ export function getWeekDates(weekStart: string): string[] {
   return dates;
 }
 
+/**
+ * Computes working time slots after subtracting a time-off window from a template.
+ * Returns array of { start_time, end_time } for the remaining work periods.
+ */
+export function computeWorkingSlots(
+  tmplStart: string,
+  tmplEnd: string,
+  offStart: string,
+  offEnd: string
+): { start_time: string; end_time: string }[] {
+  const ts = tmplStart.slice(0, 5);
+  const te = tmplEnd.slice(0, 5);
+  const os = offStart.slice(0, 5);
+  const oe = offEnd.slice(0, 5);
+
+  // Time-off covers entire shift or more
+  if (os <= ts && oe >= te) return [];
+
+  // No overlap
+  if (oe <= ts || os >= te) return [{ start_time: ts, end_time: te }];
+
+  const slots: { start_time: string; end_time: string }[] = [];
+
+  // Work before time-off
+  if (os > ts) slots.push({ start_time: ts, end_time: os });
+
+  // Work after time-off
+  if (oe < te) slots.push({ start_time: oe, end_time: te });
+
+  return slots;
+}
+
 export function getMonday(date: Date = new Date()): string {
   const d = new Date(date);
   const day = d.getDay();
@@ -158,6 +190,7 @@ export const useSchedule = (weekStart: string | null) => {
               is_extra_shift: true,
               is_day_off: false,
               override_reason: ov.reason ?? undefined,
+              override_id: ov.id,
             });
           }
         }
@@ -183,6 +216,61 @@ export const useSchedule = (weekStart: string | null) => {
                   is_day_off: true,
                   override_reason: ov.reason ?? undefined,
                 });
+              }
+              continue;
+            }
+            // Partial time-off: emit separate work + permission blocks
+            if (ov.time_off_request_id && !ov.is_day_off && ov.start_time && ov.end_time) {
+              const dayTemplates = templates.filter(
+                (t) => t.user_id === user.id && t.day_of_week === dayOfWeek
+              );
+              const offStart = ov.start_time;
+              const offEnd = ov.end_time;
+              for (const tmpl of dayTemplates) {
+                const workSlots = computeWorkingSlots(tmpl.start_time, tmpl.end_time, offStart, offEnd);
+                if (workSlots.length === 0) {
+                  // Time-off covers entire shift → day off
+                  result.push({
+                    user_id: user.id,
+                    user_name: userInfo.name,
+                    user_role: userInfo.role,
+                    day_of_week: dayOfWeek,
+                    date,
+                    start_time: tmpl.start_time,
+                    end_time: tmpl.end_time,
+                    is_override: true,
+                    is_day_off: true,
+                    override_reason: ov.reason ?? undefined,
+                  });
+                } else {
+                  // Work blocks (normal appearance)
+                  for (const ws of workSlots) {
+                    result.push({
+                      user_id: user.id,
+                      user_name: userInfo.name,
+                      user_role: userInfo.role,
+                      day_of_week: dayOfWeek,
+                      date,
+                      start_time: ws.start_time,
+                      end_time: ws.end_time,
+                      is_override: false,
+                      is_day_off: false,
+                    });
+                  }
+                  // Permission block (separate, day-off styling)
+                  result.push({
+                    user_id: user.id,
+                    user_name: userInfo.name,
+                    user_role: userInfo.role,
+                    day_of_week: dayOfWeek,
+                    date,
+                    start_time: offStart.slice(0, 5),
+                    end_time: offEnd.slice(0, 5),
+                    is_override: true,
+                    is_day_off: true,
+                    override_reason: ov.reason ?? undefined,
+                  });
+                }
               }
               continue;
             }
