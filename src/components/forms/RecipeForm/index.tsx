@@ -7,16 +7,18 @@ import { useIngredients } from "@/hooks/useIngredients";
 import { useAuth } from "@/hooks/useAuth";
 import type { Recipe, CreateRecipe } from "@/types";
 import type { RecipeIngredientLine, RecipeSubmitParams } from "@/features/recetas/types";
-import { UNIT_OPTIONS } from "@/features/recetas/constants";
 import {
   calculateTotalCost,
   loadRecipeIngredients,
   createRecipe,
   updateRecipe,
   updateRecipeIngredientsOnly,
-} from "@/features/recetas/services/recipesService";
+} from "@/features/recetas";
 import IngredientSelector from "@/features/recetas/components/IngredientSelector";
 import IngredientList from "@/features/recetas/components/IngredientList";
+import RecipeMetadataSection from "@/features/recetas/components/RecipeMetadataSection";
+import RecipeYieldSection from "@/features/recetas/components/RecipeYieldSection";
+import AddAsIngredientToggle from "@/features/recetas/components/AddAsIngredientToggle";
 
 interface RecipeFormProps {
   isOpen: boolean;
@@ -218,44 +220,12 @@ export default function RecipeForm({
           onSubmit={handleSubmit(onSubmit)}
           className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4"
         >
-          {/* Recipe name */}
-          <div>
-            <label className="block text-sm font-medium text-slate-900 mb-1.5">
-              Nombre de la receta <span className="text-red-600">*</span>
-            </label>
-            <input
-              type="text"
-              {...register("name", {
-                required: "El nombre es requerido",
-                maxLength: { value: 50, message: "Máximo 50 caracteres" },
-              })}
-              disabled={isSubmitting}
-              readOnly={readOnlyMeta}
-              className={`w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100 ${readOnlyMeta ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""}`}
-              placeholder="Ej: Fudge"
-            />
-          </div>
-
-          {/* Description */}
-          {hidePrice ? (
-            <input type="hidden" {...register("description")} />
-          ) : (
-            <div>
-              <label className="block text-sm font-medium text-slate-900 mb-1.5">
-                Descripción de la receta <span className="text-red-600">*</span>
-              </label>
-              <textarea
-                {...register("description", {
-                  required: "La descripción es requerida",
-                })}
-                disabled={isSubmitting}
-                readOnly={readOnlyMeta}
-                rows={3}
-                className={`w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100 ${readOnlyMeta ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""}`}
-                placeholder="Ej: Mezclar la leche con la leche condensada..."
-              />
-            </div>
-          )}
+          <RecipeMetadataSection
+            register={register}
+            isSubmitting={isSubmitting}
+            readOnlyMeta={readOnlyMeta}
+            hidePrice={hidePrice}
+          />
 
           {/* Ingredients section */}
           <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
@@ -319,95 +289,20 @@ export default function RecipeForm({
 
           {/* Yield section */}
           {!hidePrice && (addAsIngredient || !readOnlyMeta) && (
-            <div className="border-2 border-blue-300 rounded-lg p-4 bg-linear-to-br from-blue-50 to-white">
-              <h3 className="text-base font-semibold text-blue-900 mb-3">
-                Rendimiento de la Receta
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-blue-900 mb-1.5">
-                    Cantidad <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    {...register("quantity", {
-                      required: "La cantidad es requerida",
-                      min: { value: 0.01, message: "Debe ser mayor a 0" },
-                    })}
-                    disabled={isSubmitting || readOnlyMeta}
-                    className={`w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 ${readOnlyMeta ? "text-gray-500 cursor-not-allowed" : ""}`}
-                    placeholder="150"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-blue-900 mb-1.5">
-                    Unidad <span className="text-red-600">*</span>
-                  </label>
-                  <select
-                    {...register("unit_of_measure", {
-                      required: "La unidad de medida es requerida",
-                    })}
-                    disabled={isSubmitting || readOnlyMeta}
-                    className={`w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 ${readOnlyMeta ? "text-gray-500 cursor-not-allowed" : ""}`}
-                  >
-                    <option value="">Seleccionar</option>
-                    {UNIT_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              {!readOnlyMeta && (
-                <div className="bg-blue-100 rounded-lg p-3 border border-blue-200 mt-3">
-                  <p className="text-xs text-blue-800">
-                    <strong>Ejemplo:</strong> Si tu receta produce 150g de fudge,
-                    ingresa:
-                  </p>
-                  <ul className="text-xs text-blue-700 mt-2 space-y-1 ml-4">
-                    <li>
-                      • Cantidad: <strong>150</strong>
-                    </li>
-                    <li>
-                      • Unidad: <strong>g</strong>
-                    </li>
-                  </ul>
-                </div>
-              )}
-            </div>
+            <RecipeYieldSection
+              register={register}
+              isSubmitting={isSubmitting}
+              readOnlyMeta={readOnlyMeta}
+            />
           )}
 
           {/* Add as ingredient toggle */}
           {!isEditMode && !readOnlyMeta && isAdmin && (
-            <div className="border border-purple-200 rounded-lg p-4 bg-purple-50 flex items-start justify-between gap-4">
-              <div>
-                <label className="block text-sm font-medium text-purple-900 mb-1.5">
-                  ¿Agregar esta receta como ingrediente?
-                </label>
-                <p className="text-xs text-purple-700">
-                  Si está activado, la receta se registrará en la lista de
-                  ingredientes para usarla en otras preparaciones.
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={addAsIngredient}
-                onClick={() => setAddAsIngredient((prev) => !prev)}
-                disabled={isSubmitting}
-                className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  addAsIngredient ? "bg-purple-600" : "bg-gray-300"
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    addAsIngredient ? "translate-x-6" : "translate-x-0"
-                  }`}
-                />
-              </button>
-            </div>
+            <AddAsIngredientToggle
+              addAsIngredient={addAsIngredient}
+              onToggle={() => setAddAsIngredient((prev) => !prev)}
+              isSubmitting={isSubmitting}
+            />
           )}
 
           {/* Submit error */}

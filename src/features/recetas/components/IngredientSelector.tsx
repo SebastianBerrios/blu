@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import type { Ingredient } from "@/types";
 import type { RecipeIngredientLine } from "../types";
 import { UNIT_OPTIONS } from "../constants";
-import { calculateIngredientCost } from "../services/recipesService";
+import { calculateIngredientCost } from "../services/recipeCalculations";
 
 interface IngredientSelectorProps {
   ingredients: Ingredient[];
