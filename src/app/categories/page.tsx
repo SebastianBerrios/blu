@@ -78,8 +78,8 @@ export default function Categories() {
           )}
           <DataTable<Category>
             title="Lista de Categorías"
-            columns={isAdmin ? ["N°", "Categorías", "Acciones"] : ["N°", "Categorías"]}
-            dataKeys={["id", "name"]}
+            columns={isAdmin ? ["N°", "Categorías", "Tipo", "Acciones"] : ["N°", "Categorías", "Tipo"]}
+            dataKeys={["id", "name", "tipo"]}
             data={categories || []}
             isLoading={isLoading}
             onEdit={isAdmin ? handleEdit : undefined}
@@ -89,6 +89,15 @@ export default function Categories() {
                 <div>
                   <span className="text-xs text-slate-400">#{item.id}</span>
                   <p className="text-sm font-medium text-slate-900 capitalize">{item.name}</p>
+                  {item.tipo && (
+                    <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                      item.tipo === "postre"
+                        ? "bg-pink-100 text-pink-700"
+                        : "bg-sky-100 text-sky-700"
+                    }`}>
+                      {item.tipo === "postre" ? "Postre" : "Bebida"}
+                    </span>
+                  )}
                 </div>
                 {(onEditFn || onDeleteFn) && (
                   <div className="flex items-center gap-1">

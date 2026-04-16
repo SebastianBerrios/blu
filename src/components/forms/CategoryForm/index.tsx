@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { X } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
+import {
+  buildCategoryPayload,
+  createCategory,
+  updateCategory,
+} from "@/features/categorias";
 import type { CreateCategory, Category } from "@/types";
 
 interface CategoryFormProps {
@@ -28,10 +33,15 @@ export default function CategoryForm({
       if (category) {
         reset({
           name: category.name,
+          tipo:
+            category.tipo === "postre" || category.tipo === "bebida"
+              ? category.tipo
+              : null,
         });
       } else {
         reset({
           name: "",
+          tipo: null,
         });
       }
     }
@@ -44,32 +54,23 @@ export default function CategoryForm({
     setIsSubmitting(true);
 
     try {
-      const supabase = createClient();
-
-      const categoryData = {
-        name: data.name.toLowerCase(),
-      };
+      const payload = buildCategoryPayload(data);
 
       if (isEditMode) {
-        const { error } = await supabase
-          .from("categories")
-          .update(categoryData)
-          .eq("id", category.id);
-
-        if (error) throw error;
+        await updateCategory(category.id, payload);
+        toast.success("Categoría actualizada");
       } else {
-        const { error } = await supabase
-          .from("categories")
-          .insert(categoryData);
-
-        if (error) throw error;
+        await createCategory(payload);
+        toast.success("Categoría creada");
       }
 
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Error al guardar categoria:", error);
-      setSubmitError(error instanceof Error ? error.message : "Error al guardar categoría");
+      const msg = error instanceof Error ? error.message : "Error al guardar categoría";
+      setSubmitError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -116,6 +117,28 @@ export default function CategoryForm({
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
               placeholder="Ej: Cafes"
             />
+          </div>
+
+          {/* Tipo */}
+          <div>
+            <label className="block text-sm font-medium text-slate-900 mb-1.5">
+              Tipo{" "}
+              <span className="text-slate-500 text-xs">
+                (para promociones de fidelidad)
+              </span>
+            </label>
+            <select
+              {...register("tipo", {
+                setValueAs: (v) =>
+                  v === "postre" || v === "bebida" ? v : null,
+              })}
+              disabled={isSubmitting}
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100 bg-white"
+            >
+              <option value="">Ninguno</option>
+              <option value="postre">Postre</option>
+              <option value="bebida">Bebida</option>
+            </select>
           </div>
 
           {submitError && (
