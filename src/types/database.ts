@@ -89,14 +89,17 @@ export type Database = {
         Row: {
           id: number
           name: string
+          tipo: string | null
         }
         Insert: {
           id?: never
           name: string
+          tipo?: string | null
         }
         Update: {
           id?: never
           name?: string
+          tipo?: string | null
         }
         Relationships: []
       }
@@ -216,29 +219,61 @@ export type Database = {
           },
         ]
       }
-      ingredients: {
+      ingredient_groups: {
         Row: {
+          created_at: string
           id: number
           name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          name?: string
+        }
+        Relationships: []
+      }
+      ingredients: {
+        Row: {
+          group_id: number | null
+          id: number
+          name: string
+          needs_purchase: boolean
           price: number
           quantity: number
           unit_of_measure: string
         }
         Insert: {
+          group_id?: number | null
           id?: never
           name: string
+          needs_purchase?: boolean
           price: number
           quantity: number
           unit_of_measure: string
         }
         Update: {
+          group_id?: number | null
           id?: never
           name?: string
+          needs_purchase?: boolean
           price?: number
           quantity?: number
           unit_of_measure?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ingredients_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "ingredient_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventory_movements: {
         Row: {
@@ -501,6 +536,7 @@ export type Database = {
       sale_products: {
         Row: {
           id: number
+          loyalty_reward: string | null
           product_id: number
           quantity: number
           sale_id: number
@@ -511,6 +547,7 @@ export type Database = {
         }
         Insert: {
           id?: never
+          loyalty_reward?: string | null
           product_id: number
           quantity: number
           sale_id: number
@@ -521,6 +558,7 @@ export type Database = {
         }
         Update: {
           id?: never
+          loyalty_reward?: string | null
           product_id?: number
           quantity?: number
           sale_id?: number
@@ -549,6 +587,7 @@ export type Database = {
       sales: {
         Row: {
           cash_amount: number | null
+          cash_received: number | null
           customer_id: number | null
           id: number
           order_type: string
@@ -562,6 +601,7 @@ export type Database = {
         }
         Insert: {
           cash_amount?: number | null
+          cash_received?: number | null
           customer_id?: number | null
           id?: number
           order_type: string
@@ -575,6 +615,7 @@ export type Database = {
         }
         Update: {
           cash_amount?: number | null
+          cash_received?: number | null
           customer_id?: number | null
           id?: number
           order_type?: string
@@ -924,6 +965,10 @@ export type Database = {
           p_user_id?: string
           p_user_name?: string
         }
+        Returns: undefined
+      }
+      delete_sale_transactions: {
+        Args: { p_sale_id: number }
         Returns: undefined
       }
       record_transaction: {
