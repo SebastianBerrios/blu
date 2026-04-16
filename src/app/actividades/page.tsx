@@ -2,7 +2,9 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { ClipboardCheck, CheckSquare, Settings, History, type LucideIcon } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useConfirm } from "@/hooks/useConfirm";
 import { useActivities } from "@/hooks/useActivities";
 import type { EmployeeTaskWithUser, TodayTask } from "@/types";
 import { createTask, updateTask, deleteTask, toggleTaskCompletion } from "@/features/actividades";
@@ -23,6 +25,7 @@ function getTodayStr(): string {
 
 export default function ActividadesPage() {
   const { user, isAdmin, profile } = useAuth();
+  const confirm = useConfirm();
   const { myTasks, allEmployeeTasks, users, isLoading, mutate } = useActivities();
   const [activeTab, setActiveTab] = useState<TabId>(isAdmin ? "hoy" : "hoy");
 
@@ -122,14 +125,22 @@ export default function ActividadesPage() {
   }, [editingTask, user, profile]);
 
   const handleDelete = useCallback(async (task: EmployeeTaskWithUser) => {
-    if (!confirm(`¿Eliminar la tarea "${task.title}"?`)) return;
+    const ok = await confirm({
+      title: "¿Eliminar tarea?",
+      description: `Se eliminará la tarea "${task.title}".`,
+      confirmLabel: "Eliminar",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       await deleteTask(task.id, user?.id ?? null, profile?.full_name ?? null, task.title);
       mutate();
+      toast.success("Tarea eliminada");
     } catch (err) {
       console.error("Error al eliminar tarea:", err);
+      toast.error(err instanceof Error ? err.message : "Error al eliminar tarea");
     }
-  }, [user, profile, mutate]);
+  }, [confirm, user, profile, mutate]);
 
   const handleSuccess = () => {
     mutate();

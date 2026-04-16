@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/client";
 import { logAudit } from "@/utils/auditLog";
+import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import type { CreateEmployeeTask, UpdateEmployeeTask } from "@/types";
 
 export async function createTask(
@@ -58,21 +59,13 @@ export async function deleteTask(
   adminName: string | null,
   taskTitle: string
 ): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("employee_tasks")
-    .delete()
-    .eq("id", taskId);
-
-  if (error) throw error;
-
-  logAudit({
+  await deleteWithAudit({
+    table: "employee_tasks",
+    id: taskId,
     userId: adminId,
     userName: adminName,
-    action: "eliminar",
-    targetTable: "employee_tasks",
-    targetId: taskId,
-    targetDescription: `Tarea "${taskTitle}" eliminada`,
+    auditTable: "employee_tasks",
+    description: `Tarea "${taskTitle}" eliminada`,
   });
 }
 
