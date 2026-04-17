@@ -1,4 +1,4 @@
-import { CheckCircle2, ClipboardList } from "lucide-react";
+import { CheckCircle2, Circle, ClipboardList } from "lucide-react";
 import type { EmployeeTodayTasks, TodayTask, TaskCategory } from "@/types";
 import Spinner from "@/components/ui/Spinner";
 import { CATEGORY_LABELS, CATEGORY_STYLES, CATEGORY_ORDER } from "../constants";
@@ -27,65 +27,102 @@ export default function TodayTab({ employees, isLoading }: TodayTabProps) {
       {employees.map((emp) => {
         const pct = emp.total_count > 0 ? Math.round((emp.completed_count / emp.total_count) * 100) : 0;
         const roleColor = ROLE_COLORS[emp.user_role] ?? ROLE_COLORS.admin;
+        const isComplete = pct === 100;
 
         return (
-          <div key={emp.user_id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div
+            key={emp.user_id}
+            className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm"
+          >
             {/* Header */}
-            <div className="px-4 py-3 flex items-center justify-between border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-slate-900">{emp.user_name}</span>
-                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${roleColor.bg} ${roleColor.text}`}>
+            <div className="px-4 md:px-5 py-3.5 flex items-center justify-between gap-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="font-semibold text-slate-900 truncate">{emp.user_name}</span>
+                <span
+                  className={`shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full capitalize ${roleColor.bg} ${roleColor.text}`}
+                >
                   {emp.user_role}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-sm font-medium ${pct === 100 ? "text-green-600" : "text-slate-500"}`}>
+              <div className="flex items-center gap-2 shrink-0">
+                <span
+                  className={`text-sm font-semibold tabular-nums ${
+                    isComplete ? "text-green-600" : "text-slate-700"
+                  }`}
+                >
                   {emp.completed_count}/{emp.total_count}
                 </span>
-                {pct === 100 && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                <span
+                  className={`text-xs font-medium tabular-nums ${
+                    isComplete ? "text-green-600" : "text-slate-400"
+                  }`}
+                >
+                  {pct}%
+                </span>
+                {isComplete && <CheckCircle2 className="w-4 h-4 text-green-500" />}
               </div>
             </div>
 
             {/* Progress bar */}
-            <div className="h-1 bg-slate-100">
+            <div className="h-2 bg-slate-100">
               <div
-                className={`h-full transition-all duration-300 ${pct === 100 ? "bg-green-500" : "bg-primary-500"}`}
+                className={`h-full transition-all duration-500 ${
+                  isComplete ? "bg-green-500" : "bg-primary-500"
+                }`}
                 style={{ width: `${pct}%` }}
               />
             </div>
 
             {/* Tasks by category */}
-            <div className="px-4 py-3 space-y-2">
+            <div className="px-4 md:px-5 py-4 space-y-4">
               {CATEGORY_ORDER.map((cat) => {
                 const catTasks = emp.tasks.filter((t) => t.category === cat);
                 if (catTasks.length === 0) return null;
                 const style = CATEGORY_STYLES[cat as TaskCategory];
                 const catCompleted = catTasks.filter((t) => t.is_completed).length;
+                const catPct = Math.round((catCompleted / catTasks.length) * 100);
+                const catComplete = catPct === 100;
 
                 return (
                   <div key={cat}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-[11px] font-semibold ${style.text}`}>
-                        {CATEGORY_LABELS[cat as TaskCategory]}
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        {catCompleted}/{catTasks.length}
-                      </span>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${style.bg} ${style.text} ${style.border}`}
+                        >
+                          {CATEGORY_LABELS[cat as TaskCategory]}
+                        </span>
+                        <span className="text-xs text-slate-500 tabular-nums">
+                          {catCompleted}/{catTasks.length}
+                        </span>
+                      </div>
+                      {catComplete && (
+                        <span className="text-[11px] font-medium text-green-600 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Completa
+                        </span>
+                      )}
                     </div>
-                    <div className="space-y-0.5">
+                    <ul className="space-y-1">
                       {catTasks.map((task: TodayTask) => (
-                        <div key={task.id} className="flex items-center gap-2 py-0.5">
+                        <li key={task.id} className="flex items-center gap-2.5 py-1">
                           {task.is_completed ? (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                            <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
                           ) : (
-                            <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-300 shrink-0" />
+                            <Circle className="w-4 h-4 text-slate-300 shrink-0" />
                           )}
-                          <span className={`text-xs ${task.is_completed ? "text-slate-400 line-through" : "text-slate-600"}`}>
+                          <span
+                            className={`text-sm ${
+                              task.is_completed
+                                ? "text-slate-400 line-through"
+                                : "text-slate-700"
+                            }`}
+                          >
                             {task.title}
                           </span>
-                        </div>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 );
               })}

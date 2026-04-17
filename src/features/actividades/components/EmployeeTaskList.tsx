@@ -32,52 +32,71 @@ export default function EmployeeTaskList({ tasks, onToggle, readOnly }: Employee
       {grouped.map(({ category, tasks: catTasks }) => {
         const style = CATEGORY_STYLES[category as TaskCategory];
         const completed = catTasks.filter((t) => t.is_completed).length;
+        const pct = Math.round((completed / catTasks.length) * 100);
+        const isComplete = pct === 100;
 
         return (
-          <div key={category} className={`rounded-xl border ${style.border} overflow-hidden`}>
-            <div className={`px-4 py-2.5 ${style.bg} flex items-center justify-between`}>
+          <div
+            key={category}
+            className={`rounded-xl border ${style.border} overflow-hidden bg-white shadow-sm`}
+          >
+            <div className={`px-4 py-3 ${style.bg} flex items-center justify-between gap-3`}>
               <span className={`text-sm font-semibold ${style.text}`}>
                 {CATEGORY_LABELS[category as TaskCategory]}
               </span>
-              <span className={`text-xs font-medium ${style.text}`}>
-                {completed}/{catTasks.length} completadas
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-medium tabular-nums ${style.text}`}>
+                  {completed}/{catTasks.length}
+                </span>
+                {isComplete && (
+                  <CheckCircle2 className={`w-4 h-4 ${style.text}`} />
+                )}
+              </div>
             </div>
-            <div className="divide-y divide-slate-100 bg-white">
+            <div className="h-1.5 bg-slate-100">
+              <div
+                className={`h-full transition-all duration-500 ${
+                  isComplete ? "bg-green-500" : "bg-primary-500"
+                }`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <ul className="divide-y divide-slate-100">
               {catTasks.map((task) => {
                 const isToggling = togglingId === task.id;
                 return (
-                  <button
-                    key={task.id}
-                    onClick={() => handleToggle(task)}
-                    disabled={readOnly || isToggling}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 disabled:opacity-60"
-                  >
-                    {isToggling ? (
-                      <Loader2 className="w-5 h-5 text-primary-500 animate-spin shrink-0" />
-                    ) : task.is_completed ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
-                    ) : (
-                      <Circle className="w-5 h-5 text-slate-300 shrink-0" />
-                    )}
-                    <span
-                      className={`text-sm ${
-                        task.is_completed
-                          ? "text-slate-400 line-through"
-                          : "text-slate-700"
-                      }`}
+                  <li key={task.id}>
+                    <button
+                      onClick={() => handleToggle(task)}
+                      disabled={readOnly || isToggling}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-slate-50 active:bg-slate-100 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      {task.title}
-                    </span>
-                    {task.frequency === "weekly" && (
-                      <span className="ml-auto text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                        Semanal
+                      {isToggling ? (
+                        <Loader2 className="w-5 h-5 text-primary-500 animate-spin shrink-0" />
+                      ) : task.is_completed ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                      ) : (
+                        <Circle className="w-5 h-5 text-slate-300 shrink-0" />
+                      )}
+                      <span
+                        className={`text-sm flex-1 ${
+                          task.is_completed
+                            ? "text-slate-400 line-through"
+                            : "text-slate-700"
+                        }`}
+                      >
+                        {task.title}
                       </span>
-                    )}
-                  </button>
+                      {task.frequency === "weekly" && (
+                        <span className="shrink-0 text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                          Semanal
+                        </span>
+                      )}
+                    </button>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           </div>
         );
       })}
