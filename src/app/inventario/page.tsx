@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Package, ShoppingCart, Clock, Settings } from "lucide-react";
 import { useInventory } from "@/hooks/useInventory";
 import { useAuth } from "@/hooks/useAuth";
-import { adjustInventory, toggleNeedsPurchase } from "@/features/inventario/services/inventoryService";
+import { adjustInventory, toggleNeedsPurchase, assignIngredientGroup } from "@/features/inventario/services/inventoryService";
 import type { Ingredient } from "@/types";
 import PageHeader from "@/components/ui/PageHeader";
 import Spinner from "@/components/ui/Spinner";
@@ -73,6 +73,15 @@ export default function InventarioPage() {
     } catch (err) {
       console.error("Error al cambiar estado de compra:", err);
       setSaveError(err instanceof Error ? err.message : "Error al actualizar");
+    }
+  };
+
+  const handleChangeGroup = async (ingredient: Ingredient, groupId: number | null) => {
+    try {
+      await assignIngredientGroup(ingredient.id, groupId);
+      mutateIngredients();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Error al cambiar grupo");
     }
   };
 
@@ -155,6 +164,7 @@ export default function InventarioPage() {
             onSaveEdit={handleSaveEdit}
             onEditChange={(val) => setEditing(editing ? { ...editing, value: val } : null)}
             onTogglePurchase={handleTogglePurchase}
+            onChangeGroup={handleChangeGroup}
           />
         ) : activeTab === "compras" ? (
           <ComprasTab

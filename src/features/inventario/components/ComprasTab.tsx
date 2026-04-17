@@ -5,6 +5,15 @@ import { ShoppingCart, Check } from "lucide-react";
 import type { Ingredient, IngredientGroup } from "@/types";
 import { groupIngredientsByGroup } from "../utils/groupIngredients";
 
+const ComprasColGroup = () => (
+  <colgroup>
+    <col />
+    <col style={{ width: "140px" }} />
+    <col style={{ width: "100px" }} />
+    <col style={{ width: "140px" }} />
+  </colgroup>
+);
+
 function getStockColor(quantity: number, unit: string) {
   const thresholds: Record<string, number> = {
     kg: 0.5, g: 200, l: 0.5, ml: 200, und: 5, unidad: 5,
@@ -52,7 +61,8 @@ export default function ComprasTab({ ingredients, groups, onUnmark }: ComprasTab
                 {section.group?.name ?? "Sin grupo"}
               </h3>
             </div>
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-fixed">
+              <ComprasColGroup />
               <thead className="bg-slate-50/50 border-b border-slate-100">
                 <tr>
                   <th className="text-left px-4 py-2 font-medium text-slate-500 text-xs">Ingrediente</th>
@@ -66,7 +76,7 @@ export default function ComprasTab({ ingredients, groups, onUnmark }: ComprasTab
                   const colorClass = getStockColor(ingredient.quantity, ingredient.unit_of_measure);
                   return (
                     <tr key={ingredient.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-slate-900 capitalize">
+                      <td className="px-4 py-3 font-medium text-slate-900 capitalize truncate">
                         {ingredient.name}
                       </td>
                       <td className="px-4 py-3 text-right">

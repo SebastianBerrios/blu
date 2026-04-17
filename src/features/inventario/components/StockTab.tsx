@@ -7,6 +7,16 @@ import { groupIngredientsByGroup } from "../utils/groupIngredients";
 
 const LOW_STOCK_THRESHOLD = 0.1;
 
+const StockColGroup = () => (
+  <colgroup>
+    <col />
+    <col style={{ width: "140px" }} />
+    <col style={{ width: "100px" }} />
+    <col style={{ width: "200px" }} />
+    <col style={{ width: "140px" }} />
+  </colgroup>
+);
+
 function getStockColor(quantity: number, unit: string) {
   const thresholds: Record<string, number> = {
     kg: 0.5,
@@ -37,6 +47,7 @@ interface StockTabProps {
   onSaveEdit: (i: Ingredient) => void;
   onEditChange: (val: string) => void;
   onTogglePurchase: (ingredient: Ingredient) => void;
+  onChangeGroup: (ingredient: Ingredient, groupId: number | null) => void;
 }
 
 export default function StockTab({
@@ -49,6 +60,7 @@ export default function StockTab({
   onSaveEdit,
   onEditChange,
   onTogglePurchase,
+  onChangeGroup,
 }: StockTabProps) {
   const [sortOrder, setSortOrder] = useState<"none" | "asc" | "desc">("none");
 
@@ -88,7 +100,7 @@ export default function StockTab({
 
     return (
       <tr key={ingredient.id} className="hover:bg-slate-50 transition-colors">
-        <td className="px-4 py-3 font-medium text-slate-900 capitalize">
+        <td className="px-4 py-3 font-medium text-slate-900 capitalize truncate">
           {ingredient.name}
         </td>
         <td className="px-4 py-3 text-right">
@@ -109,6 +121,18 @@ export default function StockTab({
           )}
         </td>
         <td className="px-4 py-3 text-slate-500">{ingredient.unit_of_measure}</td>
+        <td className="px-4 py-3">
+          <select
+            value={ingredient.group_id ?? ""}
+            onChange={(e) => onChangeGroup(ingredient, e.target.value ? Number(e.target.value) : null)}
+            className="text-sm text-slate-600 bg-transparent border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 rounded"
+          >
+            <option value="">Sin grupo</option>
+            {groups.sort((a, b) => a.name.localeCompare(b.name, "es")).map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </select>
+        </td>
         <td className="px-4 py-3 text-right">
           <div className="flex items-center justify-end gap-1">
             {isEditing ? (
@@ -179,7 +203,19 @@ export default function StockTab({
             >
               <ShoppingCart className="w-4 h-4" />
             </button>
-            <p className="font-medium text-slate-900 capitalize truncate">{ingredient.name}</p>
+            <div className="min-w-0">
+              <p className="font-medium text-slate-900 capitalize truncate">{ingredient.name}</p>
+              <select
+                value={ingredient.group_id ?? ""}
+                onChange={(e) => onChangeGroup(ingredient, e.target.value ? Number(e.target.value) : null)}
+                className="text-xs text-slate-500 bg-transparent border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 rounded p-0"
+              >
+                <option value="">Sin grupo</option>
+                {groups.sort((a, b) => a.name.localeCompare(b.name, "es")).map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
           {isEditing ? (
             <div className="flex items-center gap-2">
@@ -255,12 +291,14 @@ export default function StockTab({
                     {section.group?.name ?? "Sin grupo"}
                   </h3>
                 </div>
-                <table className="w-full text-sm">
+                <table className="w-full text-sm table-fixed">
+                  <StockColGroup />
                   <thead className="bg-slate-50/50 border-b border-slate-100">
                     <tr>
                       <th className="text-left px-4 py-2 font-medium text-slate-500 text-xs">Ingrediente</th>
                       <th className="text-right px-4 py-2 font-medium text-slate-500 text-xs">Cantidad</th>
                       <th className="text-left px-4 py-2 font-medium text-slate-500 text-xs">Unidad</th>
+                      <th className="text-left px-4 py-2 font-medium text-slate-500 text-xs">Grupo</th>
                       <th className="text-right px-4 py-2 font-medium text-slate-500 text-xs">Acciones</th>
                     </tr>
                   </thead>
@@ -290,12 +328,14 @@ export default function StockTab({
         <>
           {/* Desktop flat table */}
           <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-fixed">
+              <StockColGroup />
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium text-slate-600">Ingrediente</th>
                   <th className="text-right px-4 py-3 font-medium text-slate-600">Cantidad</th>
                   <th className="text-left px-4 py-3 font-medium text-slate-600">Unidad</th>
+                  <th className="text-left px-4 py-3 font-medium text-slate-600">Grupo</th>
                   <th className="text-right px-4 py-3 font-medium text-slate-600">Acciones</th>
                 </tr>
               </thead>
