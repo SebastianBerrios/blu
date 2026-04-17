@@ -2,6 +2,7 @@
 
 import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
+import { localDayRangeISO } from "@/utils/helpers/dateFormatters";
 import type { AuditLog } from "@/types/auditLog";
 
 interface AuditLogFilters {
@@ -31,10 +32,10 @@ const buildFetcher = (filters: AuditLogFilters) => async (): Promise<AuditLog[]>
     query = query.eq("target_table", filters.targetTable);
   }
   if (filters.startDate) {
-    query = query.gte("created_at", filters.startDate);
+    query = query.gte("created_at", localDayRangeISO(filters.startDate).start);
   }
   if (filters.endDate) {
-    query = query.lte("created_at", filters.endDate + "T23:59:59.999Z");
+    query = query.lte("created_at", localDayRangeISO(filters.endDate).end);
   }
 
   const { data, error } = await query;

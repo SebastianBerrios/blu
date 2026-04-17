@@ -79,3 +79,17 @@ export function formatTime(iso: string): string {
     minute: "2-digit",
   });
 }
+
+/**
+ * Converts a local calendar day (YYYY-MM-DD) into a UTC ISO range that covers
+ * exactly that day in the user's local timezone.
+ *
+ * Use whenever you filter a `timestamptz` column by a day picked in the UI.
+ * Never concatenate `T00:00:00` without a Z suffix and send it to Supabase —
+ * Postgres treats naked strings as UTC and will shift the window.
+ */
+export function localDayRangeISO(dateKey: string): { start: string; end: string } {
+  const start = new Date(`${dateKey}T00:00:00`);
+  const end = new Date(`${dateKey}T23:59:59.999`);
+  return { start: start.toISOString(), end: end.toISOString() };
+}

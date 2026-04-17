@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
+import { localDayRangeISO } from "@/utils/helpers/dateFormatters";
 import {
   generateCashChangeAlerts,
   generateYapeChangeAlerts,
@@ -27,12 +28,6 @@ export interface DailySummary {
   totalIngresos: number;
   totalEgresos: number;
   totalNet: number;
-}
-
-function localDayRangeISO(dateKey: string): { start: string; end: string } {
-  const start = new Date(`${dateKey}T00:00:00`);
-  const end = new Date(`${dateKey}T23:59:59.999`);
-  return { start: start.toISOString(), end: end.toISOString() };
 }
 
 export async function fetchDailySummary(dateKey: string): Promise<DailySummary> {
