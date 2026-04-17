@@ -1,14 +1,17 @@
 import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
 import type {
-  SalesKPIs,
+  SalesKPIsWithDelta,
+  KPIValue,
   RevenueByDay,
   RevenueByPaymentMethod,
   TopProduct,
   SalesByOrderType,
   SalesByHour,
   RevenueVsExpenses,
-  DateRange,
+  HeatmapCell,
+  PeriodRanges,
+  Granularity,
 } from "@/types";
 import { toLocalDateKey } from "@/utils/helpers/groupByDate";
 
@@ -23,90 +26,171 @@ interface SaleRow {
   sale_products: Array<{
     quantity: number;
     unit_price: number;
-    products: { name: string };
+    products: { name: string; manufacturing_cost: number | null } | null;
   }>;
 }
 
+interface ExpenseRow {
+  amount: number;
+  type: string;
+  created_at: string;
+}
+
+interface BaseAggregates {
+  revenue: number;
+  totalSales: number;
+  productsSold: number;
+  grossCost: number;
+}
+
 interface StatsData {
-  kpis: SalesKPIs;
-  revenueByDay: RevenueByDay[];
+  kpis: SalesKPIsWithDelta;
+  revenueByBucket: RevenueByDay[];
+  previousRevenueByBucket: RevenueByDay[];
   revenueByMethod: RevenueByPaymentMethod[];
   topProducts: TopProduct[];
   salesByOrderType: SalesByOrderType[];
   salesByHour: SalesByHour[];
   revenueVsExpenses: RevenueVsExpenses[];
+  heatmap: HeatmapCell[];
+  sparkline: number[];
+  ranges: PeriodRanges;
 }
 
-const fetchStats = async (dateRange: DateRange): Promise<StatsData> => {
+const SELECT_CLAUSE =
+  "id, sale_date, total_price, order_type, payment_method, cash_amount, yape_amount, sale_products(quantity, unit_price, products(name, manufacturing_cost))";
+
+async function fetchSales(start: string, end: string): Promise<SaleRow[]> {
   const supabase = createClient();
+  const { data, error } = await supabase
+    .from("sales")
+    .select(SELECT_CLAUSE)
+    .not("payment_method", "is", null)
+    .gte("sale_date", start)
+    .lte("sale_date", end);
+  if (error) throw new Error(error.message);
+  return (data || []) as unknown as SaleRow[];
+}
 
-  const [salesRes, expensesRes] = await Promise.all([
-    supabase
-      .from("sales")
-      .select("id, sale_date, total_price, order_type, payment_method, cash_amount, yape_amount, sale_products(quantity, unit_price, products(name))")
-      .not("payment_method", "is", null)
-      .gte("sale_date", dateRange.startDate)
-      .lte("sale_date", dateRange.endDate),
-    supabase
-      .from("transactions")
-      .select("amount, type, created_at")
-      .in("type", ["gasto", "egreso_compra"])
-      .gte("created_at", dateRange.startDate)
-      .lte("created_at", dateRange.endDate),
-  ]);
+async function fetchExpenses(start: string, end: string): Promise<ExpenseRow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("amount, type, created_at")
+    .in("type", ["gasto", "egreso_compra"])
+    .gte("created_at", start)
+    .lte("created_at", end);
+  if (error) throw new Error(error.message);
+  return (data || []) as ExpenseRow[];
+}
 
-  if (salesRes.error) throw new Error(salesRes.error.message);
-  if (expensesRes.error) throw new Error(expensesRes.error.message);
-
-  const sales = (salesRes.data || []) as unknown as SaleRow[];
-  const expenses = expensesRes.data || [];
-
-  // KPIs
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const dailyRevenue = sales
-    .filter((s) => toLocalDateKey(s.sale_date) === today)
-    .reduce((sum, s) => sum + s.total_price, 0);
-  const monthlyRevenue = sales
-    .filter((s) => toLocalDateKey(s.sale_date).slice(0, 7) === monthStart)
-    .reduce((sum, s) => sum + s.total_price, 0);
-  const totalSales = sales.length;
-  const avgTicket = totalSales > 0 ? sales.reduce((sum, s) => sum + s.total_price, 0) / totalSales : 0;
-  const productsSold = sales.reduce(
-    (sum, s) => sum + s.sale_products.reduce((ps, sp) => ps + sp.quantity, 0),
-    0
-  );
-
-  const kpis: SalesKPIs = { dailyRevenue, monthlyRevenue, avgTicket, productsSold, totalSales };
-
-  // Revenue by day
-  const revByDayMap: Record<string, number> = {};
+function aggregateBase(sales: SaleRow[]): BaseAggregates {
+  let revenue = 0;
+  let productsSold = 0;
+  let grossCost = 0;
   for (const s of sales) {
-    const date = toLocalDateKey(s.sale_date);
-    revByDayMap[date] = (revByDayMap[date] || 0) + s.total_price;
+    revenue += Number(s.total_price) || 0;
+    for (const sp of s.sale_products) {
+      const qty = Number(sp.quantity) || 0;
+      productsSold += qty;
+      const cost = Number(sp.products?.manufacturing_cost ?? 0) || 0;
+      grossCost += qty * cost;
+    }
   }
-  const revenueByDay: RevenueByDay[] = Object.entries(revByDayMap)
+  return { revenue, productsSold, grossCost, totalSales: sales.length };
+}
+
+function computeDelta(current: number, previous: number): number | null {
+  if (previous === 0) return current === 0 ? 0 : null;
+  return ((current - previous) / previous) * 100;
+}
+
+function toKPIValue(current: number, previous: number): KPIValue {
+  return { current, previous, deltaPct: computeDelta(current, previous) };
+}
+
+function bucketKey(dateStr: string, granularity: Granularity): string {
+  const d = new Date(dateStr);
+  if (granularity === "hour") {
+    return `${toLocalDateKey(dateStr)}T${String(d.getHours()).padStart(2, "0")}`;
+  }
+  if (granularity === "month") {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }
+  return toLocalDateKey(dateStr);
+}
+
+function groupRevenueByBucket(
+  sales: SaleRow[],
+  granularity: Granularity,
+): RevenueByDay[] {
+  const map = new Map<string, number>();
+  for (const s of sales) {
+    const key = bucketKey(s.sale_date, granularity);
+    map.set(key, (map.get(key) || 0) + Number(s.total_price || 0));
+  }
+  return Array.from(map.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, revenue]) => ({ date, revenue }));
+}
+
+async function fetchStats(ranges: PeriodRanges): Promise<StatsData> {
+  const sparkStart = new Date();
+  sparkStart.setDate(sparkStart.getDate() - 6);
+  sparkStart.setHours(0, 0, 0, 0);
+  const sparkEnd = new Date();
+  sparkEnd.setHours(23, 59, 59, 999);
+  const sparkStartISO = sparkStart.toISOString();
+  const sparkEndISO = sparkEnd.toISOString();
+
+  const [currentSales, previousSales, sparkSales, expenses] = await Promise.all([
+    fetchSales(ranges.current.start, ranges.current.end),
+    fetchSales(ranges.previous.start, ranges.previous.end),
+    fetchSales(sparkStartISO, sparkEndISO),
+    fetchExpenses(ranges.current.start, ranges.current.end),
+  ]);
+
+  const curAgg = aggregateBase(currentSales);
+  const prevAgg = aggregateBase(previousSales);
+
+  const curAvgTicket = curAgg.totalSales > 0 ? curAgg.revenue / curAgg.totalSales : 0;
+  const prevAvgTicket = prevAgg.totalSales > 0 ? prevAgg.revenue / prevAgg.totalSales : 0;
+
+  const curGrossMargin = curAgg.revenue - curAgg.grossCost;
+  const prevGrossMargin = prevAgg.revenue - prevAgg.grossCost;
+  const curGrossMarginPct = curAgg.revenue > 0 ? (curGrossMargin / curAgg.revenue) * 100 : 0;
+  const prevGrossMarginPct = prevAgg.revenue > 0 ? (prevGrossMargin / prevAgg.revenue) * 100 : 0;
+
+  const kpis: SalesKPIsWithDelta = {
+    revenue: toKPIValue(curAgg.revenue, prevAgg.revenue),
+    avgTicket: toKPIValue(curAvgTicket, prevAvgTicket),
+    productsSold: toKPIValue(curAgg.productsSold, prevAgg.productsSold),
+    totalSales: toKPIValue(curAgg.totalSales, prevAgg.totalSales),
+    grossMargin: toKPIValue(curGrossMargin, prevGrossMargin),
+    grossMarginPct: toKPIValue(curGrossMarginPct, prevGrossMarginPct),
+  };
+
+  const revenueByBucket = groupRevenueByBucket(currentSales, ranges.granularity);
+  const previousRevenueByBucket = groupRevenueByBucket(previousSales, ranges.granularity);
 
   // Revenue by payment method
   const revByMethodMap: Record<string, number> = {};
-  for (const s of sales) {
+  for (const s of currentSales) {
     const method = s.payment_method ?? "Otro";
-    revByMethodMap[method] = (revByMethodMap[method] || 0) + s.total_price;
+    revByMethodMap[method] = (revByMethodMap[method] || 0) + Number(s.total_price || 0);
   }
-  const revenueByMethod: RevenueByPaymentMethod[] = Object.entries(revByMethodMap)
-    .map(([method, total]) => ({ method, total }));
+  const revenueByMethod: RevenueByPaymentMethod[] = Object.entries(revByMethodMap).map(
+    ([method, total]) => ({ method, total }),
+  );
 
   // Top products
   const productMap: Record<string, { revenue: number; quantity: number }> = {};
-  for (const s of sales) {
+  for (const s of currentSales) {
     for (const sp of s.sale_products) {
       const name = sp.products?.name ?? "Desconocido";
       if (!productMap[name]) productMap[name] = { revenue: 0, quantity: 0 };
-      productMap[name].revenue += sp.quantity * sp.unit_price;
-      productMap[name].quantity += sp.quantity;
+      productMap[name].revenue += Number(sp.quantity) * Number(sp.unit_price);
+      productMap[name].quantity += Number(sp.quantity);
     }
   }
   const topProducts: TopProduct[] = Object.entries(productMap)
@@ -120,63 +204,129 @@ const fetchStats = async (dateRange: DateRange): Promise<StatsData> => {
 
   // Sales by order type
   const orderTypeMap: Record<string, { count: number; revenue: number }> = {};
-  for (const s of sales) {
+  for (const s of currentSales) {
     if (!orderTypeMap[s.order_type]) orderTypeMap[s.order_type] = { count: 0, revenue: 0 };
     orderTypeMap[s.order_type].count++;
-    orderTypeMap[s.order_type].revenue += s.total_price;
+    orderTypeMap[s.order_type].revenue += Number(s.total_price || 0);
   }
-  const salesByOrderType: SalesByOrderType[] = Object.entries(orderTypeMap)
-    .map(([orderType, { count, revenue }]) => ({ orderType, count, revenue }));
+  const salesByOrderType: SalesByOrderType[] = Object.entries(orderTypeMap).map(
+    ([orderType, { count, revenue }]) => ({ orderType, count, revenue }),
+  );
 
   // Sales by hour
   const hourMap: Record<number, { count: number; revenue: number }> = {};
-  for (const s of sales) {
+  for (const s of currentSales) {
     const hour = new Date(s.sale_date).getHours();
     if (!hourMap[hour]) hourMap[hour] = { count: 0, revenue: 0 };
     hourMap[hour].count++;
-    hourMap[hour].revenue += s.total_price;
+    hourMap[hour].revenue += Number(s.total_price || 0);
   }
   const salesByHour: SalesByHour[] = Object.entries(hourMap)
     .map(([h, { count, revenue }]) => ({ hour: parseInt(h), count, revenue }))
     .sort((a, b) => a.hour - b.hour);
 
-  // Revenue vs expenses by day
+  // Heatmap day-of-week × hour
+  const heatmapMap = new Map<string, { count: number; revenue: number }>();
+  for (const s of currentSales) {
+    const d = new Date(s.sale_date);
+    const dow = d.getDay() === 0 ? 6 : d.getDay() - 1;
+    const hour = d.getHours();
+    const key = `${dow}-${hour}`;
+    const prev = heatmapMap.get(key) ?? { count: 0, revenue: 0 };
+    heatmapMap.set(key, {
+      count: prev.count + 1,
+      revenue: prev.revenue + Number(s.total_price || 0),
+    });
+  }
+  const heatmap: HeatmapCell[] = Array.from(heatmapMap.entries()).map(([k, v]) => {
+    const [dow, hour] = k.split("-").map(Number);
+    return { dayOfWeek: dow, hour, count: v.count, revenue: v.revenue };
+  });
+
+  // Revenue vs expenses
   const expByDayMap: Record<string, number> = {};
   for (const e of expenses) {
     const date = toLocalDateKey(e.created_at);
-    expByDayMap[date] = (expByDayMap[date] || 0) + Math.abs(e.amount);
+    expByDayMap[date] = (expByDayMap[date] || 0) + Math.abs(Number(e.amount) || 0);
   }
-  const allDates = new Set([...Object.keys(revByDayMap), ...Object.keys(expByDayMap)]);
+  const revDayMap: Record<string, number> = {};
+  for (const s of currentSales) {
+    const date = toLocalDateKey(s.sale_date);
+    revDayMap[date] = (revDayMap[date] || 0) + Number(s.total_price || 0);
+  }
+  const allDates = new Set([...Object.keys(revDayMap), ...Object.keys(expByDayMap)]);
   const revenueVsExpenses: RevenueVsExpenses[] = Array.from(allDates)
     .sort()
     .map((date) => ({
       date,
-      revenue: revByDayMap[date] || 0,
+      revenue: revDayMap[date] || 0,
       expenses: expByDayMap[date] || 0,
     }));
 
-  return { kpis, revenueByDay, revenueByMethod, topProducts, salesByOrderType, salesByHour, revenueVsExpenses };
+  // Sparkline: last 7 days revenue (always anchored on today)
+  const sparkMap = new Map<string, number>();
+  for (const s of sparkSales) {
+    const d = toLocalDateKey(s.sale_date);
+    sparkMap.set(d, (sparkMap.get(d) || 0) + Number(s.total_price || 0));
+  }
+  const sparkline: number[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    sparkline.push(sparkMap.get(key) || 0);
+  }
+
+  return {
+    kpis,
+    revenueByBucket,
+    previousRevenueByBucket,
+    revenueByMethod,
+    topProducts,
+    salesByOrderType,
+    salesByHour,
+    revenueVsExpenses,
+    heatmap,
+    sparkline,
+    ranges,
+  };
+}
+
+const EMPTY_KPI: KPIValue = { current: 0, previous: 0, deltaPct: null };
+
+const EMPTY_KPIS: SalesKPIsWithDelta = {
+  revenue: EMPTY_KPI,
+  avgTicket: EMPTY_KPI,
+  productsSold: EMPTY_KPI,
+  totalSales: EMPTY_KPI,
+  grossMargin: EMPTY_KPI,
+  grossMarginPct: EMPTY_KPI,
 };
 
-export const useSalesStats = (dateRange: DateRange) => {
+export const useSalesStats = (ranges: PeriodRanges) => {
   const { data, error, isLoading } = useSWR<StatsData>(
-    ["sales-stats", dateRange],
-    () => fetchStats(dateRange),
+    ["sales-stats", ranges],
+    () => fetchStats(ranges),
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,
       dedupingInterval: 5000,
-    }
+      keepPreviousData: true,
+    },
   );
 
   return {
-    kpis: data?.kpis ?? { dailyRevenue: 0, monthlyRevenue: 0, avgTicket: 0, productsSold: 0, totalSales: 0 },
-    revenueByDay: data?.revenueByDay ?? [],
+    kpis: data?.kpis ?? EMPTY_KPIS,
+    revenueByBucket: data?.revenueByBucket ?? [],
+    previousRevenueByBucket: data?.previousRevenueByBucket ?? [],
     revenueByMethod: data?.revenueByMethod ?? [],
     topProducts: data?.topProducts ?? [],
     salesByOrderType: data?.salesByOrderType ?? [],
     salesByHour: data?.salesByHour ?? [],
     revenueVsExpenses: data?.revenueVsExpenses ?? [],
+    heatmap: data?.heatmap ?? [],
+    sparkline: data?.sparkline ?? [],
+    ranges,
     error,
     isLoading,
   };

@@ -1,50 +1,95 @@
 "use client";
 
-import { DollarSign, TrendingUp, Receipt, ShoppingBag } from "lucide-react";
-import type { SalesKPIs } from "@/types";
+import { DollarSign, Receipt, ShoppingBag, TrendingUp, Percent, ShoppingCart } from "lucide-react";
+import type { SalesKPIsWithDelta } from "@/types";
 import KPICard from "./KPICard";
 
 interface KPIGridProps {
-  kpis: SalesKPIs;
+  kpis: SalesKPIsWithDelta;
+  sparkline: number[];
+  previousLabel: string;
+  onKpiClick?: (id: KPIId) => void;
 }
 
-export default function KPIGrid({ kpis }: KPIGridProps) {
+export type KPIId =
+  | "revenue"
+  | "avgTicket"
+  | "productsSold"
+  | "totalSales"
+  | "grossMargin"
+  | "grossMarginPct";
+
+function formatCurrency(v: number): string {
+  return `S/ ${v.toFixed(2)}`;
+}
+
+export default function KPIGrid({ kpis, sparkline, previousLabel, onKpiClick }: KPIGridProps) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
       <KPICard
         icon={<DollarSign className="w-5 h-5" />}
-        label="Ingresos Hoy"
-        value={`S/ ${kpis.dailyRevenue.toFixed(2)}`}
-        color="text-green-700 bg-green-50 border-green-200"
-        iconColor="text-green-600"
-      />
-      <KPICard
-        icon={<TrendingUp className="w-5 h-5" />}
-        label="Ingresos Mes"
-        value={`S/ ${kpis.monthlyRevenue.toFixed(2)}`}
-        color="text-blue-700 bg-blue-50 border-blue-200"
-        iconColor="text-blue-600"
+        label="Ingresos"
+        value={formatCurrency(kpis.revenue.current)}
+        kpi={kpis.revenue}
+        previousLabel={previousLabel}
+        formatPrevious={formatCurrency}
+        sparkline={sparkline}
+        accent="green"
+        onClick={onKpiClick ? () => onKpiClick("revenue") : undefined}
       />
       <KPICard
         icon={<Receipt className="w-5 h-5" />}
         label="Ticket Promedio"
-        value={`S/ ${kpis.avgTicket.toFixed(2)}`}
-        color="text-purple-700 bg-purple-50 border-purple-200"
-        iconColor="text-purple-600"
+        value={formatCurrency(kpis.avgTicket.current)}
+        kpi={kpis.avgTicket}
+        previousLabel={previousLabel}
+        formatPrevious={formatCurrency}
+        sparkline={sparkline}
+        accent="purple"
+        onClick={onKpiClick ? () => onKpiClick("avgTicket") : undefined}
+      />
+      <KPICard
+        icon={<ShoppingCart className="w-5 h-5" />}
+        label="Total Ventas"
+        value={String(kpis.totalSales.current)}
+        kpi={kpis.totalSales}
+        previousLabel={previousLabel}
+        formatPrevious={(v) => String(Math.round(v))}
+        sparkline={sparkline}
+        accent="primary"
+        onClick={onKpiClick ? () => onKpiClick("totalSales") : undefined}
       />
       <KPICard
         icon={<ShoppingBag className="w-5 h-5" />}
         label="Productos Vendidos"
-        value={String(kpis.productsSold)}
-        color="text-amber-700 bg-amber-50 border-amber-200"
-        iconColor="text-amber-600"
+        value={String(kpis.productsSold.current)}
+        kpi={kpis.productsSold}
+        previousLabel={previousLabel}
+        formatPrevious={(v) => String(Math.round(v))}
+        sparkline={sparkline}
+        accent="amber"
+        onClick={onKpiClick ? () => onKpiClick("productsSold") : undefined}
       />
       <KPICard
-        icon={<Receipt className="w-5 h-5" />}
-        label="Total Ventas"
-        value={String(kpis.totalSales)}
-        color="text-primary-700 bg-primary-50 border-primary-200"
-        iconColor="text-primary-600"
+        icon={<TrendingUp className="w-5 h-5" />}
+        label="Margen Bruto"
+        value={formatCurrency(kpis.grossMargin.current)}
+        kpi={kpis.grossMargin}
+        previousLabel={previousLabel}
+        formatPrevious={formatCurrency}
+        sparkline={sparkline}
+        accent="emerald"
+        onClick={onKpiClick ? () => onKpiClick("grossMargin") : undefined}
+      />
+      <KPICard
+        icon={<Percent className="w-5 h-5" />}
+        label="Margen %"
+        value={`${kpis.grossMarginPct.current.toFixed(1)}%`}
+        kpi={kpis.grossMarginPct}
+        previousLabel={previousLabel}
+        formatPrevious={(v) => `${v.toFixed(1)}%`}
+        accent="blue"
+        onClick={onKpiClick ? () => onKpiClick("grossMarginPct") : undefined}
       />
     </div>
   );
