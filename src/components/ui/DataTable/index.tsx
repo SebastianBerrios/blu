@@ -26,6 +26,7 @@ interface DataTableProps<T> {
   onEdit?: (item: T) => void;
   onDelete?: (item: T) => void;
   canEdit?: (item: T) => boolean;
+  renderExtraActions?: (item: T) => React.ReactNode;
   renderCard?: (item: T, onEdit?: (item: T) => void, onDelete?: (item: T) => void) => React.ReactNode;
 }
 
@@ -38,6 +39,7 @@ export default function DataTable<T extends { id: number; name: string }>({
   onEdit,
   onDelete,
   canEdit,
+  renderExtraActions,
   renderCard,
 }: DataTableProps<T>) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -242,7 +244,7 @@ export default function DataTable<T extends { id: number; name: string }>({
                     </td>
                   ))}
 
-                  {(onEdit || onDelete) && (
+                  {(onEdit || onDelete || renderExtraActions) && (
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
                         {onEdit && (!canEdit || canEdit(item)) && (
@@ -259,6 +261,7 @@ export default function DataTable<T extends { id: number; name: string }>({
                             <Lock className="w-5 h-5" />
                           </span>
                         )}
+                        {renderExtraActions?.(item)}
                         {onDelete && (
                           <button
                             onClick={() => onDelete(item)}

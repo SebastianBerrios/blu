@@ -174,6 +174,19 @@ export default function Products() {
             onEdit={isAdmin ? handleEdit : handleEditRecipe}
             onDelete={isAdmin ? handleDelete : undefined}
             canEdit={isAdmin ? undefined : canEditRecipe}
+            renderExtraActions={isAdmin ? (item) => (
+              <button
+                onClick={() => handleEditRecipe(item)}
+                className={`p-3 rounded-lg transition-colors ${
+                  item.recipe_id
+                    ? "text-green-700 hover:bg-green-100"
+                    : "text-amber-700 hover:bg-amber-100"
+                }`}
+                title={item.recipe_id ? "Ver receta" : "Crear receta"}
+              >
+                <BookOpen className="w-5 h-5" />
+              </button>
+            ) : undefined}
             renderCard={(item, onEditFn, onDeleteFn) => (
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex-1 min-w-0">
@@ -206,6 +219,19 @@ export default function Products() {
                         {isAdmin ? <SquarePen className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
                       </button>
                     )}
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleEditRecipe(item)}
+                        className={`p-3 rounded-lg transition-colors ${
+                          item.recipe_id
+                            ? "text-green-700 hover:bg-green-100"
+                            : "text-amber-700 hover:bg-amber-100"
+                        }`}
+                        title={item.recipe_id ? "Ver receta" : "Crear receta"}
+                      >
+                        <BookOpen className="w-5 h-5" />
+                      </button>
+                    )}
                     {!onEditFn && !isAdmin && (
                       <span className="p-3 text-slate-300">
                         <Lock className="w-5 h-5" />
@@ -235,17 +261,15 @@ export default function Products() {
         />
       )}
 
-      {!isAdmin && (
-        <RecipeForm
-          isOpen={isRecipeModalOpen}
-          onClose={handleCloseRecipeModal}
-          onSuccess={handleRecipeSuccess}
-          recipe={selectedRecipeForEdit}
-          hidePrice={true}
-          readOnlyMeta={!!selectedRecipeForEdit}
-          productId={selectedProductForRecipe?.id}
-        />
-      )}
+      <RecipeForm
+        isOpen={isRecipeModalOpen}
+        onClose={handleCloseRecipeModal}
+        onSuccess={handleRecipeSuccess}
+        recipe={selectedRecipeForEdit}
+        hidePrice={!isAdmin}
+        readOnlyMeta={!isAdmin && !!selectedRecipeForEdit}
+        productId={selectedProductForRecipe?.id}
+      />
     </>
   );
 }
