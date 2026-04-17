@@ -36,10 +36,14 @@ export default function PurchaseCard({
             <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-primary-100 text-primary-700">
               {purchase.purchaser_name ?? "Usuario"}
             </span>
-            {purchase.has_delivery && (
-              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 flex items-center gap-1">
-                <Truck className="w-3 h-3" />
-                Delivery
+            {purchase.account_type === "caja" && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                Efectivo
+              </span>
+            )}
+            {purchase.account_type === "banco" && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                Yape
               </span>
             )}
             {purchase.yape_change != null && purchase.yape_change > 0 && (
@@ -47,10 +51,17 @@ export default function PurchaseCard({
                 Vuelto Yape S/ {purchase.yape_change.toFixed(2)}
               </span>
             )}
+            {purchase.has_delivery && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 flex items-center gap-1">
+                <Truck className="w-3 h-3" />
+                Delivery
+              </span>
+            )}
           </div>
           <div className="flex items-center justify-between mt-1 md:hidden">
             <span className="text-xs text-slate-500">
-              {purchase.purchase_items.length} ítem{purchase.purchase_items.length !== 1 ? "s" : ""}
+              {purchase.purchase_items.length} ítem
+              {purchase.purchase_items.length !== 1 ? "s" : ""}
             </span>
             <span className="font-bold text-slate-900 text-sm">
               S/ {purchase.total.toFixed(2)}
@@ -60,7 +71,8 @@ export default function PurchaseCard({
 
         <div className="hidden md:flex items-center gap-3">
           <span className="text-sm text-slate-500">
-            {purchase.purchase_items.length} ítem{purchase.purchase_items.length !== 1 ? "s" : ""}
+            {purchase.purchase_items.length} ítem
+            {purchase.purchase_items.length !== 1 ? "s" : ""}
           </span>
           <span className="font-bold text-slate-900">
             S/ {purchase.total.toFixed(2)}
@@ -68,7 +80,10 @@ export default function PurchaseCard({
           <div className="flex items-center gap-1">
             {isAdmin && (
               <button
-                onClick={(e) => { e.stopPropagation(); onEdit(purchase); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(purchase);
+                }}
                 className="p-3 text-primary-700 hover:bg-primary-100 rounded-lg transition-colors"
                 title="Editar"
               >
@@ -77,7 +92,10 @@ export default function PurchaseCard({
             )}
             {isAdmin && (
               <button
-                onClick={(e) => { e.stopPropagation(); onDelete(purchase); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(purchase);
+                }}
                 className="p-3 text-red-700 hover:bg-red-100 rounded-lg transition-colors"
                 title="Eliminar"
               >
@@ -85,11 +103,19 @@ export default function PurchaseCard({
               </button>
             )}
           </div>
-          {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          {isExpanded ? (
+            <ChevronUp className="w-4 h-4 text-slate-400" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-slate-400" />
+          )}
         </div>
 
         <div className="md:hidden ml-2">
-          {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          {isExpanded ? (
+            <ChevronUp className="w-4 h-4 text-slate-400" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-slate-400" />
+          )}
         </div>
       </div>
 
@@ -99,23 +125,35 @@ export default function PurchaseCard({
           <table className="w-full">
             <thead>
               <tr>
-                <th className="text-left text-xs font-medium text-slate-600 uppercase pb-2">Ítem</th>
-                <th className="text-left text-xs font-medium text-slate-600 uppercase pb-2">Ingrediente</th>
-                <th className="text-right text-xs font-medium text-slate-600 uppercase pb-2">Precio</th>
+                <th className="text-left text-xs font-medium text-slate-600 uppercase pb-2">
+                  Ítem
+                </th>
+                <th className="text-left text-xs font-medium text-slate-600 uppercase pb-2">
+                  Ingrediente
+                </th>
+                <th className="text-right text-xs font-medium text-slate-600 uppercase pb-2">
+                  Precio
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {purchase.purchase_items.map((item) => (
                 <tr key={item.id}>
-                  <td className="py-2 text-sm text-slate-900 capitalize">{item.item_name}</td>
+                  <td className="py-2 text-sm text-slate-900 capitalize">
+                    {item.item_name}
+                  </td>
                   <td className="py-2 text-sm">
                     {item.ingredient_id ? (
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700">Vinculado</span>
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700">
+                        Vinculado
+                      </span>
                     ) : (
                       <span className="text-slate-400">-</span>
                     )}
                   </td>
-                  <td className="py-2 text-sm text-green-700 text-right font-semibold">S/ {item.price.toFixed(2)}</td>
+                  <td className="py-2 text-sm text-green-700 text-right font-semibold">
+                    S/ {item.price.toFixed(2)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -141,7 +179,9 @@ export default function PurchaseCard({
             )}
             <div className="flex justify-between text-sm font-bold pt-1">
               <span className="text-slate-900">Total</span>
-              <span className="text-green-700">S/ {purchase.total.toFixed(2)}</span>
+              <span className="text-green-700">
+                S/ {purchase.total.toFixed(2)}
+              </span>
             </div>
           </div>
 

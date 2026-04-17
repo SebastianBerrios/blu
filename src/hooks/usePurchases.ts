@@ -27,6 +27,9 @@ const fetchPurchases = async (
         email,
         role
       ),
+      accounts (
+        type
+      ),
       purchase_items (
         id,
         item_name,
@@ -48,11 +51,13 @@ const fetchPurchases = async (
       email: string | null;
       role: string | null;
     } | null;
+    const account = p.accounts as unknown as { type: string } | null;
 
     return {
       ...p,
       purchaser_name: profile?.full_name || profile?.email || null,
       purchaser_role: profile?.role ?? null,
+      account_type: (account?.type as PurchaseWithItems["account_type"]) ?? null,
       purchase_items:
         p.purchase_items as unknown as PurchaseWithItems["purchase_items"],
     };
