@@ -12,6 +12,7 @@ import StockTab from "@/features/inventario/components/StockTab";
 import ComprasTab from "@/features/inventario/components/ComprasTab";
 import HistorialTab from "@/features/inventario/components/HistorialTab";
 import GroupManager from "@/features/inventario/components/GroupManager";
+import FAB from "@/components/ui/FAB";
 
 interface EditingState {
   ingredientId: number;
@@ -178,14 +179,21 @@ export default function InventarioPage() {
       </div>
 
       {isAdmin && (
-        <GroupManager
-          isOpen={groupManagerOpen}
-          onClose={() => setGroupManagerOpen(false)}
-          groups={groups}
-          userId={user?.id ?? null}
-          userName={profile?.full_name ?? null}
-          onSuccess={handleGroupsChanged}
-        />
+        <>
+          <FAB
+            onClick={() => setGroupManagerOpen(true)}
+            label="Administrar grupos"
+            icon={<Settings className="w-6 h-6" />}
+          />
+          <GroupManager
+            isOpen={groupManagerOpen}
+            onClose={() => setGroupManagerOpen(false)}
+            groups={groups}
+            userId={user?.id ?? null}
+            userName={profile?.full_name ?? null}
+            onSuccess={handleGroupsChanged}
+          />
+        </>
       )}
     </section>
   );

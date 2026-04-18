@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Package, Check, X, ArrowUpDown, ShoppingCart } from "lucide-react";
+import { Package, Check, X, ArrowUpDown, ShoppingCart, Search } from "lucide-react";
 import type { Ingredient, IngredientGroup } from "@/types";
 import { groupIngredientsByGroup } from "../utils/groupIngredients";
 
@@ -63,6 +63,13 @@ export default function StockTab({
   onChangeGroup,
 }: StockTabProps) {
   const [sortOrder, setSortOrder] = useState<"none" | "asc" | "desc">("none");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredIngredients = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return ingredients;
+    return ingredients.filter((i) => i.name.toLowerCase().includes(query));
+  }, [ingredients, searchQuery]);
 
   const sortIngredients = (items: Ingredient[]) => {
     if (sortOrder === "none") return items;
@@ -73,11 +80,13 @@ export default function StockTab({
   };
 
   const grouped = useMemo(
-    () => groupIngredientsByGroup(ingredients, groups),
-    [ingredients, groups],
+    () => groupIngredientsByGroup(filteredIngredients, groups),
+    [filteredIngredients, groups],
   );
 
   const hasGroups = groups.length > 0;
+  const hasSearchQuery = searchQuery.trim().length > 0;
+  const noSearchResults = hasSearchQuery && filteredIngredients.length === 0;
 
   const cycleSortOrder = () => {
     setSortOrder((prev) =>
@@ -263,11 +272,21 @@ export default function StockTab({
 
   return (
     <>
-      {/* Mobile sort button */}
-      <div className="md:hidden flex justify-end mb-2">
+      {/* Toolbar: search + mobile sort */}
+      <div className="mb-3 flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar ingrediente..."
+            className="w-full pl-9 pr-4 py-3 md:py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+          />
+        </div>
         <button
           onClick={cycleSortOrder}
-          className={`flex items-center gap-1.5 px-3 py-2 text-sm border rounded-lg transition-colors ${
+          className={`md:hidden shrink-0 flex items-center gap-1.5 px-3 py-3 text-sm border rounded-lg transition-colors ${
             sortOrder !== "none"
               ? "border-primary-300 bg-primary-50 text-primary-700"
               : "border-slate-200 bg-white text-slate-600"
@@ -280,7 +299,12 @@ export default function StockTab({
         </button>
       </div>
 
-      {hasGroups ? (
+      {noSearchResults ? (
+        <div className="flex flex-col items-center justify-center h-48 text-slate-400">
+          <Search className="w-10 h-10 mb-2" />
+          <p className="text-sm">No se encontraron ingredientes</p>
+        </div>
+      ) : hasGroups ? (
         <>
           {/* Desktop grouped */}
           <div className="hidden md:block space-y-4">
@@ -340,14 +364,14 @@ export default function StockTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {ingredients.map(renderDesktopRow)}
+                {filteredIngredients.map(renderDesktopRow)}
               </tbody>
             </table>
           </div>
 
           {/* Mobile flat cards */}
           <div className="md:hidden space-y-2">
-            {sortIngredients(ingredients).map(renderMobileCard)}
+            {sortIngredients(filteredIngredients).map(renderMobileCard)}
           </div>
         </>
       )}
