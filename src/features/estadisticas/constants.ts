@@ -117,6 +117,11 @@ export function getPeriodRanges(
   } else if (preset === "year") {
     prevEnd = endOfYear(new Date(curStart.getFullYear() - 1, 5, 15));
     prevStart = startOfYear(prevEnd);
+  } else if (preset === "today") {
+    const prevAnchor = new Date(curStart);
+    prevAnchor.setDate(prevAnchor.getDate() - 7);
+    prevStart = startOfDay(prevAnchor);
+    prevEnd = endOfDay(prevAnchor);
   } else {
     prevStart = new Date(curStart.getTime() - spanMs - 1);
     prevEnd = new Date(curStart.getTime() - 1);
