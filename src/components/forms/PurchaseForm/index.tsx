@@ -14,7 +14,7 @@ import ItemSelector from "@/features/compras/components/ItemSelector";
 import ItemList from "@/features/compras/components/ItemList";
 import AccountSelector from "@/features/compras/components/AccountSelector";
 import DeliverySection from "@/features/compras/components/DeliverySection";
-import YapeChangeSection from "@/features/compras/components/YapeChangeSection";
+import PlinChangeSection from "@/features/compras/components/PlinChangeSection";
 import PurchaseTotalDisplay from "@/features/compras/components/PurchaseTotalDisplay";
 
 interface PurchaseFormProps {
@@ -42,8 +42,8 @@ export default function PurchaseForm({
   const [deliveryCost, setDeliveryCost] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
-  const [hasYapeChange, setHasYapeChange] = useState(false);
-  const [yapeChange, setYapeChange] = useState("");
+  const [hasPlinChange, setHasPlinChange] = useState(false);
+  const [plinChange, setPlinChange] = useState("");
 
   const itemsTotal = items.reduce((sum, i) => sum + i.price, 0);
   const deliveryCostNum = hasDelivery ? parseFloat(deliveryCost) || 0 : 0;
@@ -70,8 +70,8 @@ export default function PurchaseForm({
         setNotes("");
         setSelectedAccountId(cajaAccount?.id ?? null);
       }
-      setHasYapeChange(false);
-      setYapeChange("");
+      setHasPlinChange(false);
+      setPlinChange("");
       setSubmitError(null);
     }
   }, [isOpen, purchase]);
@@ -88,15 +88,15 @@ export default function PurchaseForm({
   };
 
   const handleSubmit = async () => {
-    const yapeChangeAmount = hasYapeChange && !isEditMode ? parseFloat(yapeChange) || 0 : 0;
+    const plinChangeAmount = hasPlinChange && !isEditMode ? parseFloat(plinChange) || 0 : 0;
 
     const validationError = validatePurchaseForm({
       items,
       hasDelivery,
       deliveryCost,
       selectedAccountId,
-      hasYapeChange,
-      yapeChange,
+      hasPlinChange,
+      plinChange,
       total,
       hasBancoAccount: !!bancoAccount,
       isEditMode,
@@ -129,7 +129,7 @@ export default function PurchaseForm({
           total,
           notes,
           selectedAccountId: selectedAccountId!,
-          yapeChangeAmount,
+          plinChangeAmount,
           cajaAccountId: cajaAccount?.id ?? null,
           bancoAccountId: bancoAccount?.id ?? null,
           userId: authUser?.id ?? null,
@@ -158,8 +158,8 @@ export default function PurchaseForm({
         onSelect={setSelectedAccountId}
         onSelectBanco={(id) => {
           setSelectedAccountId(id);
-          setHasYapeChange(false);
-          setYapeChange("");
+          setHasPlinChange(false);
+          setPlinChange("");
         }}
         isAdmin={isAdmin}
         isSubmitting={isSubmitting}
@@ -197,13 +197,13 @@ export default function PurchaseForm({
         isSubmitting={isSubmitting}
       />
 
-      {/* Vuelto por Yape (solo Caja, solo modo crear) */}
+      {/* Vuelto por Plin (solo Caja, solo modo crear) */}
       {!isEditMode && cajaAccount && selectedAccountId === cajaAccount.id && (
-        <YapeChangeSection
-          hasYapeChange={hasYapeChange}
-          yapeChange={yapeChange}
-          onToggle={setHasYapeChange}
-          onChange={setYapeChange}
+        <PlinChangeSection
+          hasPlinChange={hasPlinChange}
+          plinChange={plinChange}
+          onToggle={setHasPlinChange}
+          onChange={setPlinChange}
           isSubmitting={isSubmitting}
         />
       )}
@@ -227,9 +227,9 @@ export default function PurchaseForm({
       {items.length > 0 && (
         <PurchaseTotalDisplay
           total={total}
-          yapeChange={yapeChange}
-          showYapeBreakdown={
-            hasYapeChange &&
+          plinChange={plinChange}
+          showPlinBreakdown={
+            hasPlinChange &&
             !isEditMode &&
             !!cajaAccount &&
             selectedAccountId === cajaAccount.id

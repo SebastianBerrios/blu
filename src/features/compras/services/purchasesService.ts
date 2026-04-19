@@ -13,8 +13,8 @@ export function validatePurchaseForm(params: {
   hasDelivery: boolean;
   deliveryCost: string;
   selectedAccountId: number | null;
-  hasYapeChange: boolean;
-  yapeChange: string;
+  hasPlinChange: boolean;
+  plinChange: string;
   total: number;
   hasBancoAccount: boolean;
   isEditMode: boolean;
@@ -34,10 +34,10 @@ export function validatePurchaseForm(params: {
     return "Selecciona una cuenta para la compra";
   }
 
-  if (params.hasYapeChange && !params.isEditMode) {
-    const yapeAmount = parseFloat(params.yapeChange) || 0;
-    if (yapeAmount <= 0) {
-      return "Ingresa un monto válido para el vuelto por Yape";
+  if (params.hasPlinChange && !params.isEditMode) {
+    const plinAmount = parseFloat(params.plinChange) || 0;
+    if (plinAmount <= 0) {
+      return "Ingresa un monto válido para el vuelto por Plin";
     }
 if (!params.hasBancoAccount) {
       return "No hay cuenta bancaria configurada para recibir el vuelto";
@@ -70,7 +70,7 @@ export async function createPurchase(params: CreatePurchaseParams): Promise<void
     total: params.total,
     notes: params.notes.trim() || null,
     account_id: params.selectedAccountId,
-    yape_change: params.yapeChangeAmount > 0 ? params.yapeChangeAmount : null,
+    plin_change: params.plinChangeAmount > 0 ? params.plinChangeAmount : null,
   };
 
   const { data: newPurchase, error } = await supabase
@@ -88,20 +88,20 @@ export async function createPurchase(params: CreatePurchaseParams): Promise<void
   const purchaseNumber = await getPurchaseNumber(newPurchase.id);
 
   // Register financial transactions
-  if (params.yapeChangeAmount > 0) {
+  if (params.plinChangeAmount > 0) {
     await recordTransaction({
       accountId: params.cajaAccountId!,
       type: "egreso_compra",
-      amount: -(params.total + params.yapeChangeAmount),
-      description: `Compra #${purchaseNumber} (incluye vuelto Yape S/ ${params.yapeChangeAmount.toFixed(2)})`,
+      amount: -(params.total + params.plinChangeAmount),
+      description: `Compra #${purchaseNumber} (incluye vuelto Plin S/ ${params.plinChangeAmount.toFixed(2)})`,
       referenceId: newPurchase.id,
       referenceType: "purchase",
     });
     await recordTransaction({
       accountId: params.bancoAccountId!,
       type: "ingreso_extra",
-      amount: params.yapeChangeAmount,
-      description: `Vuelto Yape - Compra #${purchaseNumber}`,
+      amount: params.plinChangeAmount,
+      description: `Vuelto Plin - Compra #${purchaseNumber}`,
       referenceId: newPurchase.id,
       referenceType: "purchase",
     });
@@ -110,8 +110,8 @@ export async function createPurchase(params: CreatePurchaseParams): Promise<void
       userName: params.userName,
       action: "crear_transaccion",
       targetTable: "transactions",
-      targetDescription: `Compra #${purchaseNumber} - S/ ${params.total.toFixed(2)} (Vuelto Yape S/ ${params.yapeChangeAmount.toFixed(2)})`,
-      details: { compra_id: newPurchase.id, total: params.total, vuelto_yape: params.yapeChangeAmount },
+      targetDescription: `Compra #${purchaseNumber} - S/ ${params.total.toFixed(2)} (Vuelto Plin S/ ${params.plinChangeAmount.toFixed(2)})`,
+      details: { compra_id: newPurchase.id, total: params.total, vuelto_plin: params.plinChangeAmount },
     });
   } else {
     await recordTransaction({

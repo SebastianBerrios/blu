@@ -28,7 +28,7 @@ interface DailySummaryProps {
 const ALERT_STYLE: Record<DailyAlertType, { color: string; Icon: typeof Info }> = {
   cash_change: { color: "border-amber-200 bg-amber-50 text-amber-800", Icon: Coins },
   sale_edited: { color: "border-indigo-200 bg-indigo-50 text-indigo-800", Icon: Edit3 },
-  yape_change: { color: "border-purple-200 bg-purple-50 text-purple-800", Icon: Coins },
+  plin_change: { color: "border-purple-200 bg-purple-50 text-purple-800", Icon: Coins },
   manual_adjustment: {
     color: "border-orange-200 bg-orange-50 text-orange-800",
     Icon: AlertTriangle,

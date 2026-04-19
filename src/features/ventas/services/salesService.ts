@@ -51,11 +51,11 @@ export async function recordSaleTransactions(params: {
   saleId: number;
   saleNumber: number;
   cashAmount: number | null;
-  yapeAmount: number | null;
+  plinAmount: number | null;
   cajaAccountId: number | null;
   bancoAccountId: number | null;
 }): Promise<void> {
-  const { saleId, saleNumber, cashAmount, yapeAmount, cajaAccountId, bancoAccountId } = params;
+  const { saleId, saleNumber, cashAmount, plinAmount, cajaAccountId, bancoAccountId } = params;
 
   if (cashAmount && cashAmount > 0 && cajaAccountId) {
     await recordTransaction({
@@ -67,12 +67,12 @@ export async function recordSaleTransactions(params: {
       referenceType: "sale",
     });
   }
-  if (yapeAmount && yapeAmount > 0 && bancoAccountId) {
+  if (plinAmount && plinAmount > 0 && bancoAccountId) {
     await recordTransaction({
       accountId: bancoAccountId,
       type: "ingreso_venta",
-      amount: yapeAmount,
-      description: `Venta #${saleNumber} - Yape`,
+      amount: plinAmount,
+      description: `Venta #${saleNumber} - Plin`,
       referenceId: saleId,
       referenceType: "sale",
     });
@@ -134,7 +134,7 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
       saleId: newSale.id,
       saleNumber,
       cashAmount: paymentFields.cash_amount,
-      yapeAmount: paymentFields.yape_amount,
+      plinAmount: paymentFields.plin_amount,
       cajaAccountId: params.cajaAccountId,
       bancoAccountId: params.bancoAccountId,
     });
@@ -168,7 +168,7 @@ export async function updateSale(
   // Fetch existing payment state to detect changes for transaction re-sync
   const { data: existingSale, error: fetchError } = await supabase
     .from("sales")
-    .select("payment_method, cash_amount, yape_amount")
+    .select("payment_method, cash_amount, plin_amount")
     .eq("id", saleId)
     .single();
 
@@ -212,7 +212,7 @@ export async function updateSale(
         saleId,
         saleNumber,
         cashAmount: paymentFields.cash_amount,
-        yapeAmount: paymentFields.yape_amount,
+        plinAmount: paymentFields.plin_amount,
         cajaAccountId: params.cajaAccountId,
         bancoAccountId: params.bancoAccountId,
       });
@@ -229,7 +229,7 @@ export async function updateSale(
           metodo_anterior: existingSale.payment_method,
           metodo_nuevo: paymentFields.payment_method,
           cash_amount: paymentFields.cash_amount,
-          yape_amount: paymentFields.yape_amount,
+          plin_amount: paymentFields.plin_amount,
           cash_received: paymentFields.cash_received,
         },
       });

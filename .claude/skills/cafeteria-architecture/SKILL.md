@@ -237,7 +237,7 @@ Estas son las convenciones **reales** del proyecto:
 - **UI (texto visible)**: Siempre en español — "Guardar", "Categorías", "Error al cargar"
 - **Código (variables, funciones, types)**: Siempre en inglés — `handleDelete`, `isLoading`, `SaleWithProducts`
 - **DB tables/columns**: snake_case en inglés — `sale_products`, `unit_of_measure`
-- **Excepciones aceptadas**: Nombres de dominio en español cuando son literales del negocio — `"Efectivo"`, `"Yape"`, `"Mesa"`, `"Para llevar"`, `"Pendiente"`, `"Entregado"`, `"pendiente"`, `"aprobado"`, `"rechazado"`
+- **Excepciones aceptadas**: Nombres de dominio en español cuando son literales del negocio — `"Efectivo"`, `"Plin"`, `"Mesa"`, `"Para llevar"`, `"Pendiente"`, `"Entregado"`, `"pendiente"`, `"aprobado"`, `"rechazado"`
 
 ## Reglas para Código Nuevo vs Existente
 

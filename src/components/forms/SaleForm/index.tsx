@@ -41,7 +41,7 @@ export default function SaleForm({
   const [registerPayment, setRegisterPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Efectivo");
   const [cashAmount, setCashAmount] = useState("");
-  const [yapeAmount, setYapeAmount] = useState("");
+  const [plinAmount, setPlinAmount] = useState("");
   const [cashReceived, setCashReceived] = useState("");
 
   const totalPrice = saleProducts.reduce((sum, p) => sum + p.subtotal, 0);
@@ -83,13 +83,13 @@ export default function SaleForm({
         setRegisterPayment(true);
         setPaymentMethod(sale.payment_method as PaymentMethod);
         setCashAmount(sale.cash_amount ? String(sale.cash_amount) : "");
-        setYapeAmount(sale.yape_amount ? String(sale.yape_amount) : "");
+        setPlinAmount(sale.plin_amount ? String(sale.plin_amount) : "");
         setCashReceived(sale.cash_received ? String(sale.cash_received) : "");
       } else {
         setRegisterPayment(false);
         setPaymentMethod("Efectivo");
         setCashAmount("");
-        setYapeAmount("");
+        setPlinAmount("");
         setCashReceived("");
       }
     } else {
@@ -100,7 +100,7 @@ export default function SaleForm({
       setRegisterPayment(false);
       setPaymentMethod("Efectivo");
       setCashAmount("");
-      setYapeAmount("");
+      setPlinAmount("");
       setCashReceived("");
     }
   }, [isOpen, sale, products]);
@@ -142,7 +142,7 @@ export default function SaleForm({
   const handlePaymentMethodChange = (method: PaymentMethod) => {
     setPaymentMethod(method);
     setCashAmount("");
-    setYapeAmount("");
+    setPlinAmount("");
     setCashReceived("");
   };
 
@@ -156,7 +156,7 @@ export default function SaleForm({
     try {
       const params = {
         orderType, tableNumber, customerDni, saleProducts, totalPrice,
-        registerPayment, paymentMethod, cashAmount, yapeAmount, cashReceived,
+        registerPayment, paymentMethod, cashAmount, plinAmount, cashReceived,
         userId: user?.id ?? null,
         userName: profile?.full_name ?? null,
         cajaAccountId: cajaAccount?.id ?? null,
@@ -253,8 +253,8 @@ export default function SaleForm({
         onPaymentMethodChange={handlePaymentMethodChange}
         cashAmount={cashAmount}
         setCashAmount={setCashAmount}
-        yapeAmount={yapeAmount}
-        setYapeAmount={setYapeAmount}
+        plinAmount={plinAmount}
+        setPlinAmount={setPlinAmount}
         cashReceived={cashReceived}
         setCashReceived={setCashReceived}
         totalPrice={totalPrice}

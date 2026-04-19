@@ -29,13 +29,13 @@ export const PAYMENT_METHODS: {
     color: "bg-green-100 text-green-700 border-green-300",
   },
   {
-    value: "Yape",
-    label: "Yape",
+    value: "Plin",
+    label: "Plin",
     color: "bg-purple-100 text-purple-700 border-purple-300",
   },
   {
-    value: "Efectivo + Yape",
-    label: "Efectivo + Yape",
+    value: "Efectivo + Plin",
+    label: "Efectivo + Plin",
     color: "bg-indigo-100 text-indigo-700 border-indigo-300",
   },
 ];

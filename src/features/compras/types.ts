@@ -7,7 +7,7 @@ export interface CreatePurchaseParams {
   total: number;
   notes: string;
   selectedAccountId: number;
-  yapeChangeAmount: number;
+  plinChangeAmount: number;
   // Context
   cajaAccountId: number | null;
   bancoAccountId: number | null;

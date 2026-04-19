@@ -43,12 +43,12 @@ export default function PurchaseCard({
             )}
             {purchase.account_type === "banco" && (
               <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
-                Yape
+                Plin
               </span>
             )}
-            {purchase.yape_change != null && purchase.yape_change > 0 && (
+            {purchase.plin_change != null && purchase.plin_change > 0 && (
               <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                Vuelto Yape S/ {purchase.yape_change.toFixed(2)}
+                Vuelto Plin S/ {purchase.plin_change.toFixed(2)}
               </span>
             )}
             {purchase.has_delivery && (

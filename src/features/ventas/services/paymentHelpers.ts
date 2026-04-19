@@ -5,7 +5,7 @@ export interface PaymentFields {
   payment_method: PaymentMethod | null;
   payment_date: string | null;
   cash_amount: number | null;
-  yape_amount: number | null;
+  plin_amount: number | null;
   cash_received: number | null;
 }
 
@@ -15,7 +15,7 @@ export function buildPaymentFields(params: SaleSubmitParams): PaymentFields {
       payment_method: null,
       payment_date: null,
       cash_amount: null,
-      yape_amount: null,
+      plin_amount: null,
       cash_received: null,
     };
   }
@@ -23,15 +23,15 @@ export function buildPaymentFields(params: SaleSubmitParams): PaymentFields {
   const cash_amount =
     params.paymentMethod === "Efectivo"
       ? params.totalPrice
-      : params.paymentMethod === "Efectivo + Yape"
+      : params.paymentMethod === "Efectivo + Plin"
         ? parseFloat(params.cashAmount)
         : null;
 
-  const yape_amount =
-    params.paymentMethod === "Yape"
+  const plin_amount =
+    params.paymentMethod === "Plin"
       ? params.totalPrice
-      : params.paymentMethod === "Efectivo + Yape"
-        ? parseFloat(params.yapeAmount)
+      : params.paymentMethod === "Efectivo + Plin"
+        ? parseFloat(params.plinAmount)
         : null;
 
   let cash_received: number | null = null;
@@ -44,22 +44,22 @@ export function buildPaymentFields(params: SaleSubmitParams): PaymentFields {
     payment_method: params.paymentMethod,
     payment_date: params.existingPaymentDate ?? new Date().toISOString(),
     cash_amount,
-    yape_amount,
+    plin_amount,
     cash_received,
   };
 }
 
 export function validateSplitPayment(params: SaleSubmitParams): void {
-  if (!params.registerPayment || params.paymentMethod !== "Efectivo + Yape")
+  if (!params.registerPayment || params.paymentMethod !== "Efectivo + Plin")
     return;
 
   const cash = parseFloat(params.cashAmount);
-  const yape = parseFloat(params.yapeAmount);
+  const plin = parseFloat(params.plinAmount);
 
-  if (isNaN(cash) || isNaN(yape) || cash < 0 || yape < 0) {
+  if (isNaN(cash) || isNaN(plin) || cash < 0 || plin < 0) {
     throw new Error("Ingresa montos válidos");
   }
-  if (Math.abs(cash + yape - params.totalPrice) > 0.01) {
+  if (Math.abs(cash + plin - params.totalPrice) > 0.01) {
     throw new Error("Los montos deben sumar el total de la venta");
   }
 }
@@ -76,23 +76,23 @@ export function buildPaymentAmounts(
   paymentMethod: PaymentMethod,
   totalPrice: number,
   cashAmount: string,
-  yapeAmount: string
-): { cash: number | null; yape: number | null } {
+  plinAmount: string
+): { cash: number | null; plin: number | null } {
   if (paymentMethod === "Efectivo") {
-    return { cash: totalPrice, yape: null };
+    return { cash: totalPrice, plin: null };
   }
-  if (paymentMethod === "Yape") {
-    return { cash: null, yape: totalPrice };
+  if (paymentMethod === "Plin") {
+    return { cash: null, plin: totalPrice };
   }
   const cash = parseFloat(cashAmount);
-  const yape = parseFloat(yapeAmount);
-  if (isNaN(cash) || isNaN(yape) || cash < 0 || yape < 0) {
+  const plin = parseFloat(plinAmount);
+  if (isNaN(cash) || isNaN(plin) || cash < 0 || plin < 0) {
     throw new Error("Ingresa montos válidos");
   }
-  if (Math.abs(cash + yape - totalPrice) > 0.01) {
+  if (Math.abs(cash + plin - totalPrice) > 0.01) {
     throw new Error("Los montos deben sumar el total de la venta");
   }
-  return { cash, yape };
+  return { cash, plin };
 }
 
 export function resolveCashReceived(
@@ -112,7 +112,7 @@ export function paymentStateChanged(
   oldState: {
     payment_method: string | null;
     cash_amount: number | null;
-    yape_amount: number | null;
+    plin_amount: number | null;
   },
   newState: PaymentFields
 ): boolean {
@@ -121,7 +121,7 @@ export function paymentStateChanged(
     return true;
   if (Math.abs(normalize(oldState.cash_amount) - normalize(newState.cash_amount)) > 0.01)
     return true;
-  if (Math.abs(normalize(oldState.yape_amount) - normalize(newState.yape_amount)) > 0.01)
+  if (Math.abs(normalize(oldState.plin_amount) - normalize(newState.plin_amount)) > 0.01)
     return true;
   return false;
 }

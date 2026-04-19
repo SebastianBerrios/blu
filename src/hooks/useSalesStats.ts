@@ -22,7 +22,7 @@ interface SaleRow {
   order_type: string;
   payment_method: string | null;
   cash_amount: number | null;
-  yape_amount: number | null;
+  plin_amount: number | null;
   sale_products: Array<{
     quantity: number;
     unit_price: number;
@@ -58,7 +58,7 @@ interface StatsData {
 }
 
 const SELECT_CLAUSE =
-  "id, sale_date, total_price, order_type, payment_method, cash_amount, yape_amount, sale_products(quantity, unit_price, products(name, manufacturing_cost))";
+  "id, sale_date, total_price, order_type, payment_method, cash_amount, plin_amount, sale_products(quantity, unit_price, products(name, manufacturing_cost))";
 
 async function fetchSales(start: string, end: string): Promise<SaleRow[]> {
   const supabase = createClient();

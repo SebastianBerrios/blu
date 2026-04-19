@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/client";
 import { localDayRangeISO } from "@/utils/helpers/dateFormatters";
 import {
   generateCashChangeAlerts,
-  generateYapeChangeAlerts,
+  generatePlinChangeAlerts,
   generateManualAdjustmentAlerts,
   generateSaleEditAlerts,
   type DailyAlert,
@@ -56,10 +56,10 @@ export async function fetchDailySummary(dateKey: string): Promise<DailySummary> 
       .lte("sale_date", end),
     supabase
       .from("purchases")
-      .select("id, yape_change, total, created_at")
+      .select("id, plin_change, total, created_at")
       .gte("created_at", start)
       .lte("created_at", end)
-      .gt("yape_change", 0),
+      .gt("plin_change", 0),
     supabase
       .from("audit_logs")
       .select("id, action, target_table, target_id, target_description, details, created_at")
@@ -116,7 +116,7 @@ export async function fetchDailySummary(dateKey: string): Promise<DailySummary> 
 
   const alerts: DailyAlert[] = [
     ...generateCashChangeAlerts(sales),
-    ...generateYapeChangeAlerts(purchases),
+    ...generatePlinChangeAlerts(purchases),
     ...generateManualAdjustmentAlerts(transactions),
     ...generateSaleEditAlerts(auditLogs),
   ];

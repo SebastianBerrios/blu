@@ -61,7 +61,7 @@ export const useCategories = () => {
 
 Cuatro responsabilidades mezcladas en un solo archivo:
 1. **Lógica de formulario** — gestión de productos, cantidades, precios
-2. **Lógica de pagos** — cálculo de montos, cambio, validación de Yape
+2. **Lógica de pagos** — cálculo de montos, cambio, validación de Plin
 3. **Lógica de clientes** — búsqueda por DNI, creación
 4. **Llamadas a Supabase** — inserts directos a `sales`, `sale_products`, `record_transaction`
 
@@ -175,7 +175,7 @@ Este form NO sigue la interfaz estándar:
 // src/types/sales.ts — REFERENCIA
 export type Sale = Tables<"sales">;                    // Base DB type
 export type SaleProduct = Tables<"sale_products">;     // Related table
-export type PaymentMethod = "Efectivo" | "Yape" | "Efectivo + Yape";
+export type PaymentMethod = "Efectivo" | "Plin" | "Efectivo + Plin";
 
 export interface SaleWithProducts extends Sale {        // Extended for page display
   sale_products: SaleProductWithDetails[];

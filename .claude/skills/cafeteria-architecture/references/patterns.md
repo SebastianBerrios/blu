@@ -702,12 +702,12 @@ export const ORDER_TYPE_STYLES = {
 ```typescript
 // src/utils/constants/paymentMethods.ts
 
-export const PAYMENT_METHODS = ["Efectivo", "Yape", "Efectivo + Yape"] as const;
+export const PAYMENT_METHODS = ["Efectivo", "Plin", "Efectivo + Plin"] as const;
 
 export const PAYMENT_METHOD_ICONS = {
   Efectivo: "Banknote",
-  Yape: "Smartphone",
-  "Efectivo + Yape": "Wallet",
+  Plin: "Smartphone",
+  "Efectivo + Plin": "Wallet",
 } as const;
 ```
 

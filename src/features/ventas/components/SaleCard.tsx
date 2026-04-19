@@ -223,9 +223,9 @@ export default function SaleCard({
               <div className="flex flex-wrap items-center gap-3 text-sm">
                 <span className="text-slate-600">Pago:</span>
                 <span className="font-medium text-slate-900">{sale.payment_method}</span>
-                {sale.payment_method === "Efectivo + Yape" && (
+                {sale.payment_method === "Efectivo + Plin" && (
                   <span className="text-slate-500">
-                    (Efectivo: S/ {sale.cash_amount?.toFixed(2)} | Yape: S/ {sale.yape_amount?.toFixed(2)})
+                    (Efectivo: S/ {sale.cash_amount?.toFixed(2)} | Plin: S/ {sale.plin_amount?.toFixed(2)})
                   </span>
                 )}
                 {sale.payment_date && (

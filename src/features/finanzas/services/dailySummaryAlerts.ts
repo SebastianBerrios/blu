@@ -4,7 +4,7 @@
 export type DailyAlertType =
   | "cash_change"
   | "sale_edited"
-  | "yape_change"
+  | "plin_change"
   | "manual_adjustment";
 
 export interface DailyAlert {
@@ -25,7 +25,7 @@ interface SaleRow {
 
 interface PurchaseRow {
   id: number;
-  yape_change: number | null;
+  plin_change: number | null;
   total: number;
 }
 
@@ -67,15 +67,15 @@ export function generateCashChangeAlerts(sales: SaleRow[]): DailyAlert[] {
   return alerts;
 }
 
-export function generateYapeChangeAlerts(purchases: PurchaseRow[]): DailyAlert[] {
+export function generatePlinChangeAlerts(purchases: PurchaseRow[]): DailyAlert[] {
   const alerts: DailyAlert[] = [];
   for (const p of purchases) {
-    const amt = Number(p.yape_change ?? 0);
+    const amt = Number(p.plin_change ?? 0);
     if (amt > 0) {
       alerts.push({
-        id: `yape-change-${p.id}`,
-        type: "yape_change",
-        message: `Compra #${p.id} · vuelto por Yape`,
+        id: `plin-change-${p.id}`,
+        type: "plin_change",
+        message: `Compra #${p.id} · vuelto por Plin`,
         detail: `Total S/ ${Number(p.total).toFixed(2)}`,
         amount: amt,
         referenceId: p.id,

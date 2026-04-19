@@ -29,8 +29,8 @@ interface PaymentModalProps {
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string; color: string }[] = [
   { value: "Efectivo", label: "Efectivo", color: "bg-green-100 text-green-700 border-green-300" },
-  { value: "Yape", label: "Yape", color: "bg-purple-100 text-purple-700 border-purple-300" },
-  { value: "Efectivo + Yape", label: "Efectivo + Yape", color: "bg-indigo-100 text-indigo-700 border-indigo-300" },
+  { value: "Plin", label: "Plin", color: "bg-purple-100 text-purple-700 border-purple-300" },
+  { value: "Efectivo + Plin", label: "Efectivo + Plin", color: "bg-indigo-100 text-indigo-700 border-indigo-300" },
 ];
 
 export default function PaymentModal({
@@ -45,7 +45,7 @@ export default function PaymentModal({
   const { cajaAccount, bancoAccount } = useAccounts();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Efectivo");
   const [cashAmount, setCashAmount] = useState("");
-  const [yapeAmount, setYapeAmount] = useState("");
+  const [plinAmount, setPlinAmount] = useState("");
   const [cashReceived, setCashReceived] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -55,7 +55,7 @@ export default function PaymentModal({
     if (!isOpen) return;
     setPaymentMethod("Efectivo");
     setCashAmount("");
-    setYapeAmount("");
+    setPlinAmount("");
     setCashReceived("");
     setSubmitError(null);
     setSaleProducts(
@@ -83,9 +83,9 @@ export default function PaymentModal({
   if (!isOpen) return null;
 
   const totalPrice = saleProducts.reduce((sum, p) => sum + p.subtotal, 0);
-  const isMixed = paymentMethod === "Efectivo + Yape";
+  const isMixed = paymentMethod === "Efectivo + Plin";
   const showCashReceived =
-    paymentMethod === "Efectivo" || paymentMethod === "Efectivo + Yape";
+    paymentMethod === "Efectivo" || paymentMethod === "Efectivo + Plin";
   const effectiveCash =
     paymentMethod === "Efectivo"
       ? totalPrice
@@ -102,15 +102,15 @@ export default function PaymentModal({
     setCashAmount(value);
     const cash = parseFloat(value);
     if (!isNaN(cash) && cash >= 0 && cash <= totalPrice) {
-      setYapeAmount((totalPrice - cash).toFixed(2));
+      setPlinAmount((totalPrice - cash).toFixed(2));
     }
   };
 
-  const handleYapeChange = (value: string) => {
-    setYapeAmount(value);
-    const yape = parseFloat(value);
-    if (!isNaN(yape) && yape >= 0 && yape <= totalPrice) {
-      setCashAmount((totalPrice - yape).toFixed(2));
+  const handlePlinChange = (value: string) => {
+    setPlinAmount(value);
+    const plin = parseFloat(value);
+    if (!isNaN(plin) && plin >= 0 && plin <= totalPrice) {
+      setCashAmount((totalPrice - plin).toFixed(2));
     }
   };
 
@@ -132,7 +132,7 @@ export default function PaymentModal({
         newTotalPrice: totalPrice,
         paymentMethod,
         cashAmount,
-        yapeAmount,
+        plinAmount,
         cashReceived,
         userId: user?.id ?? null,
         userName: profile?.full_name ?? null,
@@ -207,7 +207,7 @@ export default function PaymentModal({
                   onClick={() => {
                     setPaymentMethod(method.value);
                     setCashAmount("");
-                    setYapeAmount("");
+                    setPlinAmount("");
                     setCashReceived("");
                   }}
                   disabled={isSubmitting}
@@ -246,7 +246,7 @@ export default function PaymentModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-900 mb-1.5">
-                  Monto en Yape
+                  Monto en Plin
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">S/</span>
@@ -254,8 +254,8 @@ export default function PaymentModal({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={yapeAmount}
-                    onChange={(e) => handleYapeChange(e.target.value)}
+                    value={plinAmount}
+                    onChange={(e) => handlePlinChange(e.target.value)}
                     disabled={isSubmitting}
                     className="w-full pl-9 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
                     placeholder="0.00"

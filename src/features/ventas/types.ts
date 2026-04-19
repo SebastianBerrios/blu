@@ -23,7 +23,7 @@ export interface SaleSubmitParams {
   registerPayment: boolean;
   paymentMethod: PaymentMethod;
   cashAmount: string;
-  yapeAmount: string;
+  plinAmount: string;
   cashReceived: string;
   userId: string | null;
   userName: string | null;

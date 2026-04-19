@@ -2,20 +2,20 @@
 
 interface PurchaseTotalDisplayProps {
   total: number;
-  yapeChange: string;
-  showYapeBreakdown: boolean;
+  plinChange: string;
+  showPlinBreakdown: boolean;
 }
 
 export default function PurchaseTotalDisplay({
   total,
-  yapeChange,
-  showYapeBreakdown,
+  plinChange,
+  showPlinBreakdown,
 }: PurchaseTotalDisplayProps) {
-  const yapeAmount = parseFloat(yapeChange) || 0;
+  const plinAmount = parseFloat(plinChange) || 0;
 
   return (
     <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-      {showYapeBreakdown && yapeAmount > 0 ? (
+      {showPlinBreakdown && plinAmount > 0 ? (
         <div className="space-y-1">
           <div className="flex justify-between text-sm text-slate-600">
             <span>Total compra:</span>
@@ -23,11 +23,11 @@ export default function PurchaseTotalDisplay({
           </div>
           <div className="flex justify-between text-sm text-red-700">
             <span>Caja descuenta:</span>
-            <span className="font-medium">S/ {(total + yapeAmount).toFixed(2)}</span>
+            <span className="font-medium">S/ {(total + plinAmount).toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm text-blue-700">
-            <span>Banco recibe (vuelto Yape):</span>
-            <span className="font-medium">S/ {yapeAmount.toFixed(2)}</span>
+            <span>Banco recibe (vuelto Plin):</span>
+            <span className="font-medium">S/ {plinAmount.toFixed(2)}</span>
           </div>
         </div>
       ) : (

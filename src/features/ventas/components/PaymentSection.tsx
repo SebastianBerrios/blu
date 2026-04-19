@@ -8,8 +8,8 @@ interface PaymentSectionProps {
   onPaymentMethodChange: (method: PaymentMethod) => void;
   cashAmount: string;
   setCashAmount: (value: string) => void;
-  yapeAmount: string;
-  setYapeAmount: (value: string) => void;
+  plinAmount: string;
+  setPlinAmount: (value: string) => void;
   cashReceived: string;
   setCashReceived: (value: string) => void;
   totalPrice: number;
@@ -24,7 +24,7 @@ function getEffectiveCashAmount(
   cashAmount: string,
 ): number {
   if (paymentMethod === "Efectivo") return totalPrice;
-  if (paymentMethod === "Efectivo + Yape") {
+  if (paymentMethod === "Efectivo + Plin") {
     const parsed = parseFloat(cashAmount);
     return isFinite(parsed) ? parsed : 0;
   }
@@ -38,8 +38,8 @@ export default function PaymentSection({
   onPaymentMethodChange,
   cashAmount,
   setCashAmount,
-  yapeAmount,
-  setYapeAmount,
+  plinAmount,
+  setPlinAmount,
   cashReceived,
   setCashReceived,
   totalPrice,
@@ -48,7 +48,7 @@ export default function PaymentSection({
   existingPaymentMethod,
 }: PaymentSectionProps) {
   const showCashReceived =
-    paymentMethod === "Efectivo" || paymentMethod === "Efectivo + Yape";
+    paymentMethod === "Efectivo" || paymentMethod === "Efectivo + Plin";
   const effectiveCash = getEffectiveCashAmount(paymentMethod, totalPrice, cashAmount);
   const receivedNum = cashReceived ? parseFloat(cashReceived) : effectiveCash;
   const change =
@@ -97,7 +97,7 @@ export default function PaymentSection({
             </div>
           </div>
 
-          {paymentMethod === "Efectivo + Yape" ? (
+          {paymentMethod === "Efectivo + Plin" ? (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-slate-900 mb-1.5">
@@ -116,7 +116,7 @@ export default function PaymentSection({
                       setCashAmount(e.target.value);
                       const cash = parseFloat(e.target.value);
                       if (!isNaN(cash) && cash >= 0 && cash <= totalPrice) {
-                        setYapeAmount((totalPrice - cash).toFixed(2));
+                        setPlinAmount((totalPrice - cash).toFixed(2));
                       }
                     }}
                     disabled={isSubmitting}
@@ -127,7 +127,7 @@ export default function PaymentSection({
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-900 mb-1.5">
-                  Yape
+                  Plin
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
@@ -137,12 +137,12 @@ export default function PaymentSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={yapeAmount}
+                    value={plinAmount}
                     onChange={(e) => {
-                      setYapeAmount(e.target.value);
-                      const yape = parseFloat(e.target.value);
-                      if (!isNaN(yape) && yape >= 0 && yape <= totalPrice) {
-                        setCashAmount((totalPrice - yape).toFixed(2));
+                      setPlinAmount(e.target.value);
+                      const plin = parseFloat(e.target.value);
+                      if (!isNaN(plin) && plin >= 0 && plin <= totalPrice) {
+                        setCashAmount((totalPrice - plin).toFixed(2));
                       }
                     }}
                     disabled={isSubmitting}

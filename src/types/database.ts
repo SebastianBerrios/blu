@@ -427,9 +427,9 @@ export type Database = {
           has_delivery: boolean
           id: number
           notes: string | null
+          plin_change: number | null
           total: number
           user_id: string
-          yape_change: number | null
         }
         Insert: {
           account_id?: number | null
@@ -438,9 +438,9 @@ export type Database = {
           has_delivery?: boolean
           id?: never
           notes?: string | null
+          plin_change?: number | null
           total?: number
           user_id: string
-          yape_change?: number | null
         }
         Update: {
           account_id?: number | null
@@ -449,9 +449,9 @@ export type Database = {
           has_delivery?: boolean
           id?: never
           notes?: string | null
+          plin_change?: number | null
           total?: number
           user_id?: string
-          yape_change?: number | null
         }
         Relationships: [
           {
@@ -593,11 +593,11 @@ export type Database = {
           order_type: string
           payment_date: string | null
           payment_method: string | null
+          plin_amount: number | null
           sale_date: string
           table_number: number | null
           total_price: number
           user_id: string | null
-          yape_amount: number | null
         }
         Insert: {
           cash_amount?: number | null
@@ -607,11 +607,11 @@ export type Database = {
           order_type: string
           payment_date?: string | null
           payment_method?: string | null
+          plin_amount?: number | null
           sale_date?: string
           table_number?: number | null
           total_price: number
           user_id?: string | null
-          yape_amount?: number | null
         }
         Update: {
           cash_amount?: number | null
@@ -621,11 +621,11 @@ export type Database = {
           order_type?: string
           payment_date?: string | null
           payment_method?: string | null
+          plin_amount?: number | null
           sale_date?: string
           table_number?: number | null
           total_price?: number
           user_id?: string | null
-          yape_amount?: number | null
         }
         Relationships: [
           {

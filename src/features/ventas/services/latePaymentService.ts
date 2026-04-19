@@ -12,7 +12,7 @@ export interface RegisterPaymentWithRewardsParams {
   newTotalPrice: number;
   paymentMethod: PaymentMethod;
   cashAmount: string;
-  yapeAmount: string;
+  plinAmount: string;
   cashReceived: string;
   userId: string | null;
   userName: string | null;
@@ -29,7 +29,7 @@ export async function registerPaymentWithRewards(
     newTotalPrice,
     paymentMethod,
     cashAmount,
-    yapeAmount,
+    plinAmount,
     cashReceived,
     userId,
     userName,
@@ -37,11 +37,11 @@ export async function registerPaymentWithRewards(
     bancoAccountId,
   } = params;
 
-  const { cash, yape } = buildPaymentAmounts(
+  const { cash, plin } = buildPaymentAmounts(
     paymentMethod,
     newTotalPrice,
     cashAmount,
-    yapeAmount
+    plinAmount
   );
   const cash_received = resolveCashReceived(cash, cashReceived);
 
@@ -54,7 +54,7 @@ export async function registerPaymentWithRewards(
       payment_method: paymentMethod,
       payment_date: new Date().toISOString(),
       cash_amount: cash,
-      yape_amount: yape,
+      plin_amount: plin,
       cash_received,
     })
     .eq("id", saleId);
@@ -93,7 +93,7 @@ export async function registerPaymentWithRewards(
     saleId,
     saleNumber,
     cashAmount: cash,
-    yapeAmount: yape,
+    plinAmount: plin,
     cajaAccountId,
     bancoAccountId,
   });

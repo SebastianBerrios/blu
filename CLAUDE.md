@@ -126,7 +126,7 @@ Hooks with filters use composite SWR keys: `["transactions", filters]`.
 - **user_profiles** — role, full_name, is_active
 - **categories**, **products** (with manufacturing_cost, suggested_price)
 - **ingredients** (quantity, unit_of_measure, price), **recipes**, **recipe_ingredients**
-- **sales** + **sale_products** — order_type (Mesa/Para llevar/Delivery), payment_method (Efectivo/Yape/Efectivo + Yape), product status (Pendiente/Entregado)
+- **sales** + **sale_products** — order_type (Mesa/Para llevar/Delivery), payment_method (Efectivo/Plin/Efectivo + Plin), product status (Pendiente/Entregado)
 - **customers** — name, dni, phone
 - **accounts** (type: "caja"/"banco", balance) + **transactions** via RPC `record_transaction(p_account_id, p_type, p_amount, p_description, p_reference_id, p_reference_type)`
 - **purchases** + **purchase_items**
@@ -148,7 +148,7 @@ Types in `src/types/` wrap auto-generated Supabase types and are re-exported fro
 - **Base types**: `export type Category = Tables<"categories">`
 - **Extended interfaces**: `SaleWithProducts extends Sale` (adds `sale_products[]`, `creator_name?`), `TransactionWithUser extends Transaction` (adds `user_name`)
 - **Create/Update types**: Separate interfaces like `CreateSale`, `CreateProduct`
-- **Literal unions**: `PaymentMethod = "Efectivo" | "Yape" | "Efectivo + Yape"`, `TransactionType = "ingreso_venta" | "egreso_compra" | ...`, `TimeOffStatus = "pendiente" | "aprobado" | "rechazado"`
+- **Literal unions**: `PaymentMethod = "Efectivo" | "Plin" | "Efectivo + Plin"`, `TransactionType = "ingreso_venta" | "egreso_compra" | ...`, `TimeOffStatus = "pendiente" | "aprobado" | "rechazado"`
 - **Filters**: `SalesFilters`, `TransactionFilters` for hook parameters
 - **Schedule types** in `src/types/schedule.ts`: `ScheduleSlot` (merged template+override for weekly display), `EmployeeBalance`, `DayOfWeek` (0–5, Mon–Sat, 6-day work week), `DAY_LABELS`
 
