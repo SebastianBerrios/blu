@@ -54,6 +54,13 @@ export interface ScheduleSlot {
   is_absence?: boolean;
   override_reason?: string;
   override_id?: number;
+  // Attendance issue attached to a template slot: the employee worked the shift
+  // but arrived late or left early. The uncovered minutes are debited from balance.
+  attendanceIssue?: {
+    type: "late" | "early";
+    minutes: number;
+    overrideId: number;
+  };
 }
 
 // Employee balance summary

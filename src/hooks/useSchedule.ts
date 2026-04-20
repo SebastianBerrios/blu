@@ -6,11 +6,14 @@ import { createClient } from "@/utils/supabase/client";
 import type {
   ScheduleTemplate,
   ScheduleOverride,
-  ScheduleSlot,
   ScheduleUser,
   DayOfWeek,
 } from "@/types";
 import { toLocalDateStr } from "@/features/horario/utils/calendarDates";
+import {
+  mergeTemplatesAndOverrides,
+  computeWorkingSlots as computeWorkingSlotsHelper,
+} from "@/features/horario/services/scheduleMerge";
 
 export const fetchTemplates = async (): Promise<ScheduleTemplate[]> => {
   const supabase = createClient();
@@ -90,37 +93,8 @@ export function getWeekDates(weekStart: string): string[] {
   return dates;
 }
 
-/**
- * Computes working time slots after subtracting a time-off window from a template.
- * Returns array of { start_time, end_time } for the remaining work periods.
- */
-export function computeWorkingSlots(
-  tmplStart: string,
-  tmplEnd: string,
-  offStart: string,
-  offEnd: string
-): { start_time: string; end_time: string }[] {
-  const ts = tmplStart.slice(0, 5);
-  const te = tmplEnd.slice(0, 5);
-  const os = offStart.slice(0, 5);
-  const oe = offEnd.slice(0, 5);
-
-  // Time-off covers entire shift or more
-  if (os <= ts && oe >= te) return [];
-
-  // No overlap
-  if (oe <= ts || os >= te) return [{ start_time: ts, end_time: te }];
-
-  const slots: { start_time: string; end_time: string }[] = [];
-
-  // Work before time-off
-  if (os > ts) slots.push({ start_time: ts, end_time: os });
-
-  // Work after time-off
-  if (oe < te) slots.push({ start_time: oe, end_time: te });
-
-  return slots;
-}
+// Re-exported for backward compatibility (existing callers import from this module).
+export const computeWorkingSlots = computeWorkingSlotsHelper;
 
 export function getMonday(date: Date = new Date()): string {
   const d = new Date(date);
@@ -151,171 +125,17 @@ export const useSchedule = (weekStart: string | null) => {
   const overrides = useMemo(() => data?.overrides ?? [], [data?.overrides]);
   const users = useMemo(() => data?.users ?? [], [data?.users]);
 
-  const slots = useMemo(() => {
-    if (!users.length) return [];
-
-    const userMap = new Map(
-      users.map((u) => [u.id, { name: u.full_name ?? "Sin nombre", role: u.role ?? "" }])
-    );
-
-    const result: ScheduleSlot[] = [];
-
-    for (let dayIdx = 0; dayIdx < weekDates.length; dayIdx++) {
-      const date = weekDates[dayIdx];
-      const dayOfWeek = dayIdx as DayOfWeek;
-
-      for (const user of users) {
-        const userInfo = userMap.get(user.id)!;
-
-        // Check overrides for this user + date
-        const dayOverrides = overrides.filter(
-          (o) => o.user_id === user.id && o.override_date === date
-        );
-
-        const extraOverrides = dayOverrides.filter((o) => o.is_extra_shift);
-        const regularOverrides = dayOverrides.filter((o) => !o.is_extra_shift);
-
-        // Extra shift overrides always get added as slots
-        for (const ov of extraOverrides) {
-          if (ov.start_time && ov.end_time) {
-            result.push({
-              user_id: user.id,
-              user_name: userInfo.name,
-              user_role: userInfo.role,
-              day_of_week: dayOfWeek,
-              date,
-              start_time: ov.start_time,
-              end_time: ov.end_time,
-              is_override: true,
-              is_extra_shift: true,
-              is_day_off: false,
-              override_reason: ov.reason ?? undefined,
-              override_id: ov.id,
-            });
-          }
-        }
-
-        // Regular overrides replace templates
-        if (regularOverrides.length > 0) {
-          for (const ov of regularOverrides) {
-            if (ov.is_day_off && !ov.is_absence) {
-              // Show template times with day-off flag (approved time-off)
-              const dayTemplates = templates.filter(
-                (t) => t.user_id === user.id && t.day_of_week === dayOfWeek
-              );
-              for (const tmpl of dayTemplates) {
-                result.push({
-                  user_id: user.id,
-                  user_name: userInfo.name,
-                  user_role: userInfo.role,
-                  day_of_week: dayOfWeek,
-                  date,
-                  start_time: tmpl.start_time,
-                  end_time: tmpl.end_time,
-                  is_override: true,
-                  is_day_off: true,
-                  override_reason: ov.reason ?? undefined,
-                });
-              }
-              continue;
-            }
-            // Partial time-off: emit separate work + permission blocks
-            if (ov.time_off_request_id && !ov.is_day_off && ov.start_time && ov.end_time) {
-              const dayTemplates = templates.filter(
-                (t) => t.user_id === user.id && t.day_of_week === dayOfWeek
-              );
-              const offStart = ov.start_time;
-              const offEnd = ov.end_time;
-              for (const tmpl of dayTemplates) {
-                const workSlots = computeWorkingSlots(tmpl.start_time, tmpl.end_time, offStart, offEnd);
-                if (workSlots.length === 0) {
-                  // Time-off covers entire shift → day off
-                  result.push({
-                    user_id: user.id,
-                    user_name: userInfo.name,
-                    user_role: userInfo.role,
-                    day_of_week: dayOfWeek,
-                    date,
-                    start_time: tmpl.start_time,
-                    end_time: tmpl.end_time,
-                    is_override: true,
-                    is_day_off: true,
-                    override_reason: ov.reason ?? undefined,
-                  });
-                } else {
-                  // Work blocks (normal appearance)
-                  for (const ws of workSlots) {
-                    result.push({
-                      user_id: user.id,
-                      user_name: userInfo.name,
-                      user_role: userInfo.role,
-                      day_of_week: dayOfWeek,
-                      date,
-                      start_time: ws.start_time,
-                      end_time: ws.end_time,
-                      is_override: false,
-                      is_day_off: false,
-                    });
-                  }
-                  // Permission block (separate, day-off styling)
-                  result.push({
-                    user_id: user.id,
-                    user_name: userInfo.name,
-                    user_role: userInfo.role,
-                    day_of_week: dayOfWeek,
-                    date,
-                    start_time: offStart.slice(0, 5),
-                    end_time: offEnd.slice(0, 5),
-                    is_override: true,
-                    is_day_off: true,
-                    override_reason: ov.reason ?? undefined,
-                  });
-                }
-              }
-              continue;
-            }
-            if (ov.start_time && ov.end_time) {
-              result.push({
-                user_id: user.id,
-                user_name: userInfo.name,
-                user_role: userInfo.role,
-                day_of_week: dayOfWeek,
-                date,
-                start_time: ov.start_time,
-                end_time: ov.end_time,
-                is_override: true,
-                is_day_off: false,
-                is_absence: ov.is_absence ?? false,
-                override_reason: ov.reason ?? undefined,
-              });
-            }
-          }
-          continue; // Regular override replaces template for this day
-        }
-
-        // Fall back to template
-        const dayTemplates = templates.filter(
-          (t) => t.user_id === user.id && t.day_of_week === dayOfWeek
-        );
-
-        for (const tmpl of dayTemplates) {
-          result.push({
-            user_id: user.id,
-            user_name: userInfo.name,
-            user_role: userInfo.role,
-            day_of_week: dayOfWeek,
-            date,
-            start_time: tmpl.start_time,
-            end_time: tmpl.end_time,
-            is_override: false,
-            is_day_off: false,
-          });
-        }
-      }
-    }
-
-    return result;
-  }, [templates, overrides, users, weekDates]);
+  const slots = useMemo(
+    () =>
+      mergeTemplatesAndOverrides(
+        templates,
+        overrides,
+        users,
+        weekDates,
+        (_date, idx) => idx as DayOfWeek
+      ),
+    [templates, overrides, users, weekDates]
+  );
 
   return {
     slots,
