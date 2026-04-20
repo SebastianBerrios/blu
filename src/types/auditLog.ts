@@ -19,6 +19,8 @@ export type AuditAction =
   | "rechazar_permiso"
   | "registrar_horas_extra"
   | "marcar_inasistencia"
+  | "marcar_tardanza"
+  | "marcar_salida_temprana"
   | "cambiar_disponibilidad";
 
 export type AuditTargetTable =
@@ -58,6 +60,8 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   rechazar_permiso: "Rechazo de permiso",
   registrar_horas_extra: "Registro de horas extra",
   marcar_inasistencia: "Inasistencia",
+  marcar_tardanza: "Tardanza",
+  marcar_salida_temprana: "Salida temprana",
   cambiar_disponibilidad: "Cambio de disponibilidad",
 };
 

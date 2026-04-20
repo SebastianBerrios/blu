@@ -36,6 +36,8 @@ export default function SlotBadge({
 
   const ringClass = slot.is_absence
     ? "ring-1 ring-red-400 opacity-60"
+    : slot.attendanceIssue
+    ? "ring-1 ring-amber-400"
     : slot.is_day_off
     ? "ring-1 ring-violet-400 opacity-60"
     : slot.is_extra_shift
@@ -54,21 +56,26 @@ export default function SlotBadge({
       {slot.is_absence && (
         <div className="text-[10px] text-red-600 font-semibold">Falta</div>
       )}
+      {slot.attendanceIssue && !slot.is_absence && (
+        <div className="text-[10px] text-amber-700 font-semibold">
+          {slot.attendanceIssue.type === "late" ? "Tardanza" : "Salida temprana"} {slot.attendanceIssue.minutes} min
+        </div>
+      )}
       {slot.is_day_off && !slot.is_absence && (
         <div className="text-[10px] text-violet-600 font-semibold">Permiso</div>
       )}
       {slot.is_extra_shift && (
         <div className="text-[10px] text-emerald-700 font-medium">Extra</div>
       )}
-      {slot.override_reason && !slot.is_extra_shift && !slot.is_absence && (
+      {slot.override_reason && !slot.is_extra_shift && !slot.is_absence && !slot.attendanceIssue && (
         <div className="text-[10px] opacity-70">{slot.override_reason}</div>
       )}
-      {isAdmin && !slot.is_absence && !slot.is_day_off && !slot.is_extra_shift && (
+      {isAdmin && !slot.is_absence && !slot.is_day_off && !slot.is_extra_shift && !slot.attendanceIssue && (
         <div className="absolute top-0.5 right-0.5 hidden group-hover:flex gap-0.5">
           <button
             onClick={() => onMarkAbsence(slot)}
             className="p-0.5 bg-white rounded shadow hover:bg-red-50"
-            title="Marcar inasistencia"
+            title="Marcar incidencia"
           >
             <UserX className="w-3 h-3 text-red-500" />
           </button>

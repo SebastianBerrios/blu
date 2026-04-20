@@ -63,6 +63,8 @@ export interface ScheduleSlot {
   };
 }
 
+export type AbsenceMode = "full" | "late" | "early";
+
 // Employee balance summary
 export interface EmployeeBalance {
   user_id: string;

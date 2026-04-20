@@ -34,6 +34,8 @@ const ACTION_COLORS: Record<AuditAction, string> = {
   rechazar_permiso: "bg-red-100 text-red-700",
   registrar_horas_extra: "bg-amber-100 text-amber-700",
   marcar_inasistencia: "bg-red-100 text-red-700",
+  marcar_tardanza: "bg-amber-100 text-amber-700",
+  marcar_salida_temprana: "bg-amber-100 text-amber-700",
   cambiar_disponibilidad: "bg-emerald-100 text-emerald-700",
 };
 
