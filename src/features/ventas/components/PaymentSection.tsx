@@ -1,5 +1,6 @@
+import { Bike } from "lucide-react";
 import type { PaymentMethod } from "@/types";
-import { PAYMENT_METHODS } from "../constants";
+import { PAYMENT_METHODS, RAPPI_COMMISSION_RATE } from "../constants";
 
 interface PaymentSectionProps {
   registerPayment: boolean;
@@ -16,6 +17,7 @@ interface PaymentSectionProps {
   isSubmitting: boolean;
   isEditMode: boolean;
   existingPaymentMethod?: string | null;
+  isRappi?: boolean;
 }
 
 function getEffectiveCashAmount(
@@ -46,7 +48,53 @@ export default function PaymentSection({
   isSubmitting,
   isEditMode,
   existingPaymentMethod,
+  isRappi = false,
 }: PaymentSectionProps) {
+  if (isRappi) {
+    const commission = Number((totalPrice * RAPPI_COMMISSION_RATE).toFixed(2));
+    const net = Number((totalPrice - commission).toFixed(2));
+    return (
+      <div className="border-2 border-orange-300 rounded-lg p-4 bg-gradient-to-br from-orange-50 to-white">
+        <div className="flex items-center gap-2 mb-3">
+          <Bike className="w-5 h-5 text-orange-700" />
+          <span className="text-sm font-semibold text-orange-900">
+            Pago vía Rappi
+          </span>
+        </div>
+        <p className="text-xs text-orange-800 mb-3">
+          Rappi cobra al cliente y te deposita el neto semanalmente. El pago se
+          registrará automáticamente en la cuenta Rappi.
+        </p>
+        <div className="grid grid-cols-3 gap-2 text-sm">
+          <div className="bg-white border border-orange-200 rounded-lg p-2.5">
+            <p className="text-[11px] uppercase tracking-wide text-orange-700">
+              Subtotal
+            </p>
+            <p className="font-bold text-orange-900 tabular-nums">
+              S/ {totalPrice.toFixed(2)}
+            </p>
+          </div>
+          <div className="bg-white border border-orange-200 rounded-lg p-2.5">
+            <p className="text-[11px] uppercase tracking-wide text-orange-700">
+              Comisión 20%
+            </p>
+            <p className="font-bold text-red-600 tabular-nums">
+              − S/ {commission.toFixed(2)}
+            </p>
+          </div>
+          <div className="bg-orange-600 border border-orange-700 rounded-lg p-2.5">
+            <p className="text-[11px] uppercase tracking-wide text-orange-100">
+              Neto a recibir
+            </p>
+            <p className="font-bold text-white tabular-nums">
+              S/ {net.toFixed(2)}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const showCashReceived =
     paymentMethod === "Efectivo" || paymentMethod === "Efectivo + Plin";
   const effectiveCash = getEffectiveCashAmount(paymentMethod, totalPrice, cashAmount);
@@ -55,6 +103,8 @@ export default function PaymentSection({
     isFinite(receivedNum) && receivedNum > effectiveCash
       ? receivedNum - effectiveCash
       : 0;
+
+  const regularPaymentMethods = PAYMENT_METHODS.filter((m) => m.value !== "Rappi");
 
   return (
     <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
@@ -79,7 +129,7 @@ export default function PaymentSection({
               Método de pago
             </label>
             <div className="flex gap-2">
-              {PAYMENT_METHODS.map((method) => (
+              {regularPaymentMethods.map((method) => (
                 <button
                   key={method.value}
                   type="button"

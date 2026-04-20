@@ -29,5 +29,6 @@ export interface SaleSubmitParams {
   userName: string | null;
   cajaAccountId: number | null;
   bancoAccountId: number | null;
+  rappiAccountId: number | null;
   existingPaymentDate?: string | null;
 }

@@ -19,9 +19,10 @@ export default function InitialBalanceForm({
   onSuccess,
 }: InitialBalanceFormProps) {
   const { user, profile } = useAuth();
-  const { cajaAccount, bancoAccount } = useAccounts();
+  const { cajaAccount, bancoAccount, rappiAccount } = useAccounts();
   const [cajaBalance, setCajaBalance] = useState("");
   const [bancoBalance, setBancoBalance] = useState("");
+  const [rappiBalance, setRappiBalance] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -34,10 +35,13 @@ export default function InitialBalanceForm({
       await setInitialBalances({
         cajaAccountId: cajaAccount?.id ?? null,
         bancoAccountId: bancoAccount?.id ?? null,
+        rappiAccountId: rappiAccount?.id ?? null,
         cajaBalance: cajaBalance.trim() ? parseFloat(cajaBalance) : null,
         bancoBalance: bancoBalance.trim() ? parseFloat(bancoBalance) : null,
+        rappiBalance: rappiBalance.trim() ? parseFloat(rappiBalance) : null,
         cajaPrevious: cajaAccount ? Number(cajaAccount.balance) : null,
         bancoPrevious: bancoAccount ? Number(bancoAccount.balance) : null,
+        rappiPrevious: rappiAccount ? Number(rappiAccount.balance) : null,
         userId: user?.id ?? null,
         userName: profile?.full_name ?? null,
       });
@@ -122,6 +126,29 @@ export default function InitialBalanceForm({
                 step="0.01"
                 value={bancoBalance}
                 onChange={(e) => setBancoBalance(e.target.value)}
+                disabled={isSubmitting}
+                className="w-full pl-9 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+                placeholder="No modificar"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-900 mb-1.5">
+              Saldo de Rappi
+              {rappiAccount && (
+                <span className="text-slate-500 text-xs ml-2">
+                  (Actual: S/ {Number(rappiAccount.balance).toFixed(2)})
+                </span>
+              )}
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">S/</span>
+              <input
+                type="number"
+                step="0.01"
+                value={rappiBalance}
+                onChange={(e) => setRappiBalance(e.target.value)}
                 disabled={isSubmitting}
                 className="w-full pl-9 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
                 placeholder="No modificar"

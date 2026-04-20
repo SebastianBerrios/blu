@@ -92,10 +92,14 @@ export async function registerPaymentWithRewards(
   await recordSaleTransactions({
     saleId,
     saleNumber,
+    paymentMethod,
+    totalPrice: newTotalPrice,
+    commission: null,
     cashAmount: cash,
     plinAmount: plin,
     cajaAccountId,
     bancoAccountId,
+    rappiAccountId: null,
   });
 
   logAudit({

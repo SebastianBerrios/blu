@@ -3,7 +3,7 @@ import type { Tables } from "./database";
 export type Account = Tables<"accounts">;
 export type Transaction = Tables<"transactions">;
 
-export type AccountType = "caja" | "banco";
+export type AccountType = "caja" | "banco" | "rappi";
 export type TransactionType =
   | "ingreso_venta"
   | "egreso_compra"

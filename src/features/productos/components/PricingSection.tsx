@@ -1,8 +1,9 @@
 "use client";
 
-import { Calculator, Receipt } from "lucide-react";
+import { Bike, Calculator, Receipt } from "lucide-react";
 import type { UseFormRegister } from "react-hook-form";
 import type { CreateProduct } from "@/types";
+import { RAPPI_SUGGESTED_PRICE_MULTIPLIER } from "@/features/ventas/constants";
 
 export interface TargetPercentageOption {
   title: string;
@@ -18,6 +19,8 @@ interface PricingSectionProps {
   suggestedPrice: number;
   profit: number;
   onApplySuggestedPrice: () => void;
+  priceValue: number;
+  onApplySuggestedRappiPrice: () => void;
 }
 
 export default function PricingSection({
@@ -29,9 +32,12 @@ export default function PricingSection({
   suggestedPrice,
   profit,
   onApplySuggestedPrice,
+  priceValue,
+  onApplySuggestedRappiPrice,
 }: PricingSectionProps) {
   const currentTargetPercentage =
     targetOptions.find((opt) => opt.title === selectedOptionTitle)?.value || 0;
+  const suggestedRappiPrice = Number((priceValue * RAPPI_SUGGESTED_PRICE_MULTIPLIER).toFixed(2));
 
   return (
     <div className="grid grid-cols-1 gap-4">
@@ -130,6 +136,53 @@ export default function PricingSection({
                 S/ {profit.toFixed(2)}
               </span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Precio Rappi */}
+      <div className="border-2 border-orange-300 rounded-lg p-4 bg-gradient-to-br from-orange-50 to-white">
+        <h3 className="text-base font-semibold text-orange-900 mb-3 flex items-center gap-2">
+          <Bike className="w-5 h-5" />
+          Precio Rappi
+          <span className="text-[10px] font-normal text-orange-700 ml-auto">
+            Opcional. Si se deja vacío, se usará el precio normal × {RAPPI_SUGGESTED_PRICE_MULTIPLIER.toFixed(1)}.
+          </span>
+        </h3>
+        <div className="grid grid-cols-2 gap-6 items-start">
+          <div>
+            <label className="block text-xs font-medium text-orange-700 mb-1">
+              Sugerido (×{RAPPI_SUGGESTED_PRICE_MULTIPLIER.toFixed(1)})
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold text-orange-700">
+                S/ {suggestedRappiPrice.toFixed(2)}
+              </span>
+              <button
+                type="button"
+                onClick={onApplySuggestedRappiPrice}
+                disabled={!priceValue}
+                className="text-[10px] uppercase tracking-wide font-bold bg-orange-600 text-white px-2 py-1 rounded hover:bg-orange-700 disabled:opacity-50"
+              >
+                Aplicar
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-orange-700">
+              Rappi cobra 20% de comisión; el ingreso neto será ~80% del precio que ingreses.
+            </p>
+          </div>
+          <div className="bg-white p-3 rounded-lg border border-orange-200 shadow-sm">
+            <label className="block text-sm font-bold text-orange-900 mb-1.5">
+              Precio Rappi (S/)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              {...register("rappi_price")}
+              className="w-full px-3 py-2 border-2 border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none font-bold text-xl text-orange-900 text-right"
+              placeholder="0.00"
+            />
           </div>
         </div>
       </div>

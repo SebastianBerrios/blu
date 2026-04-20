@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import type { Product } from "@/types";
 import type { SaleProductLine } from "../types";
+import { RAPPI_SUGGESTED_PRICE_MULTIPLIER } from "../constants";
 
 interface ProductSelectorProps {
   products: Product[];
@@ -10,6 +11,13 @@ interface ProductSelectorProps {
   onRemoveProduct: (index: number) => void;
   totalPrice: number;
   isSubmitting: boolean;
+  isRappi?: boolean;
+}
+
+export function resolveProductPrice(product: Product, isRappi: boolean): number {
+  if (!isRappi) return product.price;
+  if (product.rappi_price && product.rappi_price > 0) return product.rappi_price;
+  return Number((product.price * RAPPI_SUGGESTED_PRICE_MULTIPLIER).toFixed(2));
 }
 
 export default function ProductSelector({
@@ -19,6 +27,7 @@ export default function ProductSelector({
   onRemoveProduct,
   totalPrice,
   isSubmitting,
+  isRappi = false,
 }: ProductSelectorProps) {
   const [searchProduct, setSearchProduct] = useState("");
   const [selectedProductId, setSelectedProductId] = useState<number | null>(
@@ -82,13 +91,14 @@ export default function ProductSelector({
         ? product.temperatura
         : null;
     const milk = needsMilk ? selectedTipoLeche || "entera" : null;
+    const unitPrice = resolveProductPrice(product, isRappi);
 
     onAddProduct({
       product_id: selectedProductId,
       product_name: product.name,
       quantity,
-      unit_price: product.price,
-      subtotal: quantity * product.price,
+      unit_price: unitPrice,
+      subtotal: quantity * unitPrice,
       temperatura: temp,
       tipo_leche: milk,
       category_id: product.category_id,
@@ -131,28 +141,46 @@ export default function ProductSelector({
               !selectedProductId &&
               filteredProducts.length > 0 && (
                 <ul className="absolute z-20 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                  {filteredProducts.map((product) => (
-                    <li
-                      key={product.id}
-                      onClick={() =>
-                        handleSelectProduct(product.id, product.name)
-                      }
-                      className="px-4 py-3.5 hover:bg-slate-100 cursor-pointer transition-colors capitalize flex justify-between items-center"
-                    >
-                      <span>{product.name}</span>
-                      <span className="text-xs text-green-600 font-semibold">
-                        S/ {product.price.toFixed(2)}
-                      </span>
-                    </li>
-                  ))}
+                  {filteredProducts.map((product) => {
+                    const displayPrice = resolveProductPrice(product, isRappi);
+                    return (
+                      <li
+                        key={product.id}
+                        onClick={() =>
+                          handleSelectProduct(product.id, product.name)
+                        }
+                        className="px-4 py-3.5 hover:bg-slate-100 cursor-pointer transition-colors capitalize flex justify-between items-center"
+                      >
+                        <span>{product.name}</span>
+                        <span
+                          className={`text-xs font-semibold ${
+                            isRappi ? "text-orange-600" : "text-green-600"
+                          }`}
+                        >
+                          S/ {displayPrice.toFixed(2)}
+                          {isRappi ? " Rappi" : ""}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
           </div>
 
           {selectedProduct && (
-            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center whitespace-nowrap min-w-fit">
-              <span className="text-sm font-semibold text-green-700">
-                S/ {selectedProduct.price.toFixed(2)}
+            <div
+              className={`border rounded-lg px-4 py-3 flex items-center whitespace-nowrap min-w-fit ${
+                isRappi
+                  ? "bg-orange-50 border-orange-200"
+                  : "bg-green-50 border-green-200"
+              }`}
+            >
+              <span
+                className={`text-sm font-semibold ${
+                  isRappi ? "text-orange-700" : "text-green-700"
+                }`}
+              >
+                S/ {resolveProductPrice(selectedProduct, isRappi).toFixed(2)}
               </span>
             </div>
           )}

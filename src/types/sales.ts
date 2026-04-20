@@ -2,7 +2,8 @@ import type { Tables } from "./database";
 
 export type Sale = Tables<"sales">;
 export type SaleProduct = Tables<"sale_products">;
-export type PaymentMethod = "Efectivo" | "Plin" | "Efectivo + Plin";
+export type PaymentMethod = "Efectivo" | "Plin" | "Efectivo + Plin" | "Rappi";
+export type OrderType = "Mesa" | "Para llevar" | "Delivery" | "Rappi";
 export type SaleProductStatus = "Pendiente" | "Entregado";
 
 export interface SaleProductWithDetails {

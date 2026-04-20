@@ -29,8 +29,8 @@ export default function SaleForm({
   isOpen, onClose, onSuccess, sale, products, categories,
 }: SaleFormProps) {
   const isEditMode = !!sale;
-  const { user, profile } = useAuth();
-  const { cajaAccount, bancoAccount } = useAccounts();
+  const { user, profile, isAdmin } = useAuth();
+  const { cajaAccount, bancoAccount, rappiAccount } = useAccounts();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -45,6 +45,7 @@ export default function SaleForm({
   const [cashReceived, setCashReceived] = useState("");
 
   const totalPrice = saleProducts.reduce((sum, p) => sum + p.subtotal, 0);
+  const isRappi = orderType === "Rappi";
   const title = isEditMode ? "Editar Venta" : "Registrar Venta";
   const submitLabel = isSubmitting
     ? "Guardando..."
@@ -146,6 +147,20 @@ export default function SaleForm({
     setCashReceived("");
   };
 
+  const handleOrderTypeChange = (value: string) => {
+    setOrderType(value);
+    if (value === "Rappi") {
+      setRegisterPayment(true);
+      setPaymentMethod("Rappi");
+      setCashAmount("");
+      setPlinAmount("");
+      setCashReceived("");
+      setTableNumber("");
+    } else if (paymentMethod === "Rappi") {
+      setPaymentMethod("Efectivo");
+    }
+  };
+
   const handleSubmit = async () => {
     if (saleProducts.length === 0) {
       setSubmitError("Debes agregar al menos un producto");
@@ -161,6 +176,7 @@ export default function SaleForm({
         userName: profile?.full_name ?? null,
         cajaAccountId: cajaAccount?.id ?? null,
         bancoAccountId: bancoAccount?.id ?? null,
+        rappiAccountId: rappiAccount?.id ?? null,
         existingPaymentDate: sale?.payment_date,
       };
       if (isEditMode && sale) {
@@ -189,7 +205,7 @@ export default function SaleForm({
             <button
               key={type.value}
               type="button"
-              onClick={() => setOrderType(type.value)}
+              onClick={() => handleOrderTypeChange(type.value)}
               disabled={isSubmitting}
               className={`flex-1 px-4 py-3 min-h-[44px] rounded-lg border-2 font-medium transition-all ${
                 orderType === type.value
@@ -238,6 +254,7 @@ export default function SaleForm({
         onRemoveProduct={handleRemoveProduct}
         totalPrice={totalPrice}
         isSubmitting={isSubmitting}
+        isRappi={isRappi}
       />
       <LoyaltyRewardsSection
         saleProducts={saleProducts}
@@ -246,22 +263,25 @@ export default function SaleForm({
         onRemoveReward={handleRemoveReward}
         isSubmitting={isSubmitting}
       />
-      <PaymentSection
-        registerPayment={registerPayment}
-        onRegisterPaymentChange={setRegisterPayment}
-        paymentMethod={paymentMethod}
-        onPaymentMethodChange={handlePaymentMethodChange}
-        cashAmount={cashAmount}
-        setCashAmount={setCashAmount}
-        plinAmount={plinAmount}
-        setPlinAmount={setPlinAmount}
-        cashReceived={cashReceived}
-        setCashReceived={setCashReceived}
-        totalPrice={totalPrice}
-        isSubmitting={isSubmitting}
-        isEditMode={isEditMode}
-        existingPaymentMethod={sale?.payment_method}
-      />
+      {(!isRappi || isAdmin) && (
+        <PaymentSection
+          registerPayment={registerPayment}
+          onRegisterPaymentChange={setRegisterPayment}
+          paymentMethod={paymentMethod}
+          onPaymentMethodChange={handlePaymentMethodChange}
+          cashAmount={cashAmount}
+          setCashAmount={setCashAmount}
+          plinAmount={plinAmount}
+          setPlinAmount={setPlinAmount}
+          cashReceived={cashReceived}
+          setCashReceived={setCashReceived}
+          totalPrice={totalPrice}
+          isSubmitting={isSubmitting}
+          isEditMode={isEditMode}
+          existingPaymentMethod={sale?.payment_method}
+          isRappi={isRappi}
+        />
+      )}
       {submitError && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-sm text-red-700">{submitError}</p>

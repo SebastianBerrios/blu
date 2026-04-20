@@ -20,6 +20,16 @@ export function buildPaymentFields(params: SaleSubmitParams): PaymentFields {
     };
   }
 
+  if (params.paymentMethod === "Rappi") {
+    return {
+      payment_method: "Rappi",
+      payment_date: params.existingPaymentDate ?? new Date().toISOString(),
+      cash_amount: null,
+      plin_amount: null,
+      cash_received: null,
+    };
+  }
+
   const cash_amount =
     params.paymentMethod === "Efectivo"
       ? params.totalPrice

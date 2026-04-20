@@ -4,12 +4,18 @@ import { logAudit } from "@/utils/auditLog";
 import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import { getSaleNumber } from "@/utils/saleNumber";
 import type { SaleSubmitParams } from "../types";
+import { RAPPI_COMMISSION_RATE } from "../constants";
 import {
   buildPaymentFields,
   validateSplitPayment,
   validateCashReceived,
   paymentStateChanged,
 } from "./paymentHelpers";
+
+function computeCommission(orderType: string, totalPrice: number): number | null {
+  if (orderType !== "Rappi") return null;
+  return Number((totalPrice * RAPPI_COMMISSION_RATE).toFixed(2));
+}
 
 async function resolveCustomerId(dni: string): Promise<number | null> {
   if (!dni.trim()) return null;
@@ -50,12 +56,45 @@ function buildSaleProductRows(saleId: number, params: SaleSubmitParams) {
 export async function recordSaleTransactions(params: {
   saleId: number;
   saleNumber: number;
+  paymentMethod: string | null;
+  totalPrice: number;
+  commission: number | null;
   cashAmount: number | null;
   plinAmount: number | null;
   cajaAccountId: number | null;
   bancoAccountId: number | null;
+  rappiAccountId: number | null;
 }): Promise<void> {
-  const { saleId, saleNumber, cashAmount, plinAmount, cajaAccountId, bancoAccountId } = params;
+  const {
+    saleId,
+    saleNumber,
+    paymentMethod,
+    totalPrice,
+    commission,
+    cashAmount,
+    plinAmount,
+    cajaAccountId,
+    bancoAccountId,
+    rappiAccountId,
+  } = params;
+
+  if (paymentMethod === "Rappi") {
+    if (!rappiAccountId) {
+      throw new Error("No se encontró la cuenta Rappi");
+    }
+    const net = Number((totalPrice - (commission ?? 0)).toFixed(2));
+    if (net > 0) {
+      await recordTransaction({
+        accountId: rappiAccountId,
+        type: "ingreso_venta",
+        amount: net,
+        description: `Venta #${saleNumber} - Rappi (neto)`,
+        referenceId: saleId,
+        referenceType: "sale",
+      });
+    }
+    return;
+  }
 
   if (cashAmount && cashAmount > 0 && cajaAccountId) {
     await recordTransaction({
@@ -87,11 +126,14 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
   const paymentFields = buildPaymentFields(params);
   validateCashReceived(paymentFields);
 
+  const commission = computeCommission(params.orderType, params.totalPrice);
+
   const { data: newSale, error } = await supabase
     .from("sales")
     .insert({
       order_type: params.orderType,
       total_price: params.totalPrice,
+      commission,
       customer_id: customerId,
       table_number:
         params.orderType === "Mesa"
@@ -126,6 +168,7 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
       productos: params.saleProducts.length,
       pago_registrado: params.registerPayment,
       cash_received: paymentFields.cash_received,
+      commission,
     },
   });
 
@@ -133,10 +176,14 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
     await recordSaleTransactions({
       saleId: newSale.id,
       saleNumber,
+      paymentMethod: paymentFields.payment_method,
+      totalPrice: params.totalPrice,
+      commission,
       cashAmount: paymentFields.cash_amount,
       plinAmount: paymentFields.plin_amount,
       cajaAccountId: params.cajaAccountId,
       bancoAccountId: params.bancoAccountId,
+      rappiAccountId: params.rappiAccountId,
     });
 
     logAudit({
@@ -149,6 +196,7 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
         venta_id: newSale.id,
         metodo: params.paymentMethod,
         total: params.totalPrice,
+        commission,
       },
     });
   }
@@ -165,10 +213,12 @@ export async function updateSale(
   const paymentFields = buildPaymentFields(params);
   validateCashReceived(paymentFields);
 
+  const commission = computeCommission(params.orderType, params.totalPrice);
+
   // Fetch existing payment state to detect changes for transaction re-sync
   const { data: existingSale, error: fetchError } = await supabase
     .from("sales")
-    .select("payment_method, cash_amount, plin_amount")
+    .select("payment_method, cash_amount, plin_amount, total_price")
     .eq("id", saleId)
     .single();
 
@@ -179,6 +229,7 @@ export async function updateSale(
     .update({
       order_type: params.orderType,
       total_price: params.totalPrice,
+      commission,
       customer_id: customerId,
       table_number:
         params.orderType === "Mesa"
@@ -198,8 +249,11 @@ export async function updateSale(
 
   if (productsError) throw productsError;
 
-  // Re-sync transactions if payment state changed
-  const changed = paymentStateChanged(existingSale, paymentFields);
+  // Re-sync transactions if payment state changed (including Rappi total changes)
+  const rappiTotalChanged =
+    paymentFields.payment_method === "Rappi" &&
+    Math.abs(Number(existingSale.total_price ?? 0) - params.totalPrice) > 0.01;
+  const changed = paymentStateChanged(existingSale, paymentFields) || rappiTotalChanged;
   if (changed) {
     const { error: deleteError } = await supabase.rpc("delete_sale_transactions", {
       p_sale_id: saleId,
@@ -211,10 +265,14 @@ export async function updateSale(
       await recordSaleTransactions({
         saleId,
         saleNumber,
+        paymentMethod: paymentFields.payment_method,
+        totalPrice: params.totalPrice,
+        commission,
         cashAmount: paymentFields.cash_amount,
         plinAmount: paymentFields.plin_amount,
         cajaAccountId: params.cajaAccountId,
         bancoAccountId: params.bancoAccountId,
+        rappiAccountId: params.rappiAccountId,
       });
 
       logAudit({

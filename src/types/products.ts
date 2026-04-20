@@ -8,6 +8,7 @@ export interface CreateProduct {
   manufacturing_cost: number;
   suggested_price?: number;
   price: number;
+  rappi_price?: number | null;
   temperatura?: string | null;
   tipo_leche?: string | null;
   recipe_id?: number | null;

@@ -21,6 +21,7 @@ const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
       id,
       sale_date,
       total_price,
+      commission,
       order_type,
       customer_id,
       payment_method,

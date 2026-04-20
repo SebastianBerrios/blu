@@ -4,6 +4,7 @@ import { useRef } from "react";
 import {
   AlertTriangle,
   Banknote,
+  Bike,
   Building2,
   Calendar,
   CheckCircle2,
@@ -123,13 +124,41 @@ export default function DailySummary({ date, onDateChange }: DailySummaryProps) 
       ) : (
         <>
           {/* Per-account breakdown */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {summary.perAccount.map((a) => {
-              const isCaja = a.accountType === "caja";
-              const Icon = isCaja ? Banknote : Building2;
-              const accent = isCaja
-                ? { border: "border-green-200", bg: "bg-green-50/60", icon: "text-green-700", chip: "bg-green-100 text-green-800" }
-                : { border: "border-blue-200", bg: "bg-blue-50/60", icon: "text-blue-700", chip: "bg-blue-100 text-blue-800" };
+              const { Icon, accent, chipLabel } =
+                a.accountType === "caja"
+                  ? {
+                      Icon: Banknote,
+                      accent: {
+                        border: "border-green-200",
+                        bg: "bg-green-50/60",
+                        icon: "text-green-700",
+                        chip: "bg-green-100 text-green-800",
+                      },
+                      chipLabel: "Caja",
+                    }
+                  : a.accountType === "rappi"
+                  ? {
+                      Icon: Bike,
+                      accent: {
+                        border: "border-orange-200",
+                        bg: "bg-orange-50/60",
+                        icon: "text-orange-700",
+                        chip: "bg-orange-100 text-orange-800",
+                      },
+                      chipLabel: "Rappi",
+                    }
+                  : {
+                      Icon: Building2,
+                      accent: {
+                        border: "border-blue-200",
+                        bg: "bg-blue-50/60",
+                        icon: "text-blue-700",
+                        chip: "bg-blue-100 text-blue-800",
+                      },
+                      chipLabel: "Banco",
+                    };
 
               return (
                 <div
@@ -144,7 +173,7 @@ export default function DailySummary({ date, onDateChange }: DailySummaryProps) 
                       </span>
                     </div>
                     <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${accent.chip}`}>
-                      {isCaja ? "Caja" : "Banco"}
+                      {chipLabel}
                     </span>
                   </div>
 

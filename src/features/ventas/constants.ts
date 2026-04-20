@@ -1,5 +1,8 @@
 import type { PaymentMethod } from "@/types";
 
+export const RAPPI_COMMISSION_RATE = 0.2;
+export const RAPPI_SUGGESTED_PRICE_MULTIPLIER = 1.3;
+
 export const ORDER_TYPES = [
   {
     value: "Mesa",
@@ -15,6 +18,11 @@ export const ORDER_TYPES = [
     value: "Delivery",
     label: "Delivery",
     color: "bg-green-100 text-green-700 border-green-300",
+  },
+  {
+    value: "Rappi",
+    label: "Rappi",
+    color: "bg-orange-100 text-orange-700 border-orange-300",
   },
 ];
 
@@ -37,5 +45,10 @@ export const PAYMENT_METHODS: {
     value: "Efectivo + Plin",
     label: "Efectivo + Plin",
     color: "bg-indigo-100 text-indigo-700 border-indigo-300",
+  },
+  {
+    value: "Rappi",
+    label: "Rappi",
+    color: "bg-orange-100 text-orange-700 border-orange-300",
   },
 ];

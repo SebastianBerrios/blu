@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
 import { recordTransaction } from "@/hooks/useTransactions";
@@ -19,11 +19,31 @@ export default function TransferForm({
   onSuccess,
 }: TransferFormProps) {
   const { user, profile } = useAuth();
-  const { cajaAccount, bancoAccount } = useAccounts();
+  const { accounts, cajaAccount, bancoAccount } = useAccounts();
+  const [fromId, setFromId] = useState<number | null>(null);
+  const [toId, setToId] = useState<number | null>(null);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setFromId(cajaAccount?.id ?? null);
+    setToId(bancoAccount?.id ?? null);
+    setAmount("");
+    setDescription("");
+    setSubmitError(null);
+  }, [isOpen, cajaAccount?.id, bancoAccount?.id]);
+
+  const fromAccount = useMemo(
+    () => accounts.find((a) => a.id === fromId) ?? null,
+    [accounts, fromId],
+  );
+  const toAccount = useMemo(
+    () => accounts.find((a) => a.id === toId) ?? null,
+    [accounts, toId],
+  );
 
   if (!isOpen) return null;
 
@@ -34,28 +54,33 @@ export default function TransferForm({
       setSubmitError("Ingresa un monto válido");
       return;
     }
-    if (!cajaAccount || !bancoAccount) {
-      setSubmitError("Error: cuentas no disponibles");
+    if (!fromAccount || !toAccount) {
+      setSubmitError("Selecciona las cuentas de origen y destino");
+      return;
+    }
+    if (fromAccount.id === toAccount.id) {
+      setSubmitError("Las cuentas de origen y destino deben ser distintas");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // Withdraw from caja
+      const desc =
+        description.trim() || `Transferencia ${fromAccount.name} → ${toAccount.name}`;
+
       await recordTransaction({
-        accountId: cajaAccount.id,
+        accountId: fromAccount.id,
         type: "transferencia_out",
         amount: -numAmount,
-        description: description.trim() || "Transferencia Caja → Banco",
+        description: desc,
         referenceType: "transfer",
       });
 
-      // Deposit to banco
       await recordTransaction({
-        accountId: bancoAccount.id,
+        accountId: toAccount.id,
         type: "transferencia_in",
         amount: numAmount,
-        description: description.trim() || "Transferencia Caja → Banco",
+        description: desc,
         referenceType: "transfer",
       });
 
@@ -64,15 +89,23 @@ export default function TransferForm({
         userName: profile?.full_name ?? null,
         action: "crear_transaccion",
         targetTable: "transactions",
-        targetDescription: `Transferencia Caja → Banco: S/ ${numAmount.toFixed(2)}`,
-        details: { tipo: "transferencia", monto: numAmount, descripcion: description.trim() || null },
+        targetDescription: `Transferencia ${fromAccount.name} → ${toAccount.name}: S/ ${numAmount.toFixed(2)}`,
+        details: {
+          tipo: "transferencia",
+          origen: fromAccount.name,
+          destino: toAccount.name,
+          monto: numAmount,
+          descripcion: description.trim() || null,
+        },
       });
 
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Error al transferir:", error);
-      setSubmitError(error instanceof Error ? error.message : "Ocurrió un error al realizar la transferencia");
+      setSubmitError(
+        error instanceof Error ? error.message : "Ocurrió un error al realizar la transferencia",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -88,9 +121,7 @@ export default function TransferForm({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl">
-          <h2 className="text-xl font-semibold text-slate-900">
-            Transferir Caja → Banco
-          </h2>
+          <h2 className="text-xl font-semibold text-slate-900">Transferir entre cuentas</h2>
           <button
             type="button"
             onClick={onClose}
@@ -102,9 +133,54 @@ export default function TransferForm({
         </div>
 
         <div className="p-6 space-y-4">
-          {cajaAccount && (
+          <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
+            <div>
+              <label className="block text-sm font-medium text-slate-900 mb-1.5">
+                Desde <span className="text-red-600">*</span>
+              </label>
+              <select
+                value={fromId ?? ""}
+                onChange={(e) => setFromId(e.target.value ? Number(e.target.value) : null)}
+                disabled={isSubmitting}
+                className="w-full px-3 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+              >
+                <option value="">Seleccionar</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="pb-3 text-slate-400">
+              <ArrowRight className="w-5 h-5" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-900 mb-1.5">
+                Hasta <span className="text-red-600">*</span>
+              </label>
+              <select
+                value={toId ?? ""}
+                onChange={(e) => setToId(e.target.value ? Number(e.target.value) : null)}
+                disabled={isSubmitting}
+                className="w-full px-3 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+              >
+                <option value="">Seleccionar</option>
+                {accounts
+                  .filter((a) => a.id !== fromId)
+                  .map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+
+          {fromAccount && (
             <div className="bg-slate-50 rounded-lg p-3 text-sm text-slate-700">
-              Saldo actual en Caja: <span className="font-bold">S/ {Number(cajaAccount.balance).toFixed(2)}</span>
+              Saldo actual en {fromAccount.name}:{" "}
+              <span className="font-bold">S/ {Number(fromAccount.balance).toFixed(2)}</span>
             </div>
           )}
 

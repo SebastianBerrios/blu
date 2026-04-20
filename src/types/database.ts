@@ -344,6 +344,7 @@ export type Database = {
           manufacturing_cost: number | null
           name: string
           price: number
+          rappi_price: number | null
           recipe_id: number | null
           suggested_price: number | null
           temperatura: string | null
@@ -356,6 +357,7 @@ export type Database = {
           manufacturing_cost?: number | null
           name: string
           price: number
+          rappi_price?: number | null
           recipe_id?: number | null
           suggested_price?: number | null
           temperatura?: string | null
@@ -368,6 +370,7 @@ export type Database = {
           manufacturing_cost?: number | null
           name?: string
           price?: number
+          rappi_price?: number | null
           recipe_id?: number | null
           suggested_price?: number | null
           temperatura?: string | null
@@ -598,6 +601,7 @@ export type Database = {
         Row: {
           cash_amount: number | null
           cash_received: number | null
+          commission: number | null
           customer_id: number | null
           id: number
           order_type: string
@@ -612,6 +616,7 @@ export type Database = {
         Insert: {
           cash_amount?: number | null
           cash_received?: number | null
+          commission?: number | null
           customer_id?: number | null
           id?: number
           order_type: string
@@ -626,6 +631,7 @@ export type Database = {
         Update: {
           cash_amount?: number | null
           cash_received?: number | null
+          commission?: number | null
           customer_id?: number | null
           id?: number
           order_type?: string

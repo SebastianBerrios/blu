@@ -92,6 +92,7 @@ export default function ProductForm({
           categoryId: product.category_id ?? undefined,
           manufacturing_cost: product.manufacturing_cost ?? 0,
           price: product.price,
+          rappi_price: product.rappi_price ?? undefined,
           temperatura: product.temperatura ?? "",
           tipo_leche: product.tipo_leche ?? "",
         });
@@ -121,6 +122,7 @@ export default function ProductForm({
           categoryId: undefined,
           manufacturing_cost: 0,
           price: 0,
+          rappi_price: undefined,
           temperatura: "",
           tipo_leche: "",
         });
@@ -156,6 +158,11 @@ export default function ProductForm({
     setValue("price", Number(suggestedPrice.toFixed(2)), {
       shouldValidate: true,
     });
+  };
+
+  const handleApplySuggestedRappiPrice = () => {
+    const suggested = Number((priceValue * 1.3).toFixed(2));
+    setValue("rappi_price", suggested, { shouldValidate: true });
   };
 
   const onSubmit: SubmitHandler<CreateProduct> = async (data) => {
@@ -268,6 +275,8 @@ export default function ProductForm({
             suggestedPrice={suggestedPrice}
             profit={profit}
             onApplySuggestedPrice={handleApplySuggestedPrice}
+            priceValue={priceValue}
+            onApplySuggestedRappiPrice={handleApplySuggestedRappiPrice}
           />
 
           {submitError && (

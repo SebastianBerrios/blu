@@ -10,6 +10,7 @@ import {
   Settings,
   Building2,
   Banknote,
+  Bike,
   ListFilter,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,6 +38,7 @@ const FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "Todos" },
   { value: "caja", label: "Caja" },
   { value: "banco", label: "Banco" },
+  { value: "rappi", label: "Rappi" },
 ];
 
 export default function FinanzasPage() {
@@ -45,7 +47,7 @@ export default function FinanzasPage() {
   if (!authLoading && !isAdmin) {
     redirect("/");
   }
-  const { cajaAccount, bancoAccount, mutate: mutateAccounts } = useAccounts();
+  const { cajaAccount, bancoAccount, rappiAccount, mutate: mutateAccounts } = useAccounts();
   const [accountFilter, setAccountFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState<TransactionType | "">("");
   const [showTransfer, setShowTransfer] = useState(false);
@@ -61,6 +63,8 @@ export default function FinanzasPage() {
       ? cajaAccount?.id
       : accountFilter === "banco"
       ? bancoAccount?.id
+      : accountFilter === "rappi"
+      ? rappiAccount?.id
       : undefined;
 
   const { transactions, isLoading, mutate: mutateTransactions } = useTransactions({
@@ -83,6 +87,7 @@ export default function FinanzasPage() {
 
   const cajaBalance = Number(cajaAccount?.balance ?? 0);
   const bancoBalance = Number(bancoAccount?.balance ?? 0);
+  const rappiBalance = Number(rappiAccount?.balance ?? 0);
 
   const hasActiveFilter = accountFilter !== "all" || typeFilter !== "";
 
@@ -98,7 +103,7 @@ export default function FinanzasPage() {
         <DailySummary date={summaryDate} onDateChange={setSummaryDate} />
 
         {/* Balance cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
           <BalanceCard
             label="Caja"
             balance={cajaBalance}
@@ -115,6 +120,14 @@ export default function FinanzasPage() {
             onExpense={isAdmin && bancoAccount ? () => setExpenseAccountId(bancoAccount.id) : undefined}
             onIncome={isAdmin ? () => setShowIncome(true) : undefined}
           />
+          <BalanceCard
+            label="Rappi"
+            balance={rappiBalance}
+            Icon={Bike}
+            accent="orange"
+            onExpense={isAdmin && rappiAccount ? () => setExpenseAccountId(rappiAccount.id) : undefined}
+            onIncome={isAdmin ? () => setShowIncome(true) : undefined}
+          />
         </div>
 
         {/* Action buttons */}
@@ -124,7 +137,7 @@ export default function FinanzasPage() {
             className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-3 bg-primary-900 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm min-h-[44px] active:scale-[0.97] shadow-sm"
           >
             <ArrowRightLeft className="w-4 h-4" />
-            <span className="truncate">Transferir Caja → Banco</span>
+            <span className="truncate">Transferir entre cuentas</span>
           </button>
           {isAdmin && (
             <button
@@ -220,10 +233,13 @@ export default function FinanzasPage() {
                       const isPositive = t.amount > 0;
                       const isCaja = t.account_id === cajaAccount?.id;
                       const isBanco = t.account_id === bancoAccount?.id;
+                      const isRappi = t.account_id === rappiAccount?.id;
                       const accentBar = isCaja
                         ? "bg-green-400"
                         : isBanco
                         ? "bg-blue-400"
+                        : isRappi
+                        ? "bg-orange-400"
                         : "bg-slate-300";
 
                       return (
@@ -285,7 +301,7 @@ interface BalanceCardProps {
   label: string;
   balance: number;
   Icon: typeof Banknote;
-  accent: "green" | "blue";
+  accent: "green" | "blue" | "orange";
   onExpense?: () => void;
   onIncome?: () => void;
 }
@@ -301,12 +317,20 @@ function BalanceCard({ label, balance, Icon, accent, onExpense, onIncome }: Bala
           label: "text-green-800",
           value: "text-green-900",
         }
-      : {
+      : accent === "blue"
+      ? {
           border: "border-blue-200",
           bg: "bg-blue-50",
           icon: "text-blue-700",
           label: "text-blue-800",
           value: "text-blue-900",
+        }
+      : {
+          border: "border-orange-200",
+          bg: "bg-orange-50",
+          icon: "text-orange-700",
+          label: "text-orange-800",
+          value: "text-orange-900",
         };
 
   return (
