@@ -245,6 +245,7 @@ export type Database = {
           needs_purchase: boolean
           price: number
           quantity: number
+          recipe_id: number | null
           unit_of_measure: string
         }
         Insert: {
@@ -254,6 +255,7 @@ export type Database = {
           needs_purchase?: boolean
           price: number
           quantity: number
+          recipe_id?: number | null
           unit_of_measure: string
         }
         Update: {
@@ -263,6 +265,7 @@ export type Database = {
           needs_purchase?: boolean
           price?: number
           quantity?: number
+          recipe_id?: number | null
           unit_of_measure?: string
         }
         Relationships: [
@@ -271,6 +274,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "ingredient_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
         ]

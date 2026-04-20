@@ -38,7 +38,7 @@ export async function updateRecipeIngredientsOnly(
   await supabase
     .from("ingredients")
     .update({ price: Number(formData.manufacturing_cost) })
-    .eq("name", recipe.name.toLowerCase());
+    .eq("recipe_id", recipe.id);
 
   if (productId && recipe.quantity > 0) {
     const unitCost = Number(formData.manufacturing_cost) / recipe.quantity;
@@ -95,7 +95,7 @@ export async function updateRecipe(params: RecipeSubmitParams): Promise<void> {
       unit_of_measure: formData.unit_of_measure,
       price: Number(formData.manufacturing_cost),
     })
-    .eq("name", recipe.name.toLowerCase());
+    .eq("recipe_id", recipe.id);
 
   const { error: ingredientsError } = await supabase
     .from("recipe_ingredients")
@@ -129,6 +129,7 @@ export async function createRecipe(params: RecipeSubmitParams): Promise<void> {
       quantity: Number(formData.quantity),
       unit_of_measure: formData.unit_of_measure,
       price: Number(formData.manufacturing_cost),
+      recipe_id: newRecipe.id,
     });
   }
 

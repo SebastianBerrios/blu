@@ -65,11 +65,16 @@ export default function StockTab({
   const [sortOrder, setSortOrder] = useState<"none" | "asc" | "desc">("none");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const visibleIngredients = useMemo(
+    () => ingredients.filter((i) => i.recipe_id === null),
+    [ingredients],
+  );
+
   const filteredIngredients = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return ingredients;
-    return ingredients.filter((i) => i.name.toLowerCase().includes(query));
-  }, [ingredients, searchQuery]);
+    if (!query) return visibleIngredients;
+    return visibleIngredients.filter((i) => i.name.toLowerCase().includes(query));
+  }, [visibleIngredients, searchQuery]);
 
   const sortIngredients = (items: Ingredient[]) => {
     if (sortOrder === "none") return items;
@@ -94,7 +99,7 @@ export default function StockTab({
     );
   };
 
-  if (ingredients.length === 0) {
+  if (visibleIngredients.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-48 text-slate-400">
         <Package className="w-10 h-10 mb-2" />
