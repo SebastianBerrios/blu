@@ -4,3 +4,4 @@ export * from "./services/paymentHelpers";
 export * from "./types";
 export * from "./constants";
 export * from "./utils/loyaltyUtils";
+export * from "./utils/saleAmounts";

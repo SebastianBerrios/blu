@@ -3,6 +3,7 @@
 import { ChevronDown, ChevronUp, SquarePen, Trash2, Banknote } from "lucide-react";
 import type { SaleWithProducts } from "@/types";
 import { formatTime } from "@/utils/helpers/dateFormatters";
+import { getSaleCommission, getSaleNet } from "@/features/ventas/utils/saleAmounts";
 
 const ORDER_TYPE_BADGE: Record<string, string> = {
   Mesa: "bg-blue-100 text-blue-700",
@@ -31,6 +32,9 @@ export default function SaleCard({
 }: SaleCardProps) {
   const badgeClass =
     ORDER_TYPE_BADGE[sale.order_type] || "bg-gray-100 text-gray-700";
+  const commissionAmount = getSaleCommission(sale);
+  const netAmount = getSaleNet(sale);
+  const hasCommission = commissionAmount > 0;
 
   return (
     <div
@@ -85,9 +89,16 @@ export default function SaleCard({
               {sale.sale_products.length} producto
               {sale.sale_products.length !== 1 ? "s" : ""}
             </span>
-            <span className="font-bold text-slate-900 text-sm">
-              S/ {sale.total_price.toFixed(2)}
-            </span>
+            <div className="flex flex-col items-end">
+              <span className="font-bold text-slate-900 text-sm">
+                S/ {netAmount.toFixed(2)}
+              </span>
+              {hasCommission && (
+                <span className="text-[10px] text-slate-400">
+                  S/ {sale.total_price.toFixed(2)} bruto · -20% comisión
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -96,9 +107,16 @@ export default function SaleCard({
             {sale.sale_products.length} producto
             {sale.sale_products.length !== 1 ? "s" : ""}
           </span>
-          <span className="font-bold text-slate-900">
-            S/ {sale.total_price.toFixed(2)}
-          </span>
+          <div className="flex flex-col items-end">
+            <span className="font-bold text-slate-900">
+              S/ {netAmount.toFixed(2)}
+            </span>
+            {hasCommission && (
+              <span className="text-[10px] text-slate-400 leading-tight">
+                S/ {sale.total_price.toFixed(2)} bruto · -20% comisión
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-1">
             {!sale.payment_method && (
               <button
@@ -189,6 +207,23 @@ export default function SaleCard({
               ))}
             </tbody>
           </table>
+
+          {hasCommission && (
+            <div className="mt-3 pt-2 border-t border-slate-200 space-y-1 text-sm">
+              <div className="flex justify-between text-slate-600">
+                <span>Subtotal:</span>
+                <span className="tabular-nums">S/ {sale.total_price.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-red-700">
+                <span>Comisión Rappi 20%:</span>
+                <span className="tabular-nums">−S/ {commissionAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-green-700">
+                <span>Neto recibido:</span>
+                <span className="tabular-nums">S/ {netAmount.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
 
           {/* Mobile action buttons */}
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200 md:hidden">

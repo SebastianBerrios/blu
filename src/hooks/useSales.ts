@@ -1,6 +1,7 @@
 import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
 import { toLocalDateKey, groupByDate } from "@/utils/helpers/groupByDate";
+import { getSaleNet } from "@/features/ventas/utils/saleAmounts";
 import type { SaleWithProducts, SalesGroupedByDate } from "@/types";
 
 export { toLocalDateKey };
@@ -99,7 +100,7 @@ export function groupSalesByDate(
 ): SalesGroupedByDate[] {
   return groupByDate(sales, (s) => s.sale_date).map(({ date, items }) => ({
     date,
-    dailyTotal: items.reduce((sum, s) => sum + s.total_price, 0),
+    dailyTotal: items.reduce((sum, s) => sum + getSaleNet(s), 0),
     sales: items,
   }));
 }

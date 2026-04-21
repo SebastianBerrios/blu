@@ -1,5 +1,6 @@
 import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
+import { getSaleNet } from "@/features/ventas/utils/saleAmounts";
 import type {
   SalesKPIsWithDelta,
   KPIValue,
@@ -19,6 +20,7 @@ interface SaleRow {
   id: number;
   sale_date: string;
   total_price: number;
+  commission: number | null;
   order_type: string;
   payment_method: string | null;
   cash_amount: number | null;
@@ -58,7 +60,7 @@ interface StatsData {
 }
 
 const SELECT_CLAUSE =
-  "id, sale_date, total_price, order_type, payment_method, cash_amount, plin_amount, sale_products(quantity, unit_price, products(name, manufacturing_cost))";
+  "id, sale_date, total_price, commission, order_type, payment_method, cash_amount, plin_amount, sale_products(quantity, unit_price, products(name, manufacturing_cost))";
 
 async function fetchSales(start: string, end: string): Promise<SaleRow[]> {
   const supabase = createClient();
@@ -89,7 +91,7 @@ function aggregateBase(sales: SaleRow[]): BaseAggregates {
   let productsSold = 0;
   let grossCost = 0;
   for (const s of sales) {
-    revenue += Number(s.total_price) || 0;
+    revenue += getSaleNet(s);
     for (const sp of s.sale_products) {
       const qty = Number(sp.quantity) || 0;
       productsSold += qty;
@@ -127,7 +129,7 @@ function groupRevenueByBucket(
   const map = new Map<string, number>();
   for (const s of sales) {
     const key = bucketKey(s.sale_date, granularity);
-    map.set(key, (map.get(key) || 0) + Number(s.total_price || 0));
+    map.set(key, (map.get(key) || 0) + getSaleNet(s));
   }
   return Array.from(map.entries())
     .sort(([a], [b]) => a.localeCompare(b))
@@ -177,7 +179,7 @@ async function fetchStats(ranges: PeriodRanges): Promise<StatsData> {
   const revByMethodMap: Record<string, number> = {};
   for (const s of currentSales) {
     const method = s.payment_method ?? "Otro";
-    revByMethodMap[method] = (revByMethodMap[method] || 0) + Number(s.total_price || 0);
+    revByMethodMap[method] = (revByMethodMap[method] || 0) + getSaleNet(s);
   }
   const revenueByMethod: RevenueByPaymentMethod[] = Object.entries(revByMethodMap).map(
     ([method, total]) => ({ method, total }),
@@ -207,7 +209,7 @@ async function fetchStats(ranges: PeriodRanges): Promise<StatsData> {
   for (const s of currentSales) {
     if (!orderTypeMap[s.order_type]) orderTypeMap[s.order_type] = { count: 0, revenue: 0 };
     orderTypeMap[s.order_type].count++;
-    orderTypeMap[s.order_type].revenue += Number(s.total_price || 0);
+    orderTypeMap[s.order_type].revenue += getSaleNet(s);
   }
   const salesByOrderType: SalesByOrderType[] = Object.entries(orderTypeMap).map(
     ([orderType, { count, revenue }]) => ({ orderType, count, revenue }),
@@ -219,7 +221,7 @@ async function fetchStats(ranges: PeriodRanges): Promise<StatsData> {
     const hour = new Date(s.sale_date).getHours();
     if (!hourMap[hour]) hourMap[hour] = { count: 0, revenue: 0 };
     hourMap[hour].count++;
-    hourMap[hour].revenue += Number(s.total_price || 0);
+    hourMap[hour].revenue += getSaleNet(s);
   }
   const salesByHour: SalesByHour[] = Object.entries(hourMap)
     .map(([h, { count, revenue }]) => ({ hour: parseInt(h), count, revenue }))
@@ -235,7 +237,7 @@ async function fetchStats(ranges: PeriodRanges): Promise<StatsData> {
     const prev = heatmapMap.get(key) ?? { count: 0, revenue: 0 };
     heatmapMap.set(key, {
       count: prev.count + 1,
-      revenue: prev.revenue + Number(s.total_price || 0),
+      revenue: prev.revenue + getSaleNet(s),
     });
   }
   const heatmap: HeatmapCell[] = Array.from(heatmapMap.entries()).map(([k, v]) => {
@@ -252,7 +254,7 @@ async function fetchStats(ranges: PeriodRanges): Promise<StatsData> {
   const revDayMap: Record<string, number> = {};
   for (const s of currentSales) {
     const date = toLocalDateKey(s.sale_date);
-    revDayMap[date] = (revDayMap[date] || 0) + Number(s.total_price || 0);
+    revDayMap[date] = (revDayMap[date] || 0) + getSaleNet(s);
   }
   const allDates = new Set([...Object.keys(revDayMap), ...Object.keys(expByDayMap)]);
   const revenueVsExpenses: RevenueVsExpenses[] = Array.from(allDates)
@@ -267,7 +269,7 @@ async function fetchStats(ranges: PeriodRanges): Promise<StatsData> {
   const sparkMap = new Map<string, number>();
   for (const s of sparkSales) {
     const d = toLocalDateKey(s.sale_date);
-    sparkMap.set(d, (sparkMap.get(d) || 0) + Number(s.total_price || 0));
+    sparkMap.set(d, (sparkMap.get(d) || 0) + getSaleNet(s));
   }
   const sparkline: number[] = [];
   for (let i = 6; i >= 0; i--) {
