@@ -323,6 +323,11 @@ export async function deleteSale(
     .eq("id", saleId)
     .single();
 
+  const { error: deleteTxError } = await supabase.rpc("delete_sale_transactions", {
+    p_sale_id: saleId,
+  });
+  if (deleteTxError) throw deleteTxError;
+
   await deleteWithAudit({
     table: "sales",
     id: saleId,
