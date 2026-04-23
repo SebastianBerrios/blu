@@ -241,6 +241,13 @@ export async function updateSale(
 
   if (error) throw error;
 
+  const { error: reverseInvError } = await supabase.rpc("reverse_inventory_for_sale", {
+    p_sale_id: saleId,
+    p_user_id: params.userId ?? undefined,
+    p_user_name: params.userName ?? undefined,
+  });
+  if (reverseInvError) throw reverseInvError;
+
   await supabase.from("sale_products").delete().eq("sale_id", saleId);
 
   const { error: productsError } = await supabase
@@ -322,6 +329,13 @@ export async function deleteSale(
     .select("total_price")
     .eq("id", saleId)
     .single();
+
+  const { error: reverseInvError } = await supabase.rpc("reverse_inventory_for_sale", {
+    p_sale_id: saleId,
+    p_user_id: userId ?? undefined,
+    p_user_name: userName ?? undefined,
+  });
+  if (reverseInvError) throw reverseInvError;
 
   const { error: deleteTxError } = await supabase.rpc("delete_sale_transactions", {
     p_sale_id: saleId,

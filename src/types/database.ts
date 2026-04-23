@@ -1003,6 +1003,14 @@ export type Database = {
         }
         Returns: number
       }
+      reverse_inventory_for_sale: {
+        Args: {
+          p_sale_id: number
+          p_user_id?: string
+          p_user_name?: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "cocinero" | "barista"
