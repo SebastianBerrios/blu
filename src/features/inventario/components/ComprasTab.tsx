@@ -73,7 +73,7 @@ export default function ComprasTab({ ingredients, groups, onUnmark }: ComprasTab
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {section.ingredients.map((ingredient) => {
-                  const colorClass = getStockColor(ingredient.quantity, ingredient.unit_of_measure);
+                  const colorClass = getStockColor(ingredient.stock_quantity, ingredient.unit_of_measure);
                   return (
                     <tr key={ingredient.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-slate-900 capitalize truncate">
@@ -81,7 +81,7 @@ export default function ComprasTab({ ingredients, groups, onUnmark }: ComprasTab
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className={`inline-block px-2 py-0.5 rounded border text-sm font-semibold ${colorClass}`}>
-                          {ingredient.quantity}
+                          {ingredient.stock_quantity}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-slate-500">{ingredient.unit_of_measure}</td>
@@ -113,7 +113,7 @@ export default function ComprasTab({ ingredients, groups, onUnmark }: ComprasTab
             </h3>
             <div className="space-y-2">
               {section.ingredients.map((ingredient) => {
-                const colorClass = getStockColor(ingredient.quantity, ingredient.unit_of_measure);
+                const colorClass = getStockColor(ingredient.stock_quantity, ingredient.unit_of_measure);
                 return (
                   <div
                     key={ingredient.id}
@@ -123,7 +123,7 @@ export default function ComprasTab({ ingredients, groups, onUnmark }: ComprasTab
                       <div className="flex items-center gap-2 min-w-0">
                         <p className="font-medium text-slate-900 capitalize truncate">{ingredient.name}</p>
                         <span className={`shrink-0 inline-block px-2 py-0.5 rounded border text-sm font-semibold ${colorClass}`}>
-                          {ingredient.quantity} {ingredient.unit_of_measure}
+                          {ingredient.stock_quantity} {ingredient.unit_of_measure}
                         </span>
                       </div>
                       <button

@@ -12,7 +12,7 @@ export async function adjustInventory(
 
   const { error: updateError } = await supabase
     .from("ingredients")
-    .update({ quantity: newQuantity })
+    .update({ stock_quantity: newQuantity })
     .eq("id", ingredient.id);
   if (updateError) throw updateError;
 
@@ -22,7 +22,7 @@ export async function adjustInventory(
       ingredient_id: ingredient.id,
       user_id: userId,
       user_name: userName,
-      old_quantity: ingredient.quantity,
+      old_quantity: ingredient.stock_quantity,
       new_quantity: newQuantity,
       reason: "manual",
     });
@@ -34,7 +34,7 @@ export async function adjustInventory(
     action: "ajustar_inventario",
     targetTable: "inventory_movements",
     targetId: ingredient.id,
-    targetDescription: `${ingredient.name}: ${ingredient.quantity} → ${newQuantity} ${ingredient.unit_of_measure}`,
+    targetDescription: `${ingredient.name}: ${ingredient.stock_quantity} → ${newQuantity} ${ingredient.unit_of_measure}`,
   });
 }
 

@@ -246,6 +246,7 @@ export type Database = {
           price: number
           quantity: number
           recipe_id: number | null
+          stock_quantity: number
           unit_of_measure: string
         }
         Insert: {
@@ -256,6 +257,7 @@ export type Database = {
           price: number
           quantity: number
           recipe_id?: number | null
+          stock_quantity?: number
           unit_of_measure: string
         }
         Update: {
@@ -266,6 +268,7 @@ export type Database = {
           price?: number
           quantity?: number
           recipe_id?: number | null
+          stock_quantity?: number
           unit_of_measure?: string
         }
         Relationships: [
@@ -1004,11 +1007,7 @@ export type Database = {
         Returns: number
       }
       reverse_inventory_for_sale: {
-        Args: {
-          p_sale_id: number
-          p_user_id?: string
-          p_user_name?: string
-        }
+        Args: { p_sale_id: number; p_user_id?: string; p_user_name?: string }
         Returns: undefined
       }
     }

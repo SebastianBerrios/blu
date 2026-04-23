@@ -34,7 +34,7 @@ export default function InventarioPage() {
 
   const handleStartEdit = (ingredient: Ingredient) => {
     setSaveError(null);
-    setEditing({ ingredientId: ingredient.id, value: String(ingredient.quantity) });
+    setEditing({ ingredientId: ingredient.id, value: String(ingredient.stock_quantity) });
   };
 
   const handleCancelEdit = () => {

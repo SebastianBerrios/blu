@@ -127,6 +127,7 @@ export async function createRecipe(params: RecipeSubmitParams): Promise<void> {
     await supabase.from("ingredients").insert({
       name: formData.name.toLowerCase(),
       quantity: Number(formData.quantity),
+      stock_quantity: 0,
       unit_of_measure: formData.unit_of_measure,
       price: Number(formData.manufacturing_cost),
       recipe_id: newRecipe.id,

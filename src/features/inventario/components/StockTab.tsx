@@ -110,7 +110,7 @@ export default function StockTab({
 
   const renderDesktopRow = (ingredient: Ingredient) => {
     const isEditing = editing?.ingredientId === ingredient.id;
-    const colorClass = getStockColor(ingredient.quantity, ingredient.unit_of_measure);
+    const colorClass = getStockColor(ingredient.stock_quantity, ingredient.unit_of_measure);
 
     return (
       <tr key={ingredient.id} className="hover:bg-slate-50 transition-colors">
@@ -130,7 +130,7 @@ export default function StockTab({
             />
           ) : (
             <span className={`inline-block px-2 py-0.5 rounded border text-sm font-semibold ${colorClass}`}>
-              {ingredient.quantity}
+              {ingredient.stock_quantity}
             </span>
           )}
         </td>
@@ -197,7 +197,7 @@ export default function StockTab({
 
   const renderMobileCard = (ingredient: Ingredient) => {
     const isEditing = editing?.ingredientId === ingredient.id;
-    const colorClass = getStockColor(ingredient.quantity, ingredient.unit_of_measure);
+    const colorClass = getStockColor(ingredient.stock_quantity, ingredient.unit_of_measure);
 
     return (
       <div
@@ -260,7 +260,7 @@ export default function StockTab({
           ) : (
             <div className="flex items-center gap-2">
               <span className={`inline-block px-2 py-0.5 rounded border text-sm font-semibold ${colorClass}`}>
-                {ingredient.quantity} {ingredient.unit_of_measure}
+                {ingredient.stock_quantity} {ingredient.unit_of_measure}
               </span>
               <button
                 onClick={() => onStartEdit(ingredient)}
