@@ -120,6 +120,10 @@ export default function PurchaseForm({
           total,
           notes,
           selectedAccountId: selectedAccountId!,
+          cajaAccountId: cajaAccount?.id ?? null,
+          bancoAccountId: bancoAccount?.id ?? null,
+          userId: authUser?.id ?? null,
+          userName: profile?.full_name ?? null,
         });
       } else {
         await createPurchase({

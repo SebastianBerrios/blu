@@ -23,4 +23,9 @@ export interface UpdatePurchaseParams {
   total: number;
   notes: string;
   selectedAccountId: number;
+  // Context
+  cajaAccountId: number | null;
+  bancoAccountId: number | null;
+  userId: string | null;
+  userName: string | null;
 }

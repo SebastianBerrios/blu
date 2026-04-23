@@ -164,6 +164,19 @@ export async function deletePurchase(
 export async function updatePurchase(params: UpdatePurchaseParams): Promise<void> {
   const supabase = createClient();
 
+  const { data: existing, error: fetchError } = await supabase
+    .from("purchases")
+    .select("plin_change")
+    .eq("id", params.purchaseId)
+    .single();
+  if (fetchError) throw fetchError;
+  const plinChangeAmount = existing?.plin_change ?? 0;
+
+  const { error: deleteTxError } = await supabase.rpc("delete_purchase_transactions", {
+    p_purchase_id: params.purchaseId,
+  });
+  if (deleteTxError) throw deleteTxError;
+
   const purchaseData = {
     has_delivery: params.hasDelivery,
     delivery_cost: params.hasDelivery ? params.deliveryCost : null,
@@ -184,4 +197,48 @@ export async function updatePurchase(params: UpdatePurchaseParams): Promise<void
     .from("purchase_items")
     .insert(buildPurchaseItems(params.purchaseId, params.items));
   if (itemsError) throw itemsError;
+
+  const purchaseNumber = await getPurchaseNumber(params.purchaseId);
+
+  if (plinChangeAmount > 0) {
+    await recordTransaction({
+      accountId: params.cajaAccountId!,
+      type: "egreso_compra",
+      amount: -(params.total + plinChangeAmount),
+      description: `Compra #${purchaseNumber} (incluye vuelto Plin S/ ${plinChangeAmount.toFixed(2)})`,
+      referenceId: params.purchaseId,
+      referenceType: "purchase",
+    });
+    await recordTransaction({
+      accountId: params.bancoAccountId!,
+      type: "ingreso_extra",
+      amount: plinChangeAmount,
+      description: `Vuelto Plin - Compra #${purchaseNumber}`,
+      referenceId: params.purchaseId,
+      referenceType: "purchase",
+    });
+  } else {
+    await recordTransaction({
+      accountId: params.selectedAccountId,
+      type: "egreso_compra",
+      amount: -params.total,
+      description: `Compra #${purchaseNumber}`,
+      referenceId: params.purchaseId,
+      referenceType: "purchase",
+    });
+  }
+
+  logAudit({
+    userId: params.userId,
+    userName: params.userName,
+    action: "actualizar",
+    targetTable: "purchases",
+    targetId: params.purchaseId,
+    targetDescription: `Compra #${purchaseNumber} - S/ ${params.total.toFixed(2)}`,
+    details: {
+      transacciones_regeneradas: true,
+      total: params.total,
+      vuelto_plin: plinChangeAmount,
+    },
+  });
 }
