@@ -146,6 +146,11 @@ export async function deletePurchase(
     .eq("id", purchaseId)
     .single();
 
+  const { error: deleteTxError } = await supabase.rpc("delete_purchase_transactions", {
+    p_purchase_id: purchaseId,
+  });
+  if (deleteTxError) throw deleteTxError;
+
   await deleteWithAudit({
     table: "purchases",
     id: purchaseId,

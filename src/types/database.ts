@@ -983,6 +983,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      delete_purchase_transactions: {
+        Args: { p_purchase_id: number }
+        Returns: undefined
+      }
       delete_sale_transactions: {
         Args: { p_sale_id: number }
         Returns: undefined
