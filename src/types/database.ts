@@ -607,6 +607,7 @@ export type Database = {
           commission: number | null
           customer_id: number | null
           id: number
+          notes: string | null
           order_type: string
           payment_date: string | null
           payment_method: string | null
@@ -622,6 +623,7 @@ export type Database = {
           commission?: number | null
           customer_id?: number | null
           id?: number
+          notes?: string | null
           order_type: string
           payment_date?: string | null
           payment_method?: string | null
@@ -637,6 +639,7 @@ export type Database = {
           commission?: number | null
           customer_id?: number | null
           id?: number
+          notes?: string | null
           order_type?: string
           payment_date?: string | null
           payment_method?: string | null

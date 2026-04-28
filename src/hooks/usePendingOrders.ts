@@ -28,6 +28,7 @@ const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
       `
       id,
       sale_date,
+      notes,
       total_price,
       commission,
       order_type,

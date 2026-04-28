@@ -164,6 +164,14 @@ export default function SaleCard({
       {/* Expanded detail */}
       {isExpanded && (
         <div className="border-t border-slate-200 px-3 md:px-4 py-3 bg-slate-50/50">
+          {sale.notes && (
+            <div className="mb-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-xs font-semibold text-amber-900 uppercase tracking-wider mb-0.5">
+                Nota
+              </p>
+              <p className="text-sm text-amber-900 whitespace-pre-wrap">{sale.notes}</p>
+            </div>
+          )}
           <table className="w-full">
             <thead>
               <tr>

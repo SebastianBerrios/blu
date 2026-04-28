@@ -94,6 +94,15 @@ function OrderCard({
         </div>
       </div>
 
+      {sale.notes && (
+        <div className="px-4 md:px-5 py-2.5 bg-amber-50 border-b border-amber-200">
+          <p className="text-xs font-semibold text-amber-900 uppercase tracking-wider mb-0.5">
+            Nota del pedido
+          </p>
+          <p className="text-sm text-amber-900 whitespace-pre-wrap">{sale.notes}</p>
+        </div>
+      )}
+
       {/* Product list */}
       <div className="divide-y divide-slate-100">
         {sale.sale_products.map((product) => {

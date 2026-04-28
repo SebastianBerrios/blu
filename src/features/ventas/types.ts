@@ -25,6 +25,7 @@ export interface SaleSubmitParams {
   cashAmount: string;
   plinAmount: string;
   cashReceived: string;
+  notes: string;
   userId: string | null;
   userName: string | null;
   cajaAccountId: number | null;

@@ -43,6 +43,7 @@ export default function SaleForm({
   const [cashAmount, setCashAmount] = useState("");
   const [plinAmount, setPlinAmount] = useState("");
   const [cashReceived, setCashReceived] = useState("");
+  const [notes, setNotes] = useState("");
 
   const totalPrice = saleProducts.reduce((sum, p) => sum + p.subtotal, 0);
   const isRappi = orderType === "Rappi";
@@ -80,6 +81,7 @@ export default function SaleForm({
           };
         }),
       );
+      setNotes(sale.notes ?? "");
       if (sale.payment_method) {
         setRegisterPayment(true);
         setPaymentMethod(sale.payment_method as PaymentMethod);
@@ -103,6 +105,7 @@ export default function SaleForm({
       setCashAmount("");
       setPlinAmount("");
       setCashReceived("");
+      setNotes("");
     }
   }, [isOpen, sale, products]);
 
@@ -172,6 +175,7 @@ export default function SaleForm({
       const params = {
         orderType, tableNumber, customerDni, saleProducts, totalPrice,
         registerPayment, paymentMethod, cashAmount, plinAmount, cashReceived,
+        notes,
         userId: user?.id ?? null,
         userName: profile?.full_name ?? null,
         cajaAccountId: cajaAccount?.id ?? null,
@@ -282,6 +286,20 @@ export default function SaleForm({
           isRappi={isRappi}
         />
       )}
+      <div>
+        <label className="block text-sm font-medium text-slate-900 mb-1.5">
+          Nota del pedido <span className="text-slate-500 text-xs">(opcional)</span>
+        </label>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          disabled={isSubmitting}
+          rows={2}
+          maxLength={500}
+          className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100 resize-none"
+          placeholder="Ej: Croissant sin mayonesa, Mojito sin hielo..."
+        />
+      </div>
       {submitError && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-sm text-red-700">{submitError}</p>

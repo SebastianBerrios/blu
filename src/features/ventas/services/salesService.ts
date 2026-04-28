@@ -139,6 +139,7 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
         params.orderType === "Mesa"
           ? parseInt(params.tableNumber) || null
           : null,
+      notes: params.notes.trim() || null,
       user_id: params.userId,
       ...paymentFields,
     })
@@ -235,6 +236,7 @@ export async function updateSale(
         params.orderType === "Mesa"
           ? parseInt(params.tableNumber) || null
           : null,
+      notes: params.notes.trim() || null,
       ...paymentFields,
     })
     .eq("id", saleId);
