@@ -270,16 +270,18 @@ export default function ProductSelector({
 
           {/* Mobile card list */}
           <div className="space-y-2 md:hidden">
-            {saleProducts.map((item, idx) => (
+            {saleProducts.map((item, idx) => {
+              const locked = item.status === "Entregado";
+              return (
               <div
-                key={`${item.product_id}-${item.temperatura}-${item.tipo_leche}-${item.loyalty_reward ?? "none"}-${idx}`}
-                className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
+                key={item.id ?? `${item.product_id}-${item.temperatura}-${item.tipo_leche}-${item.loyalty_reward ?? "none"}-${idx}`}
+                className={`flex items-center justify-between p-3 rounded-lg ${locked ? "bg-emerald-50/40" : "bg-slate-50"}`}
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-900 capitalize truncate">
                     {item.product_name}
                   </p>
-                  {(item.temperatura || item.tipo_leche || item.loyalty_reward) && (
+                  {(item.temperatura || item.tipo_leche || item.loyalty_reward || locked) && (
                     <div className="flex gap-1 mt-0.5 flex-wrap">
                       {item.temperatura && (
                         <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
@@ -296,6 +298,11 @@ export default function ProductSelector({
                           {item.loyalty_reward === "50_postre" ? "50% desc." : "Gratis"}
                         </span>
                       )}
+                      {locked && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">
+                          Entregado
+                        </span>
+                      )}
                     </div>
                   )}
                   <p className="text-xs text-slate-500">
@@ -306,17 +313,20 @@ export default function ProductSelector({
                   <span className="text-sm font-semibold text-green-600">
                     S/ {item.subtotal.toFixed(2)}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => onRemoveProduct(idx)}
-                    disabled={isSubmitting}
-                    className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {!locked && (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveProduct(idx)}
+                      disabled={isSubmitting}
+                      className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
-            ))}
+              );
+            })}
             {/* Mobile total */}
             <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg font-semibold">
               <span className="text-sm text-green-900">Total:</span>
@@ -349,14 +359,16 @@ export default function ProductSelector({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {saleProducts.map((item, idx) => (
+                {saleProducts.map((item, idx) => {
+                  const locked = item.status === "Entregado";
+                  return (
                   <tr
-                    key={`${item.product_id}-${item.temperatura}-${item.tipo_leche}-${item.loyalty_reward ?? "none"}-${idx}`}
-                    className="hover:bg-slate-50 transition-colors"
+                    key={item.id ?? `${item.product_id}-${item.temperatura}-${item.tipo_leche}-${item.loyalty_reward ?? "none"}-${idx}`}
+                    className={`transition-colors ${locked ? "bg-emerald-50/30" : "hover:bg-slate-50"}`}
                   >
                     <td className="px-4 py-3 text-sm text-slate-900 capitalize">
                       {item.product_name}
-                      {(item.temperatura || item.tipo_leche || item.loyalty_reward) && (
+                      {(item.temperatura || item.tipo_leche || item.loyalty_reward || locked) && (
                         <div className="flex gap-1 mt-0.5 flex-wrap">
                           {item.temperatura && (
                             <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
@@ -371,6 +383,11 @@ export default function ProductSelector({
                           {item.loyalty_reward && (
                             <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
                               {item.loyalty_reward === "50_postre" ? "50% desc." : "Gratis"}
+                            </span>
+                          )}
+                          {locked && (
+                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">
+                              Entregado
                             </span>
                           )}
                         </div>
@@ -388,18 +405,21 @@ export default function ProductSelector({
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <button
-                        type="button"
-                        onClick={() => onRemoveProduct(idx)}
-                        disabled={isSubmitting}
-                        className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                        title="Eliminar producto"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {!locked && (
+                        <button
+                          type="button"
+                          onClick={() => onRemoveProduct(idx)}
+                          disabled={isSubmitting}
+                          className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                          title="Eliminar producto"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 <tr className="bg-green-50 font-semibold">
                   <td
                     colSpan={3}

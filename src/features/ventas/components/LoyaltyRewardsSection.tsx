@@ -51,8 +51,12 @@ export default function LoyaltyRewardsSection({
 
   const anyEligible = REWARDS.some(
     (r) =>
-      getEligibleIndices(saleProducts, r.key, categoryTipoById).length > 0 ||
-      saleProducts.some((l) => l.loyalty_reward === r.key),
+      getEligibleIndices(saleProducts, r.key, categoryTipoById).some(
+        (i) => saleProducts[i].status !== "Entregado",
+      ) ||
+      saleProducts.some(
+        (l) => l.loyalty_reward === r.key && l.status !== "Entregado",
+      ),
   );
 
   if (!anyEligible) return null;
@@ -75,9 +79,11 @@ export default function LoyaltyRewardsSection({
             saleProducts,
             r.key,
             categoryTipoById,
-          );
+          ).filter((i) => saleProducts[i].status !== "Entregado");
           const appliedIndices = saleProducts
-            .map((l, i) => (l.loyalty_reward === r.key ? i : -1))
+            .map((l, i) =>
+              l.loyalty_reward === r.key && l.status !== "Entregado" ? i : -1,
+            )
             .filter((i) => i !== -1);
 
           if (eligibleIdx.length === 0 && appliedIndices.length === 0) {

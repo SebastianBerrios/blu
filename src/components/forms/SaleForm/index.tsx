@@ -65,6 +65,7 @@ export default function SaleForm({
         sale.sale_products.map((sp) => {
           const product = products.find((p) => p.id === sp.product_id);
           return {
+            id: sp.id,
             product_id: sp.product_id,
             product_name: sp.product_name,
             quantity: sp.quantity,
@@ -78,6 +79,7 @@ export default function SaleForm({
               sp.loyalty_reward === "bebida_gratis"
                 ? sp.loyalty_reward
                 : null,
+            status: sp.status,
           };
         }),
       );
@@ -113,6 +115,7 @@ export default function SaleForm({
 
   const handleAddProduct = (line: SaleProductLine) => {
     const match = (p: SaleProductLine) =>
+      p.status !== "Entregado" &&
       p.product_id === line.product_id &&
       p.temperatura === line.temperatura &&
       p.tipo_leche === line.tipo_leche &&
@@ -132,15 +135,24 @@ export default function SaleForm({
   };
 
   const handleRemoveProduct = (index: number) => {
-    setSaleProducts(saleProducts.filter((_, i) => i !== index));
+    setSaleProducts((prev) => {
+      if (prev[index]?.status === "Entregado") return prev;
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleApplyReward = (index: number, reward: LoyaltyReward) => {
-    setSaleProducts((prev) => applyLoyaltyReward(prev, index, reward));
+    setSaleProducts((prev) => {
+      if (prev[index]?.status === "Entregado") return prev;
+      return applyLoyaltyReward(prev, index, reward);
+    });
   };
 
   const handleRemoveReward = (index: number) => {
-    setSaleProducts((prev) => removeLoyaltyReward(prev, index, products));
+    setSaleProducts((prev) => {
+      if (prev[index]?.status === "Entregado") return prev;
+      return removeLoyaltyReward(prev, index, products);
+    });
   };
 
   const handlePaymentMethodChange = (method: PaymentMethod) => {

@@ -1,8 +1,9 @@
-import type { PaymentMethod } from "@/types";
+import type { PaymentMethod, SaleProductStatus } from "@/types";
 
 export type LoyaltyReward = "50_postre" | "bebida_gratis";
 
 export interface SaleProductLine {
+  id?: number;
   product_id: number;
   product_name: string;
   quantity: number;
@@ -12,6 +13,7 @@ export interface SaleProductLine {
   tipo_leche: string | null;
   category_id: number | null;
   loyalty_reward?: LoyaltyReward | null;
+  status?: SaleProductStatus;
 }
 
 export interface SaleSubmitParams {

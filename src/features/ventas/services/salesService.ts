@@ -42,15 +42,17 @@ async function resolveCustomerId(dni: string): Promise<number | null> {
 }
 
 function buildSaleProductRows(saleId: number, params: SaleSubmitParams) {
-  return params.saleProducts.map((p) => ({
-    sale_id: saleId,
-    product_id: p.product_id,
-    quantity: p.quantity,
-    unit_price: p.unit_price,
-    temperatura: p.temperatura,
-    tipo_leche: p.tipo_leche,
-    loyalty_reward: p.loyalty_reward ?? null,
-  }));
+  return params.saleProducts
+    .filter((p) => p.status !== "Entregado")
+    .map((p) => ({
+      sale_id: saleId,
+      product_id: p.product_id,
+      quantity: p.quantity,
+      unit_price: p.unit_price,
+      temperatura: p.temperatura,
+      tipo_leche: p.tipo_leche,
+      loyalty_reward: p.loyalty_reward ?? null,
+    }));
 }
 
 export async function recordSaleTransactions(params: {
@@ -243,20 +245,20 @@ export async function updateSale(
 
   if (error) throw error;
 
-  const { error: reverseInvError } = await supabase.rpc("reverse_inventory_for_sale", {
-    p_sale_id: saleId,
-    p_user_id: params.userId ?? undefined,
-    p_user_name: params.userName ?? undefined,
-  });
-  if (reverseInvError) throw reverseInvError;
-
-  await supabase.from("sale_products").delete().eq("sale_id", saleId);
-
-  const { error: productsError } = await supabase
+  const { error: deleteError } = await supabase
     .from("sale_products")
-    .insert(buildSaleProductRows(saleId, params));
+    .delete()
+    .eq("sale_id", saleId)
+    .eq("status", "Pendiente");
+  if (deleteError) throw deleteError;
 
-  if (productsError) throw productsError;
+  const rowsToInsert = buildSaleProductRows(saleId, params);
+  if (rowsToInsert.length > 0) {
+    const { error: productsError } = await supabase
+      .from("sale_products")
+      .insert(rowsToInsert);
+    if (productsError) throw productsError;
+  }
 
   // Re-sync transactions if payment state changed (including Rappi total changes)
   const rappiTotalChanged =
