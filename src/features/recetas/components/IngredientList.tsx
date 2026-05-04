@@ -10,6 +10,7 @@ interface IngredientListProps {
   hidePrice?: boolean;
   totalCost: number;
   isSubmitting: boolean;
+  viewOnly?: boolean;
 }
 
 export default function IngredientList({
@@ -19,6 +20,7 @@ export default function IngredientList({
   hidePrice,
   totalCost,
   isSubmitting,
+  viewOnly = false,
 }: IngredientListProps) {
   if (ingredients.length === 0) return null;
 
@@ -49,22 +51,26 @@ export default function IngredientList({
                   S/ {item.equivalent_price?.toFixed(2) || "0.00"}
                 </span>
               )}
-              <button
-                type="button"
-                onClick={() => onEdit(item)}
-                disabled={isSubmitting}
-                className="p-2.5 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors disabled:opacity-50"
-              >
-                <SquarePen className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onRemove(item.ingredient_id)}
-                disabled={isSubmitting}
-                className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {!viewOnly && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onEdit(item)}
+                    disabled={isSubmitting}
+                    className="p-2.5 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <SquarePen className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRemove(item.ingredient_id)}
+                    disabled={isSubmitting}
+                    className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         ))}
@@ -99,9 +105,11 @@ export default function IngredientList({
                   Precio
                 </th>
               )}
-              <th className="px-4 py-2 text-center text-xs font-medium text-slate-700 uppercase">
-                Acciones
-              </th>
+              {!viewOnly && (
+                <th className="px-4 py-2 text-center text-xs font-medium text-slate-700 uppercase">
+                  Acciones
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
@@ -126,28 +134,30 @@ export default function IngredientList({
                     </span>
                   </td>
                 )}
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => onEdit(item)}
-                      disabled={isSubmitting}
-                      className="p-2.5 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors disabled:opacity-50"
-                      title="Editar ingrediente"
-                    >
-                      <SquarePen className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onRemove(item.ingredient_id)}
-                      disabled={isSubmitting}
-                      className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                      title="Eliminar ingrediente"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
+                {!viewOnly && (
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => onEdit(item)}
+                        disabled={isSubmitting}
+                        className="p-2.5 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors disabled:opacity-50"
+                        title="Editar ingrediente"
+                      >
+                        <SquarePen className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onRemove(item.ingredient_id)}
+                        disabled={isSubmitting}
+                        className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                        title="Eliminar ingrediente"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
             {!hidePrice && (
@@ -161,7 +171,7 @@ export default function IngredientList({
                 <td className="px-4 py-3 text-sm text-right text-green-700">
                   S/ {totalCost.toFixed(2)}
                 </td>
-                <td></td>
+                {!viewOnly && <td></td>}
               </tr>
             )}
           </tbody>

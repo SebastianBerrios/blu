@@ -27,6 +27,7 @@ interface RecipeFormProps {
   recipe?: Recipe;
   hidePrice?: boolean;
   readOnlyMeta?: boolean;
+  viewOnly?: boolean;
   productId?: number;
 }
 
@@ -37,8 +38,10 @@ export default function RecipeForm({
   recipe,
   hidePrice = false,
   readOnlyMeta = false,
+  viewOnly = false,
   productId,
 }: RecipeFormProps) {
+  const effectiveReadOnlyMeta = readOnlyMeta || viewOnly;
   const isEditMode = !!recipe;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -91,11 +94,11 @@ export default function RecipeForm({
         setRecipeIngredients([]);
         originalIngredientsRef.current = [];
       }
-      setAddAsIngredient(readOnlyMeta || hidePrice ? false : true);
+      setAddAsIngredient(effectiveReadOnlyMeta || hidePrice ? false : true);
       setEditingIngredient(null);
       setSubmitError(null);
     }
-  }, [isOpen, recipe, reset, readOnlyMeta, hidePrice]);
+  }, [isOpen, recipe, reset, effectiveReadOnlyMeta, hidePrice]);
 
   if (!isOpen) return null;
 
@@ -165,6 +168,7 @@ export default function RecipeForm({
   };
 
   const getFormTitle = () => {
+    if (viewOnly) return "Ver Receta";
     if (readOnlyMeta && isEditMode) return "Editar Ingredientes";
     if (!isEditMode && productId) return "Crear Receta";
     return isEditMode ? "Editar Receta" : "Agregar Receta";
@@ -223,25 +227,27 @@ export default function RecipeForm({
           <RecipeMetadataSection
             register={register}
             isSubmitting={isSubmitting}
-            readOnlyMeta={readOnlyMeta}
+            readOnlyMeta={effectiveReadOnlyMeta}
             hidePrice={hidePrice}
           />
 
           {/* Ingredients section */}
           <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
             <label className="block text-sm font-medium text-slate-900 mb-3">
-              Ingredientes de la receta <span className="text-red-600">*</span>
+              Ingredientes de la receta {!viewOnly && <span className="text-red-600">*</span>}
             </label>
 
-            <IngredientSelector
-              ingredients={ingredients}
-              recipeIngredients={recipeIngredients}
-              onAdd={handleAddIngredient}
-              onUpdate={handleUpdateIngredient}
-              editingItem={editingIngredient}
-              onCancelEdit={() => setEditingIngredient(null)}
-              isSubmitting={isSubmitting}
-            />
+            {!viewOnly && (
+              <IngredientSelector
+                ingredients={ingredients}
+                recipeIngredients={recipeIngredients}
+                onAdd={handleAddIngredient}
+                onUpdate={handleUpdateIngredient}
+                editingItem={editingIngredient}
+                onCancelEdit={() => setEditingIngredient(null)}
+                isSubmitting={isSubmitting}
+              />
+            )}
 
             <IngredientList
               ingredients={recipeIngredients}
@@ -250,7 +256,14 @@ export default function RecipeForm({
               hidePrice={hidePrice}
               totalCost={totalCost}
               isSubmitting={isSubmitting}
+              viewOnly={viewOnly}
             />
+
+            {viewOnly && recipeIngredients.length === 0 && (
+              <p className="text-sm text-slate-500 italic">
+                Esta receta no tiene ingredientes registrados.
+              </p>
+            )}
           </div>
 
           {/* Manufacturing cost */}
@@ -288,11 +301,11 @@ export default function RecipeForm({
           )}
 
           {/* Yield section */}
-          {!hidePrice && (addAsIngredient || !readOnlyMeta) && (
+          {!hidePrice && (addAsIngredient || !effectiveReadOnlyMeta) && (
             <RecipeYieldSection
               register={register}
               isSubmitting={isSubmitting}
-              readOnlyMeta={readOnlyMeta}
+              readOnlyMeta={effectiveReadOnlyMeta}
             />
           )}
 
@@ -314,34 +327,56 @@ export default function RecipeForm({
 
           {/* Desktop action buttons */}
           <div className="hidden md:flex gap-3 pt-4 sticky bottom-0 bg-white pb-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="flex-1 px-4 py-3 min-h-[44px] border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-            >
-              {submitLabel}
-            </button>
+            {viewOnly ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"
+              >
+                Cerrar
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-3 min-h-[44px] border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+                >
+                  {submitLabel}
+                </button>
+              </>
+            )}
           </div>
         </form>
 
         {/* Mobile submit button */}
         <div className="shrink-0 px-4 py-3 border-t border-slate-200 bg-white md:hidden">
-          <button
-            type="submit"
-            form="recipe-form"
-            disabled={isSubmitting}
-            className="w-full px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-          >
-            {submitLabel}
-          </button>
+          {viewOnly ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              Cerrar
+            </button>
+          ) : (
+            <button
+              type="submit"
+              form="recipe-form"
+              disabled={isSubmitting}
+              className="w-full px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+            >
+              {submitLabel}
+            </button>
+          )}
         </div>
       </div>
     </>

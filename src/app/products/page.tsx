@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ShoppingBasket, SquarePen, Trash2, BookOpen, Lock } from "lucide-react";
+import { ShoppingBasket, SquarePen, Trash2, BookOpen, Eye } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useCategories } from "@/hooks/useCategories";
@@ -15,6 +15,7 @@ import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
 import PageHeader from "@/components/ui/PageHeader";
 import FAB from "@/components/ui/FAB";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export default function Products() {
   const { products, error, isLoading, mutate } = useProducts();
@@ -41,10 +42,16 @@ export default function Products() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>();
 
-  // Recipe modal state for non-admins
+  // Recipe edit modal state
   const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
   const [selectedProductForRecipe, setSelectedProductForRecipe] = useState<Product | undefined>();
   const [selectedRecipeForEdit, setSelectedRecipeForEdit] = useState<Recipe | undefined>();
+
+  // Recipe view modal state
+  const [isRecipeViewOpen, setIsRecipeViewOpen] = useState(false);
+  const [productForView, setProductForView] = useState<Product | undefined>();
+  const [recipeForView, setRecipeForView] = useState<Recipe | undefined>();
+  const [showNoRecipeDialog, setShowNoRecipeDialog] = useState(false);
 
   const handleCreate = () => {
     setSelectedProduct(undefined);
@@ -81,6 +88,23 @@ export default function Products() {
     setIsRecipeModalOpen(false);
     setSelectedProductForRecipe(undefined);
     setSelectedRecipeForEdit(undefined);
+  };
+
+  const handleViewRecipe = (product: Product) => {
+    if (!product.recipe_id) {
+      setShowNoRecipeDialog(true);
+      return;
+    }
+    const found = recipes.find((r) => r.id === product.recipe_id);
+    setProductForView(product);
+    setRecipeForView(found);
+    setIsRecipeViewOpen(true);
+  };
+
+  const handleCloseRecipeView = () => {
+    setIsRecipeViewOpen(false);
+    setProductForView(undefined);
+    setRecipeForView(undefined);
   };
 
   const handleRecipeSuccess = () => {
@@ -171,22 +195,33 @@ export default function Products() {
             dataKeys={dataKeys}
             data={products || []}
             isLoading={isLoading}
-            onEdit={isAdmin ? handleEdit : handleEditRecipe}
+            onEdit={isAdmin ? handleEdit : undefined}
             onDelete={isAdmin ? handleDelete : undefined}
-            canEdit={isAdmin ? undefined : canEditRecipe}
-            renderExtraActions={isAdmin ? (item) => (
-              <button
-                onClick={() => handleEditRecipe(item)}
-                className={`p-3 rounded-lg transition-colors ${
-                  item.recipe_id
-                    ? "text-green-700 hover:bg-green-100"
-                    : "text-amber-700 hover:bg-amber-100"
-                }`}
-                title={item.recipe_id ? "Ver receta" : "Crear receta"}
-              >
-                <BookOpen className="w-5 h-5" />
-              </button>
-            ) : undefined}
+            renderExtraActions={(item) => {
+              if (!isAdmin && !canEditRecipe(item)) return null;
+              return (
+                <div className="flex items-center">
+                  <button
+                    onClick={() => handleViewRecipe(item)}
+                    className="p-3 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
+                    title="Ver receta"
+                  >
+                    <Eye className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => handleEditRecipe(item)}
+                    className={`p-3 rounded-lg transition-colors ${
+                      item.recipe_id
+                        ? "text-green-700 hover:bg-green-100"
+                        : "text-amber-700 hover:bg-amber-100"
+                    }`}
+                    title={item.recipe_id ? "Editar receta" : "Crear receta"}
+                  >
+                    <BookOpen className="w-5 h-5" />
+                  </button>
+                </div>
+              );
+            }}
             renderCard={(item, onEditFn, onDeleteFn) => (
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex-1 min-w-0">
@@ -212,14 +247,25 @@ export default function Products() {
                     </div>
                   )}
                 </div>
-                {(onEditFn || onDeleteFn || !isAdmin) && (
-                  <div className="flex items-center gap-1 shrink-0">
-                    {onEditFn && (
-                      <button onClick={() => onEditFn(item)} className="p-3 text-primary-700 hover:bg-primary-50 rounded-lg">
-                        {isAdmin ? <SquarePen className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
+                <div className="flex items-center gap-1 shrink-0">
+                  {onEditFn && (
+                    <button
+                      onClick={() => onEditFn(item)}
+                      className="p-3 text-primary-700 hover:bg-primary-50 rounded-lg"
+                      title="Editar producto"
+                    >
+                      <SquarePen className="w-5 h-5" />
+                    </button>
+                  )}
+                  {(isAdmin || canEditRecipe(item)) && (
+                    <>
+                      <button
+                        onClick={() => handleViewRecipe(item)}
+                        className="p-3 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
+                        title="Ver receta"
+                      >
+                        <Eye className="w-5 h-5" />
                       </button>
-                    )}
-                    {isAdmin && (
                       <button
                         onClick={() => handleEditRecipe(item)}
                         className={`p-3 rounded-lg transition-colors ${
@@ -227,23 +273,22 @@ export default function Products() {
                             ? "text-green-700 hover:bg-green-100"
                             : "text-amber-700 hover:bg-amber-100"
                         }`}
-                        title={item.recipe_id ? "Ver receta" : "Crear receta"}
+                        title={item.recipe_id ? "Editar receta" : "Crear receta"}
                       >
                         <BookOpen className="w-5 h-5" />
                       </button>
-                    )}
-                    {!onEditFn && !isAdmin && (
-                      <span className="p-3 text-slate-300">
-                        <Lock className="w-5 h-5" />
-                      </span>
-                    )}
-                    {onDeleteFn && (
-                      <button onClick={() => onDeleteFn(item)} className="p-3 text-red-700 hover:bg-red-50 rounded-lg">
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    )}
-                  </div>
-                )}
+                    </>
+                  )}
+                  {onDeleteFn && (
+                    <button
+                      onClick={() => onDeleteFn(item)}
+                      className="p-3 text-red-700 hover:bg-red-50 rounded-lg"
+                      title="Eliminar producto"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           />}
@@ -269,6 +314,26 @@ export default function Products() {
         hidePrice={!isAdmin}
         readOnlyMeta={!isAdmin && !!selectedRecipeForEdit}
         productId={selectedProductForRecipe?.id}
+      />
+
+      <RecipeForm
+        isOpen={isRecipeViewOpen}
+        onClose={handleCloseRecipeView}
+        onSuccess={() => {}}
+        recipe={recipeForView}
+        hidePrice={!isAdmin}
+        viewOnly
+        productId={productForView?.id}
+      />
+
+      <ConfirmDialog
+        isOpen={showNoRecipeDialog}
+        title="Sin receta"
+        description="Este producto aún no tiene una receta registrada."
+        confirmLabel="Aceptar"
+        cancelLabel=""
+        onConfirm={() => setShowNoRecipeDialog(false)}
+        onCancel={() => setShowNoRecipeDialog(false)}
       />
     </>
   );
