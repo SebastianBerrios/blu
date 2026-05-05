@@ -90,9 +90,13 @@ export function makeMockSupabase(defaults: MockSupabaseDefaults = {}): MockSupab
 
     const tableResult = () => tableResults.get(table) ?? {};
 
-    const chain = {
+    const chain: Record<string, unknown> = {
       eq: vi.fn((col: string, val: unknown) => {
         filters.push([col, val]);
+        return chain;
+      }),
+      in: vi.fn((col: string, vals: unknown) => {
+        filters.push([col, vals]);
         return chain;
       }),
       lte: vi.fn(async (col: string, val: unknown) => {
@@ -108,8 +112,14 @@ export function makeMockSupabase(defaults: MockSupabaseDefaults = {}): MockSupab
         return chain;
       }),
       single: vi.fn(async () => ({ ...single, ...tableResult() })),
-      // For chains that resolve via await without .single() / .lte() (rare, but support)
-      then: undefined as unknown,
+      // Allow `await` on a chain without .single() — resolves to data array
+      then: (
+        onFulfilled: (v: { data: unknown; error: unknown }) => unknown,
+      ) =>
+        Promise.resolve({
+          data: tableResult().data ?? [],
+          error: tableResult().error ?? null,
+        }).then(onFulfilled),
     };
     return chain;
   }
@@ -134,22 +144,7 @@ export function makeMockSupabase(defaults: MockSupabaseDefaults = {}): MockSupab
     updateCalls.push({ table, payload, filters });
     const tableResult = () => tableResults.get(table) ?? {};
 
-    const chain = {
-      eq: vi.fn(async (col: string, val: unknown) => {
-        filters.push([col, val]);
-        return { ...eqTerminal, ...tableResult() };
-      }),
-    };
-    return chain;
-  }
-
-  function buildDeleteChain(table: string) {
-    const filters: Array<[string, unknown]> = [];
-    deleteCalls.push({ table, filters });
-    const tableResult = () => tableResults.get(table) ?? {};
-
-    // eq() returns a thenable that ALSO has its own .eq for further chaining.
-    // Important: NOT async, otherwise the first call returns Promise<Promise<...>>.
+    // Same pattern as delete: thenable + .eq for further chaining.
     const eq = vi.fn(function eqFn(col: string, val: unknown) {
       filters.push([col, val]);
       return Object.assign(
@@ -159,6 +154,32 @@ export function makeMockSupabase(defaults: MockSupabaseDefaults = {}): MockSupab
     });
 
     return { eq };
+  }
+
+  function buildDeleteChain(table: string) {
+    const filters: Array<[string, unknown]> = [];
+    deleteCalls.push({ table, filters });
+    const tableResult = () => tableResults.get(table) ?? {};
+
+    // eq() returns a thenable that ALSO has its own .eq for further chaining.
+    // Important: NOT async, otherwise the first call returns Promise<Promise<...>>.
+    const inFn = vi.fn(function inFn(col: string, vals: unknown) {
+      filters.push([col, vals]);
+      return Object.assign(
+        Promise.resolve({ ...eqTerminal, ...tableResult() }),
+        { eq: eq, in: inFn },
+      );
+    });
+
+    const eq = vi.fn(function eqFn(col: string, val: unknown) {
+      filters.push([col, val]);
+      return Object.assign(
+        Promise.resolve({ ...eqTerminal, ...tableResult() }),
+        { eq: eqFn, in: inFn },
+      );
+    });
+
+    return { eq, in: inFn };
   }
 
   const from = vi.fn((table: string) => ({
