@@ -13,9 +13,9 @@ export default defineConfig({
       include: [
         "src/utils/**/*.ts",
         "src/features/**/utils/*.ts",
-        "src/features/**/services/paymentHelpers.ts",
+        "src/features/**/services/*.ts",
       ],
-      exclude: ["**/*.test.ts", "**/index.ts"],
+      exclude: ["**/*.test.ts", "**/index.ts", "**/__tests__/**"],
     },
   },
 });
