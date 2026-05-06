@@ -10,7 +10,8 @@ export type TransactionType =
   | "transferencia_in"
   | "transferencia_out"
   | "gasto"
-  | "ingreso_extra";
+  | "ingreso_extra"
+  | "ajuste";
 
 export interface TransactionWithUser extends Transaction {
   user_name: string | null;

@@ -17,24 +17,24 @@ interface SetInitialBalancesParams {
 
 export async function setInitialBalances(params: SetInitialBalancesParams): Promise<void> {
   const supabase = createClient();
-  const now = new Date().toISOString();
 
-  const updates: { id: number; balance: number }[] = [];
+  const updates: { id: number; balance: number; label: string }[] = [];
   if (params.cajaBalance !== null && params.cajaAccountId !== null) {
-    updates.push({ id: params.cajaAccountId, balance: params.cajaBalance });
+    updates.push({ id: params.cajaAccountId, balance: params.cajaBalance, label: "Caja" });
   }
   if (params.bancoBalance !== null && params.bancoAccountId !== null) {
-    updates.push({ id: params.bancoAccountId, balance: params.bancoBalance });
+    updates.push({ id: params.bancoAccountId, balance: params.bancoBalance, label: "Banco" });
   }
   if (params.rappiBalance !== null && params.rappiAccountId !== null) {
-    updates.push({ id: params.rappiAccountId, balance: params.rappiBalance });
+    updates.push({ id: params.rappiAccountId, balance: params.rappiBalance, label: "Rappi" });
   }
 
   for (const u of updates) {
-    const { error } = await supabase
-      .from("accounts")
-      .update({ balance: u.balance, updated_at: now })
-      .eq("id", u.id);
+    const { error } = await supabase.rpc("adjust_account_balance", {
+      p_account_id: u.id,
+      p_new_balance: u.balance,
+      p_description: `Ajuste de saldo - ${u.label}`,
+    });
     if (error) throw error;
   }
 

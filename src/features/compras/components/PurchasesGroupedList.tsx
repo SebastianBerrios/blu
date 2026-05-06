@@ -10,6 +10,7 @@ interface PurchasesGroupedListProps {
   expandedPurchaseId: number | null;
   collapsedDates: Set<string>;
   isAdmin: boolean;
+  currentUserId: string | null;
   onToggleExpand: (id: number) => void;
   onToggleDateGroup: (date: string) => void;
   onEdit: (purchase: PurchaseWithItems) => void;
@@ -21,6 +22,7 @@ export default function PurchasesGroupedList({
   expandedPurchaseId,
   collapsedDates,
   isAdmin,
+  currentUserId,
   onToggleExpand,
   onToggleDateGroup,
   onEdit,
@@ -59,6 +61,7 @@ export default function PurchasesGroupedList({
                   purchase={purchase}
                   isExpanded={expandedPurchaseId === purchase.id}
                   isAdmin={isAdmin}
+                  currentUserId={currentUserId}
                   onToggle={onToggleExpand}
                   onEdit={onEdit}
                   onDelete={onDelete}

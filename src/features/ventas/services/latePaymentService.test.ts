@@ -4,17 +4,14 @@ import type { RegisterPaymentWithRewardsParams } from "./latePaymentService";
 import { createClient } from "@/utils/supabase/client";
 import { logAudit } from "@/utils/auditLog";
 import { getSaleNumber } from "@/utils/saleNumber";
-import { recordTransaction } from "@/hooks/useTransactions";
 import { makeMockSupabase } from "@/__tests__/mockSupabase";
 
 vi.mock("@/utils/supabase/client", () => ({ createClient: vi.fn() }));
 vi.mock("@/utils/auditLog", () => ({ logAudit: vi.fn() }));
 vi.mock("@/utils/saleNumber", () => ({ getSaleNumber: vi.fn() }));
-vi.mock("@/hooks/useTransactions", () => ({ recordTransaction: vi.fn() }));
 
 const mockedLogAudit = vi.mocked(logAudit);
 const mockedGetSaleNumber = vi.mocked(getSaleNumber);
-const mockedRecordTransaction = vi.mocked(recordTransaction);
 
 function makeParams(
   overrides: Partial<RegisterPaymentWithRewardsParams> = {},
@@ -43,8 +40,19 @@ function makeParams(
     userName: "Seba",
     cajaAccountId: 1,
     bancoAccountId: 2,
+    rappiAccountId: 3,
     ...overrides,
   };
+}
+
+function findReplaceCall(rpcCalls: Array<{ fn: string; params: unknown }>) {
+  return rpcCalls.find((c) => c.fn === "replace_sale_transactions");
+}
+
+function getReplacePayments(rpcCalls: Array<{ fn: string; params: unknown }>) {
+  const call = findReplaceCall(rpcCalls);
+  if (!call) return null;
+  return (call.params as { p_payments: Array<Record<string, unknown>> }).p_payments;
 }
 
 describe("registerPaymentWithRewards", () => {
@@ -53,7 +61,17 @@ describe("registerPaymentWithRewards", () => {
     mockedGetSaleNumber.mockResolvedValue(77);
   });
 
-  it("happy path Efectivo: update sales, delete sale_products, insert, RPC, transacción + audit", async () => {
+  it("rechaza newTotalPrice <= 0", async () => {
+    const sb = makeMockSupabase();
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(
+      registerPaymentWithRewards(makeParams({ newTotalPrice: 0 })),
+    ).rejects.toThrow("El total de la venta debe ser mayor a 0");
+    expect(sb.updateCalls).toEqual([]);
+  });
+
+  it("happy path Efectivo: update sales, delete sale_products, insert, replace_sale_transactions atómico + audit", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
@@ -74,15 +92,11 @@ describe("registerPaymentWithRewards", () => {
     const productsInsert = sb.insertCalls.find((c) => c.table === "sale_products")!;
     expect((productsInsert.payload as unknown[]).length).toBe(1);
 
-    // RPC delete_sale_transactions
-    expect(sb.rpcCalls).toEqual([
-      { fn: "delete_sale_transactions", params: { p_sale_id: 99 } },
+    // replace_sale_transactions con caja
+    const payments = getReplacePayments(sb.rpcCalls);
+    expect(payments).toEqual([
+      expect.objectContaining({ account_id: 1, amount: 12 }),
     ]);
-
-    // recordTransaction (caja)
-    expect(mockedRecordTransaction).toHaveBeenCalledWith(
-      expect.objectContaining({ accountId: 1, amount: 12 }),
-    );
 
     // audit final
     expect(mockedLogAudit).toHaveBeenCalledWith(
@@ -110,7 +124,12 @@ describe("registerPaymentWithRewards", () => {
     expect(payload.plin_amount).toBe(40);
     expect(payload.cash_received).toBe(70);
 
-    expect(mockedRecordTransaction).toHaveBeenCalledTimes(2);
+    const payments = getReplacePayments(sb.rpcCalls);
+    expect(payments).toHaveLength(2);
+    expect(payments).toEqual([
+      expect.objectContaining({ account_id: 1, amount: 60 }),
+      expect.objectContaining({ account_id: 2, amount: 40 }),
+    ]);
   });
 
   it("split inválido (sumas no cuadran): throws antes de tocar la DB", async () => {
@@ -130,7 +149,7 @@ describe("registerPaymentWithRewards", () => {
     ).rejects.toThrow();
 
     expect(sb.updateCalls).toHaveLength(0);
-    expect(mockedRecordTransaction).not.toHaveBeenCalled();
+    expect(findReplaceCall(sb.rpcCalls)).toBeUndefined();
   });
 
   it("error en update sales: propaga sin delete sale_products", async () => {
@@ -141,6 +160,58 @@ describe("registerPaymentWithRewards", () => {
 
     await expect(registerPaymentWithRewards(makeParams())).rejects.toBeTruthy();
     expect(sb.deleteCalls.find((c) => c.table === "sale_products")).toBeUndefined();
+  });
+
+  it("Rappi: calcula commission y registra net en cuenta Rappi via replace_sale_transactions", async () => {
+    const sb = makeMockSupabase();
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await registerPaymentWithRewards(
+      makeParams({
+        paymentMethod: "Rappi",
+        newTotalPrice: 100,
+        cashAmount: "",
+        plinAmount: "",
+        cashReceived: "",
+      }),
+    );
+
+    const payments = getReplacePayments(sb.rpcCalls);
+    expect(payments).toEqual([
+      expect.objectContaining({
+        account_id: 3,
+        type: "ingreso_venta",
+        amount: 80, // 100 - 20% commission
+        description: expect.stringContaining("Rappi (neto)"),
+      }),
+    ]);
+  });
+
+  it("Rappi sin rappiAccountId: throws", async () => {
+    const sb = makeMockSupabase();
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(
+      registerPaymentWithRewards(
+        makeParams({
+          paymentMethod: "Rappi",
+          newTotalPrice: 100,
+          cashAmount: "",
+          plinAmount: "",
+          cashReceived: "",
+          rappiAccountId: null,
+        }),
+      ),
+    ).rejects.toThrow("No se encontró la cuenta Rappi");
+  });
+
+  it("siempre llama replace_sale_transactions (atómica: revierte previas + inserta nuevas)", async () => {
+    const sb = makeMockSupabase();
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await registerPaymentWithRewards(makeParams({ paymentMethod: "Plin" }));
+
+    expect(findReplaceCall(sb.rpcCalls)).toBeDefined();
   });
 
   it("preserva loyalty_reward al re-insertar sale_products", async () => {

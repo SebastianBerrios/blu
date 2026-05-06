@@ -63,15 +63,18 @@ export default function PurchaseForm({
         setDeliveryCost(purchase.delivery_cost ? String(purchase.delivery_cost) : "");
         setNotes(purchase.notes ?? "");
         setSelectedAccountId(purchase.account_id ?? cajaAccount?.id ?? null);
+        const existingPlin = Number(purchase.plin_change ?? 0);
+        setHasPlinChange(existingPlin > 0);
+        setPlinChange(existingPlin > 0 ? String(existingPlin) : "");
       } else {
         setItems([]);
         setHasDelivery(false);
         setDeliveryCost("");
         setNotes("");
         setSelectedAccountId(cajaAccount?.id ?? null);
+        setHasPlinChange(false);
+        setPlinChange("");
       }
-      setHasPlinChange(false);
-      setPlinChange("");
       setSubmitError(null);
     }
   }, [isOpen, purchase]);
@@ -88,7 +91,7 @@ export default function PurchaseForm({
   };
 
   const handleSubmit = async () => {
-    const plinChangeAmount = hasPlinChange && !isEditMode ? parseFloat(plinChange) || 0 : 0;
+    const plinChangeAmount = hasPlinChange ? parseFloat(plinChange) || 0 : 0;
 
     const validationError = validatePurchaseForm({
       items,
@@ -120,6 +123,7 @@ export default function PurchaseForm({
           total,
           notes,
           selectedAccountId: selectedAccountId!,
+          plinChangeAmount,
           cajaAccountId: cajaAccount?.id ?? null,
           bancoAccountId: bancoAccount?.id ?? null,
           userId: authUser?.id ?? null,
@@ -145,7 +149,7 @@ export default function PurchaseForm({
       onClose();
     } catch (error) {
       console.error("Error al guardar la compra:", error);
-      setSubmitError("Ocurrió un error al guardar la compra");
+      setSubmitError(error instanceof Error ? error.message : "Ocurrió un error al guardar la compra");
     } finally {
       setIsSubmitting(false);
     }
@@ -201,8 +205,8 @@ export default function PurchaseForm({
         isSubmitting={isSubmitting}
       />
 
-      {/* Vuelto por Plin (solo Caja, solo modo crear) */}
-      {!isEditMode && cajaAccount && selectedAccountId === cajaAccount.id && (
+      {/* Vuelto por Plin (solo Caja) */}
+      {cajaAccount && selectedAccountId === cajaAccount.id && (
         <PlinChangeSection
           hasPlinChange={hasPlinChange}
           plinChange={plinChange}
@@ -234,7 +238,6 @@ export default function PurchaseForm({
           plinChange={plinChange}
           showPlinBreakdown={
             hasPlinChange &&
-            !isEditMode &&
             !!cajaAccount &&
             selectedAccountId === cajaAccount.id
           }

@@ -125,7 +125,10 @@ Hooks with filters use composite SWR keys: `["transactions", filters]`.
 
 After the security audit (2026-05-04), all tables enforce RLS with this model. Code that bypasses these patterns will fail in production.
 
-- **Catalog tables** (`categories`, `products`, `recipes`, `recipe_ingredients`, `ingredients`, `ingredient_groups`): SELECT open to any auth user; INSERT/UPDATE/DELETE only for `admin`. Don't `.from(...).insert()` from a non-admin client; the policy will reject it.
+- **Catalog tables**:
+  - `categories`, `ingredient_groups`: SELECT for any auth; INSERT/UPDATE/DELETE admin-only.
+  - `recipes`, `recipe_ingredients`: SELECT/INSERT/UPDATE/DELETE for any auth (relaxed 2026-05-06 to support non-admin recipe edits in `/products`).
+  - `products`, `ingredients`: SELECT/UPDATE for any auth; INSERT/DELETE admin-only. UI gates non-cost fields, but the RLS allows full row UPDATE — rely on UI for column-level control.
 - **Operational tables** (`sales`, `sale_products`, `purchases`, `purchase_items`, `customers`): SELECT/INSERT/UPDATE open to any auth user. DELETE: admin-only for `sales`, `purchases`, `customers`; auth for `sale_products`, `purchase_items`.
 - **Personal tables** (`time_off_requests`, `task_completions`, `extra_hours_log`): users see/write their own rows; admins see all.
 - **Financial tables** (`transactions`, `inventory_movements`, `accounts`): direct INSERT is **blocked** for everyone — must go through SECURITY DEFINER RPCs. Direct UPDATE on `accounts` is admin-only.
@@ -135,8 +138,8 @@ After the security audit (2026-05-04), all tables enforce RLS with this model. C
 - `record_transaction(...)` — sole entry point to create transactions. Use `recordTransaction` from `src/hooks/useTransactions.ts`.
 - `deduct_inventory_for_delivery(p_sale_product_id, ...)` — sole entry point for stock deduction on delivery.
 - `reverse_inventory_for_sale(p_sale_id, ...)` — used when deleting a sale.
-- `delete_sale_transactions(p_sale_id)` — **admin-check inside**: raises if caller isn't admin.
-- `delete_purchase_transactions(p_purchase_id)` — **admin-check inside**.
+- `delete_sale_transactions(p_sale_id)` — callable by any auth user (admin-check removed 2026-05-06 to enable non-admin sale edits via `updateSale`).
+- `delete_purchase_transactions(p_purchase_id)` — callable by any auth user (same change).
 - `approve_time_off_request(p_request_id, p_admin_id, ...)` — **admin-check inside** + `p_admin_id` must equal `auth.uid()`.
 
 When adding new destructive RPCs, follow the same pattern: `SECURITY DEFINER`, `SET search_path = public, pg_temp`, REVOKE EXECUTE FROM PUBLIC/anon, and `IF NOT EXISTS (SELECT 1 FROM user_profiles WHERE id = auth.uid() AND role = 'admin') THEN RAISE EXCEPTION ...`.

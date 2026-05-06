@@ -1,5 +1,4 @@
 import { createClient } from "@/utils/supabase/client";
-import { recordTransaction } from "@/hooks/useTransactions";
 import { logAudit } from "@/utils/auditLog";
 import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import { getSaleNumber } from "@/utils/saleNumber";
@@ -12,7 +11,14 @@ import {
   paymentStateChanged,
 } from "./paymentHelpers";
 
-function computeCommission(orderType: string, totalPrice: number): number | null {
+interface SalePayment {
+  account_id: number;
+  type: string;
+  amount: number;
+  description: string;
+}
+
+export function computeCommission(orderType: string, totalPrice: number): number | null {
   if (orderType !== "Rappi") return null;
   return Number((totalPrice * RAPPI_COMMISSION_RATE).toFixed(2));
 }
@@ -55,6 +61,70 @@ function buildSaleProductRows(saleId: number, params: SaleSubmitParams) {
     }));
 }
 
+export function buildSalePayments(params: {
+  saleNumber: number;
+  paymentMethod: string | null;
+  totalPrice: number;
+  commission: number | null;
+  cashAmount: number | null;
+  plinAmount: number | null;
+  cajaAccountId: number | null;
+  bancoAccountId: number | null;
+  rappiAccountId: number | null;
+}): SalePayment[] {
+  const {
+    saleNumber,
+    paymentMethod,
+    totalPrice,
+    commission,
+    cashAmount,
+    plinAmount,
+    cajaAccountId,
+    bancoAccountId,
+    rappiAccountId,
+  } = params;
+
+  if (!paymentMethod) return [];
+
+  if (paymentMethod === "Rappi") {
+    if (!rappiAccountId) throw new Error("No se encontró la cuenta Rappi");
+    const net = Number((totalPrice - (commission ?? 0)).toFixed(2));
+    if (net <= 0) return [];
+    return [{
+      account_id: rappiAccountId,
+      type: "ingreso_venta",
+      amount: net,
+      description: `Venta #${saleNumber} - Rappi (neto)`,
+    }];
+  }
+
+  if ((paymentMethod === "Efectivo" || paymentMethod === "Efectivo + Plin") && !cajaAccountId) {
+    throw new Error("No se encontró la cuenta Caja");
+  }
+  if ((paymentMethod === "Plin" || paymentMethod === "Efectivo + Plin") && !bancoAccountId) {
+    throw new Error("No se encontró la cuenta Bancaria");
+  }
+
+  const payments: SalePayment[] = [];
+  if (cashAmount && cashAmount > 0 && cajaAccountId) {
+    payments.push({
+      account_id: cajaAccountId,
+      type: "ingreso_venta",
+      amount: cashAmount,
+      description: `Venta #${saleNumber} - Efectivo`,
+    });
+  }
+  if (plinAmount && plinAmount > 0 && bancoAccountId) {
+    payments.push({
+      account_id: bancoAccountId,
+      type: "ingreso_venta",
+      amount: plinAmount,
+      description: `Venta #${saleNumber} - Plin`,
+    });
+  }
+  return payments;
+}
+
 export async function recordSaleTransactions(params: {
   saleId: number;
   saleNumber: number;
@@ -67,60 +137,19 @@ export async function recordSaleTransactions(params: {
   bancoAccountId: number | null;
   rappiAccountId: number | null;
 }): Promise<void> {
-  const {
-    saleId,
-    saleNumber,
-    paymentMethod,
-    totalPrice,
-    commission,
-    cashAmount,
-    plinAmount,
-    cajaAccountId,
-    bancoAccountId,
-    rappiAccountId,
-  } = params;
-
-  if (paymentMethod === "Rappi") {
-    if (!rappiAccountId) {
-      throw new Error("No se encontró la cuenta Rappi");
-    }
-    const net = Number((totalPrice - (commission ?? 0)).toFixed(2));
-    if (net > 0) {
-      await recordTransaction({
-        accountId: rappiAccountId,
-        type: "ingreso_venta",
-        amount: net,
-        description: `Venta #${saleNumber} - Rappi (neto)`,
-        referenceId: saleId,
-        referenceType: "sale",
-      });
-    }
-    return;
-  }
-
-  if (cashAmount && cashAmount > 0 && cajaAccountId) {
-    await recordTransaction({
-      accountId: cajaAccountId,
-      type: "ingreso_venta",
-      amount: cashAmount,
-      description: `Venta #${saleNumber} - Efectivo`,
-      referenceId: saleId,
-      referenceType: "sale",
-    });
-  }
-  if (plinAmount && plinAmount > 0 && bancoAccountId) {
-    await recordTransaction({
-      accountId: bancoAccountId,
-      type: "ingreso_venta",
-      amount: plinAmount,
-      description: `Venta #${saleNumber} - Plin`,
-      referenceId: saleId,
-      referenceType: "sale",
-    });
-  }
+  const supabase = createClient();
+  const payments = buildSalePayments(params);
+  const { error } = await supabase.rpc("replace_sale_transactions", {
+    p_sale_id: params.saleId,
+    p_payments: payments,
+  });
+  if (error) throw error;
 }
 
 export async function createSale(params: SaleSubmitParams): Promise<void> {
+  if (params.totalPrice <= 0) {
+    throw new Error("El total de la venta debe ser mayor a 0");
+  }
   validateSplitPayment(params);
 
   const supabase = createClient();
@@ -209,6 +238,9 @@ export async function updateSale(
   saleId: number,
   params: SaleSubmitParams
 ): Promise<void> {
+  if (params.totalPrice <= 0) {
+    throw new Error("El total de la venta debe ser mayor a 0");
+  }
   validateSplitPayment(params);
 
   const supabase = createClient();
@@ -266,58 +298,38 @@ export async function updateSale(
     Math.abs(Number(existingSale.total_price ?? 0) - params.totalPrice) > 0.01;
   const changed = paymentStateChanged(existingSale, paymentFields) || rappiTotalChanged;
   if (changed) {
-    const { error: deleteError } = await supabase.rpc("delete_sale_transactions", {
-      p_sale_id: saleId,
+    const saleNumber = await getSaleNumber(saleId);
+    await recordSaleTransactions({
+      saleId,
+      saleNumber,
+      paymentMethod: paymentFields.payment_method,
+      totalPrice: params.totalPrice,
+      commission,
+      cashAmount: paymentFields.cash_amount,
+      plinAmount: paymentFields.plin_amount,
+      cajaAccountId: params.cajaAccountId,
+      bancoAccountId: params.bancoAccountId,
+      rappiAccountId: params.rappiAccountId,
     });
-    if (deleteError) throw deleteError;
 
-    if (paymentFields.payment_method) {
-      const saleNumber = await getSaleNumber(saleId);
-      await recordSaleTransactions({
-        saleId,
-        saleNumber,
-        paymentMethod: paymentFields.payment_method,
-        totalPrice: params.totalPrice,
-        commission,
-        cashAmount: paymentFields.cash_amount,
-        plinAmount: paymentFields.plin_amount,
-        cajaAccountId: params.cajaAccountId,
-        bancoAccountId: params.bancoAccountId,
-        rappiAccountId: params.rappiAccountId,
-      });
-
-      logAudit({
-        userId: params.userId,
-        userName: params.userName,
-        action: "actualizar",
-        targetTable: "sales",
-        targetId: saleId,
-        targetDescription: `Venta #${saleNumber} - ${paymentFields.payment_method} - S/ ${params.totalPrice.toFixed(2)}`,
-        details: {
-          transacciones_regeneradas: true,
-          metodo_anterior: existingSale.payment_method,
-          metodo_nuevo: paymentFields.payment_method,
-          cash_amount: paymentFields.cash_amount,
-          plin_amount: paymentFields.plin_amount,
-          cash_received: paymentFields.cash_received,
-        },
-      });
-    } else {
-      const saleNumber = await getSaleNumber(saleId);
-      logAudit({
-        userId: params.userId,
-        userName: params.userName,
-        action: "actualizar",
-        targetTable: "sales",
-        targetId: saleId,
-        targetDescription: `Venta #${saleNumber} - Pago removido`,
-        details: {
-          transacciones_regeneradas: true,
-          metodo_anterior: existingSale.payment_method,
-          metodo_nuevo: null,
-        },
-      });
-    }
+    logAudit({
+      userId: params.userId,
+      userName: params.userName,
+      action: "actualizar",
+      targetTable: "sales",
+      targetId: saleId,
+      targetDescription: paymentFields.payment_method
+        ? `Venta #${saleNumber} - ${paymentFields.payment_method} - S/ ${params.totalPrice.toFixed(2)}`
+        : `Venta #${saleNumber} - Pago removido`,
+      details: {
+        transacciones_regeneradas: true,
+        metodo_anterior: existingSale.payment_method,
+        metodo_nuevo: paymentFields.payment_method,
+        cash_amount: paymentFields.cash_amount,
+        plin_amount: paymentFields.plin_amount,
+        cash_received: paymentFields.cash_received,
+      },
+    });
   }
 }
 

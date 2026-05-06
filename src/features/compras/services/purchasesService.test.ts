@@ -11,19 +11,16 @@ import { createClient } from "@/utils/supabase/client";
 import { getPurchaseNumber } from "@/utils/purchaseNumber";
 import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import { logAudit } from "@/utils/auditLog";
-import { recordTransaction } from "@/hooks/useTransactions";
 import { makeMockSupabase } from "@/__tests__/mockSupabase";
 
 vi.mock("@/utils/supabase/client", () => ({ createClient: vi.fn() }));
 vi.mock("@/utils/auditLog", () => ({ logAudit: vi.fn() }));
 vi.mock("@/utils/purchaseNumber", () => ({ getPurchaseNumber: vi.fn() }));
 vi.mock("@/utils/helpers/deleteWithAudit", () => ({ deleteWithAudit: vi.fn() }));
-vi.mock("@/hooks/useTransactions", () => ({ recordTransaction: vi.fn() }));
 
 const mockedGetPurchaseNumber = vi.mocked(getPurchaseNumber);
 const mockedDeleteWithAudit = vi.mocked(deleteWithAudit);
 const mockedLogAudit = vi.mocked(logAudit);
-const mockedRecordTransaction = vi.mocked(recordTransaction);
 
 function makeCreateParams(
   overrides: Partial<CreatePurchaseParams> = {},
@@ -55,6 +52,7 @@ function makeUpdateParams(
     total: 15,
     notes: "",
     selectedAccountId: 1,
+    plinChangeAmount: 0,
     cajaAccountId: 1,
     bancoAccountId: 2,
     userId: "user-uuid",
@@ -85,10 +83,29 @@ function defaults() {
   };
 }
 
+function findReplaceCall(rpcCalls: Array<{ fn: string; params: unknown }>) {
+  return rpcCalls.find((c) => c.fn === "replace_purchase_transactions");
+}
+
+function getReplacePayments(rpcCalls: Array<{ fn: string; params: unknown }>) {
+  const call = findReplaceCall(rpcCalls);
+  if (!call) return null;
+  return (call.params as { p_payments: Array<Record<string, unknown>> }).p_payments;
+}
+
 describe("validatePurchaseForm", () => {
   it("retorna error cuando items está vacío", () => {
     expect(validatePurchaseForm({ ...defaults(), items: [] })).toBe(
       "Agrega al menos un ítem",
+    );
+  });
+
+  it("retorna error cuando total <= 0", () => {
+    expect(validatePurchaseForm({ ...defaults(), total: 0 })).toBe(
+      "El total de la compra debe ser mayor a 0",
+    );
+    expect(validatePurchaseForm({ ...defaults(), total: -10 })).toBe(
+      "El total de la compra debe ser mayor a 0",
     );
   });
 
@@ -110,13 +127,21 @@ describe("validatePurchaseForm", () => {
     ).toBe("Selecciona una cuenta para la compra");
   });
 
-  it("retorna error cuando hasPlinChange en createMode con monto ≤ 0", () => {
+  it("retorna error cuando hasPlinChange con monto ≤ 0 (también en editMode)", () => {
     expect(
       validatePurchaseForm({
         ...defaults(),
         hasPlinChange: true,
         plinChange: "0",
         isEditMode: false,
+      }),
+    ).toBe("Ingresa un monto válido para el vuelto por Plin");
+    expect(
+      validatePurchaseForm({
+        ...defaults(),
+        hasPlinChange: true,
+        plinChange: "0",
+        isEditMode: true,
       }),
     ).toBe("Ingresa un monto válido para el vuelto por Plin");
   });
@@ -133,29 +158,18 @@ describe("validatePurchaseForm", () => {
     ).toBe("No hay cuenta bancaria configurada para recibir el vuelto");
   });
 
-  it("permite hasPlinChange en editMode aunque monto sea 0 (no se valida)", () => {
-    expect(
-      validatePurchaseForm({
-        ...defaults(),
-        hasPlinChange: true,
-        plinChange: "0",
-        isEditMode: true,
-      }),
-    ).toBeNull();
-  });
-
   it("retorna null cuando todo es válido", () => {
     expect(validatePurchaseForm(defaults())).toBeNull();
   });
 
-  it("retorna null con hasPlinChange válido + banco configurado", () => {
+  it("retorna null con hasPlinChange válido + banco configurado (también en editMode)", () => {
     expect(
       validatePurchaseForm({
         ...defaults(),
         hasPlinChange: true,
         plinChange: "5",
         hasBancoAccount: true,
-        isEditMode: false,
+        isEditMode: true,
       }),
     ).toBeNull();
   });
@@ -214,7 +228,7 @@ describe("createPurchase", () => {
     expect(sb.insertCalls).toHaveLength(0);
   });
 
-  it("happy path sin Plin change: 1 transacción + audit", async () => {
+  it("happy path sin Plin change: 1 transacción via replace_purchase_transactions + audit", async () => {
     const sb = makeMockSupabase({ single: { data: { id: 88 }, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
@@ -231,14 +245,14 @@ describe("createPurchase", () => {
     const itemsInsert = sb.insertCalls.find((c) => c.table === "purchase_items")!;
     expect(itemsInsert).toBeDefined();
 
-    expect(mockedRecordTransaction).toHaveBeenCalledTimes(1);
-    expect(mockedRecordTransaction).toHaveBeenCalledWith(
+    const payments = getReplacePayments(sb.rpcCalls);
+    expect(payments).toEqual([
       expect.objectContaining({
-        accountId: 1,
+        account_id: 1,
         type: "egreso_compra",
         amount: -30,
       }),
-    );
+    ]);
     expect(mockedLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "crear_transaccion",
@@ -247,7 +261,7 @@ describe("createPurchase", () => {
     );
   });
 
-  it("con Plin change > 0: 2 transacciones (caja egreso total+plin, banco ingreso_extra)", async () => {
+  it("con Plin change > 0: 2 entradas en payload (caja egreso total+plin, banco ingreso_extra)", async () => {
     const sb = makeMockSupabase({ single: { data: { id: 88 }, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
@@ -255,20 +269,19 @@ describe("createPurchase", () => {
       makeCreateParams({ plinChangeAmount: 10, total: 50 }),
     );
 
-    expect(mockedRecordTransaction).toHaveBeenCalledTimes(2);
-    expect(mockedRecordTransaction).toHaveBeenNthCalledWith(
-      1,
+    const payments = getReplacePayments(sb.rpcCalls);
+    expect(payments).toHaveLength(2);
+    expect(payments![0]).toEqual(
       expect.objectContaining({
-        accountId: 1,
+        account_id: 1,
         type: "egreso_compra",
         amount: -60, // total + plin
         description: expect.stringContaining("vuelto Plin S/ 10.00"),
       }),
     );
-    expect(mockedRecordTransaction).toHaveBeenNthCalledWith(
-      2,
+    expect(payments![1]).toEqual(
       expect.objectContaining({
-        accountId: 2,
+        account_id: 2,
         type: "ingreso_extra",
         amount: 10,
         description: expect.stringContaining("Vuelto Plin"),
@@ -292,7 +305,7 @@ describe("createPurchase", () => {
     expect(payload.delivery_cost).toBe(7.5);
   });
 
-  it("error en insert items: propaga", async () => {
+  it("error en insert items: propaga sin llamar replace_purchase_transactions", async () => {
     const sb = makeMockSupabase();
     let insertCount = 0;
     sb.from.mockImplementation((table: string) => {
@@ -315,7 +328,7 @@ describe("createPurchase", () => {
 
     await expect(createPurchase(makeCreateParams())).rejects.toBeTruthy();
     expect(insertCount).toBe(1);
-    expect(mockedRecordTransaction).not.toHaveBeenCalled();
+    expect(sb.rpcCalls).toEqual([]);
   });
 });
 
@@ -325,82 +338,80 @@ describe("updatePurchase", () => {
     mockedGetPurchaseNumber.mockResolvedValue(8);
   });
 
-  it("happy path sin Plin change pre-existente: 1 transacción + audit", async () => {
-    const sb = makeMockSupabase({
-      single: { data: { plin_change: null }, error: null },
-    });
+  it("happy path sin Plin change: 1 entrada en payload via replace_purchase_transactions + audit", async () => {
+    const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await updatePurchase(makeUpdateParams({ total: 25 }));
 
-    expect(sb.rpcCalls).toEqual([
-      { fn: "delete_purchase_transactions", params: { p_purchase_id: 50 } },
-    ]);
-    expect(sb.updateCalls.find((c) => c.table === "purchases")).toBeDefined();
+    const purchaseUpdate = sb.updateCalls.find((c) => c.table === "purchases")!;
+    const payload = purchaseUpdate.payload as Record<string, unknown>;
+    expect(payload.plin_change).toBeNull();
+    expect(payload.total).toBe(25);
+
     expect(sb.deleteCalls.find((c) => c.table === "purchase_items")).toBeDefined();
     expect(sb.insertCalls.find((c) => c.table === "purchase_items")).toBeDefined();
 
-    expect(mockedRecordTransaction).toHaveBeenCalledTimes(1);
-    expect(mockedRecordTransaction).toHaveBeenCalledWith(
+    const payments = getReplacePayments(sb.rpcCalls);
+    expect(payments).toEqual([
       expect.objectContaining({
-        accountId: 1,
+        account_id: 1,
         type: "egreso_compra",
         amount: -25,
       }),
-    );
+    ]);
     expect(mockedLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: "actualizar", targetTable: "purchases" }),
     );
   });
 
-  it("con plin_change preexistente: 2 transacciones (caja+banco)", async () => {
-    const sb = makeMockSupabase({
-      single: { data: { plin_change: 12 }, error: null },
-    });
+  it("con plinChangeAmount nuevo: 2 entradas (caja+banco) y plin_change actualizado en row", async () => {
+    const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
-    await updatePurchase(makeUpdateParams({ total: 50 }));
+    await updatePurchase(makeUpdateParams({ total: 50, plinChangeAmount: 12 }));
 
-    expect(mockedRecordTransaction).toHaveBeenCalledTimes(2);
-    expect(mockedRecordTransaction).toHaveBeenNthCalledWith(
-      1,
+    const purchaseUpdate = sb.updateCalls.find((c) => c.table === "purchases")!;
+    const payload = purchaseUpdate.payload as Record<string, unknown>;
+    expect(payload.plin_change).toBe(12);
+
+    const payments = getReplacePayments(sb.rpcCalls);
+    expect(payments).toHaveLength(2);
+    expect(payments![0]).toEqual(
       expect.objectContaining({
-        accountId: 1,
+        account_id: 1,
         type: "egreso_compra",
         amount: -62, // 50 + 12
       }),
     );
-    expect(mockedRecordTransaction).toHaveBeenNthCalledWith(
-      2,
+    expect(payments![1]).toEqual(
       expect.objectContaining({
-        accountId: 2,
+        account_id: 2,
         type: "ingreso_extra",
         amount: 12,
       }),
     );
   });
 
-  it("error en RPC delete_purchase_transactions: propaga sin update", async () => {
-    const sb = makeMockSupabase({
-      single: { data: { plin_change: null }, error: null },
-    });
-    sb.setRpcResult("delete_purchase_transactions", {
+  it("plinChangeAmount > 0 sin cajaAccountId: throws", async () => {
+    const sb = makeMockSupabase();
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(
+      updatePurchase(
+        makeUpdateParams({ plinChangeAmount: 10, cajaAccountId: null }),
+      ),
+    ).rejects.toThrow("No se encontró la cuenta Caja");
+  });
+
+  it("error en RPC replace_purchase_transactions: propaga", async () => {
+    const sb = makeMockSupabase();
+    sb.setRpcResult("replace_purchase_transactions", {
       data: null,
       error: { message: "denied" },
     });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await expect(updatePurchase(makeUpdateParams())).rejects.toBeTruthy();
-    expect(sb.updateCalls.find((c) => c.table === "purchases")).toBeUndefined();
-  });
-
-  it("error en select existing: propaga sin RPC", async () => {
-    const sb = makeMockSupabase({
-      single: { data: null, error: { message: "missing" } },
-    });
-    vi.mocked(createClient).mockReturnValue(sb.client as never);
-
-    await expect(updatePurchase(makeUpdateParams())).rejects.toBeTruthy();
-    expect(sb.rpcCalls).toHaveLength(0);
   });
 });

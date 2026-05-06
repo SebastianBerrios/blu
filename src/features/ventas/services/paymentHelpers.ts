@@ -94,6 +94,9 @@ export function buildPaymentAmounts(
   if (paymentMethod === "Plin") {
     return { cash: null, plin: totalPrice };
   }
+  if (paymentMethod === "Rappi") {
+    return { cash: null, plin: null };
+  }
   const cash = parseFloat(cashAmount);
   const plin = parseFloat(plinAmount);
   if (isNaN(cash) || isNaN(plin) || cash < 0 || plin < 0) {

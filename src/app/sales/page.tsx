@@ -147,6 +147,7 @@ export default function Sales() {
                 expandedSaleId={expandedSaleId}
                 collapsedDates={collapsedDates}
                 isAdmin={isAdmin}
+                currentUserId={user?.id ?? null}
                 onToggleExpand={toggleExpand}
                 onToggleDateGroup={toggleDateGroup}
                 onEdit={handleEdit}

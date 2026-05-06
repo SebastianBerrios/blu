@@ -42,7 +42,12 @@ export default function PaymentModal({
   categories,
 }: PaymentModalProps) {
   const { user, profile } = useAuth();
-  const { cajaAccount, bancoAccount } = useAccounts();
+  const {
+    cajaAccount,
+    bancoAccount,
+    rappiAccount,
+    isLoading: accountsLoading,
+  } = useAccounts();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Efectivo");
   const [cashAmount, setCashAmount] = useState("");
   const [plinAmount, setPlinAmount] = useState("");
@@ -138,6 +143,7 @@ export default function PaymentModal({
         userName: profile?.full_name ?? null,
         cajaAccountId: cajaAccount?.id ?? null,
         bancoAccountId: bancoAccount?.id ?? null,
+        rappiAccountId: rappiAccount?.id ?? null,
       });
       onSuccess();
       onClose();
@@ -307,6 +313,12 @@ export default function PaymentModal({
             </div>
           )}
 
+          {accountsLoading && (
+            <p className="text-xs text-slate-500 text-center">
+              Cargando cuentas…
+            </p>
+          )}
+
           {/* Botones */}
           <div className="flex gap-3 pt-2">
             <button
@@ -320,7 +332,13 @@ export default function PaymentModal({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isSubmitting || saleProducts.length === 0}
+              disabled={
+                isSubmitting ||
+                saleProducts.length === 0 ||
+                accountsLoading ||
+                !cajaAccount ||
+                !bancoAccount
+              }
               className="flex-1 px-4 py-3 min-h-[44px] bg-green-700 text-white font-medium rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
             >
               {isSubmitting ? "Registrando..." : "Registrar pago"}

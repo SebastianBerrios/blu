@@ -132,6 +132,7 @@ export default function Compras() {
                 expandedPurchaseId={expandedPurchaseId}
                 collapsedDates={collapsedDates}
                 isAdmin={isAdmin}
+                currentUserId={user?.id ?? null}
                 onToggleExpand={toggleExpand}
                 onToggleDateGroup={toggleDateGroup}
                 onEdit={handleEdit}

@@ -3,6 +3,7 @@ import { logAudit } from "@/utils/auditLog";
 import { getSaleNumber } from "@/utils/saleNumber";
 import type { PaymentMethod } from "@/types";
 import type { SaleProductLine } from "../types";
+import { RAPPI_COMMISSION_RATE } from "../constants";
 import { buildPaymentAmounts, resolveCashReceived } from "./paymentHelpers";
 import { recordSaleTransactions } from "./salesService";
 
@@ -18,6 +19,7 @@ export interface RegisterPaymentWithRewardsParams {
   userName: string | null;
   cajaAccountId: number | null;
   bancoAccountId: number | null;
+  rappiAccountId: number | null;
 }
 
 export async function registerPaymentWithRewards(
@@ -35,6 +37,7 @@ export async function registerPaymentWithRewards(
     userName,
     cajaAccountId,
     bancoAccountId,
+    rappiAccountId,
   } = params;
 
   const { cash, plin } = buildPaymentAmounts(
@@ -44,6 +47,10 @@ export async function registerPaymentWithRewards(
     plinAmount
   );
   const cash_received = resolveCashReceived(cash, cashReceived);
+
+  if (newTotalPrice <= 0) {
+    throw new Error("El total de la venta debe ser mayor a 0");
+  }
 
   const supabase = createClient();
 
@@ -79,27 +86,26 @@ export async function registerPaymentWithRewards(
 
   if (productsError) throw productsError;
 
-  // Defensively clear any pre-existing transactions for this sale before
-  // creating new ones. This keeps sales <-> transactions in sync even if
-  // this function is ever invoked on an already-paid sale.
-  const { error: deleteError } = await supabase.rpc("delete_sale_transactions", {
-    p_sale_id: saleId,
-  });
-  if (deleteError) throw deleteError;
-
   const saleNumber = await getSaleNumber(saleId);
 
+  const commission =
+    paymentMethod === "Rappi"
+      ? Number((newTotalPrice * RAPPI_COMMISSION_RATE).toFixed(2))
+      : null;
+
+  // recordSaleTransactions ahora usa replace_sale_transactions (atómica),
+  // que revierte cualquier transacción previa y registra las nuevas.
   await recordSaleTransactions({
     saleId,
     saleNumber,
     paymentMethod,
     totalPrice: newTotalPrice,
-    commission: null,
+    commission,
     cashAmount: cash,
     plinAmount: plin,
     cajaAccountId,
     bancoAccountId,
-    rappiAccountId: null,
+    rappiAccountId,
   });
 
   logAudit({

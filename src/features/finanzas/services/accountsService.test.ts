@@ -28,16 +28,22 @@ function defaults() {
 describe("setInitialBalances", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("actualiza solo las cuentas con balance no-null", async () => {
+  it("llama adjust_account_balance solo para las cuentas con balance no-null", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await setInitialBalances({ ...defaults(), cajaBalance: 100, rappiBalance: 50 });
 
-    const updates = sb.updateCalls.filter((c) => c.table === "accounts");
-    expect(updates).toHaveLength(2);
-    expect(updates[0].filters).toEqual([["id", 1]]);
-    expect(updates[1].filters).toEqual([["id", 3]]);
+    const adjustCalls = sb.rpcCalls.filter((c) => c.fn === "adjust_account_balance");
+    expect(adjustCalls).toHaveLength(2);
+    expect(adjustCalls[0].params).toMatchObject({
+      p_account_id: 1,
+      p_new_balance: 100,
+    });
+    expect(adjustCalls[1].params).toMatchObject({
+      p_account_id: 3,
+      p_new_balance: 50,
+    });
   });
 
   it("audit incluye solo los balances configurados", async () => {
@@ -68,7 +74,7 @@ describe("setInitialBalances", () => {
       cajaBalance: 100,
     });
 
-    expect(sb.updateCalls.filter((c) => c.table === "accounts")).toHaveLength(0);
+    expect(sb.rpcCalls.filter((c) => c.fn === "adjust_account_balance")).toHaveLength(0);
     expect(mockedLogAudit).toHaveBeenCalled();
   });
 });

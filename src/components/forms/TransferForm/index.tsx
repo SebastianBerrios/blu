@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
-import { recordTransaction } from "@/hooks/useTransactions";
+import { createClient } from "@/utils/supabase/client";
 import { logAudit } from "@/utils/auditLog";
 
 interface TransferFormProps {
@@ -68,21 +68,14 @@ export default function TransferForm({
       const desc =
         description.trim() || `Transferencia ${fromAccount.name} → ${toAccount.name}`;
 
-      await recordTransaction({
-        accountId: fromAccount.id,
-        type: "transferencia_out",
-        amount: -numAmount,
-        description: desc,
-        referenceType: "transfer",
+      const supabase = createClient();
+      const { error: rpcError } = await supabase.rpc("transfer_between_accounts", {
+        p_from_account_id: fromAccount.id,
+        p_to_account_id: toAccount.id,
+        p_amount: numAmount,
+        p_description: desc,
       });
-
-      await recordTransaction({
-        accountId: toAccount.id,
-        type: "transferencia_in",
-        amount: numAmount,
-        description: desc,
-        referenceType: "transfer",
-      });
+      if (rpcError) throw rpcError;
 
       logAudit({
         userId: user?.id ?? null,

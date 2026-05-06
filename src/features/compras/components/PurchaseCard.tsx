@@ -3,11 +3,13 @@
 import { ChevronDown, ChevronUp, SquarePen, Trash2, Truck } from "lucide-react";
 import type { PurchaseWithItems } from "@/types";
 import { formatTime } from "@/utils/helpers/dateFormatters";
+import { canEditFinancialRecord } from "@/utils/permissions/financialRecord";
 
 interface PurchaseCardProps {
   purchase: PurchaseWithItems;
   isExpanded: boolean;
   isAdmin: boolean;
+  currentUserId: string | null;
   onToggle: (id: number) => void;
   onEdit: (purchase: PurchaseWithItems) => void;
   onDelete: (purchase: PurchaseWithItems) => void;
@@ -17,10 +19,17 @@ export default function PurchaseCard({
   purchase,
   isExpanded,
   isAdmin,
+  currentUserId,
   onToggle,
   onEdit,
   onDelete,
 }: PurchaseCardProps) {
+  const canEdit = canEditFinancialRecord({
+    isAdmin,
+    recordUserId: purchase.user_id,
+    recordDateISO: purchase.created_at,
+    currentUserId,
+  });
   return (
     <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
       {/* Collapsed row */}
@@ -78,7 +87,7 @@ export default function PurchaseCard({
             S/ {purchase.total.toFixed(2)}
           </span>
           <div className="flex items-center gap-1">
-            {isAdmin && (
+            {canEdit && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -186,20 +195,24 @@ export default function PurchaseCard({
           </div>
 
           {/* Mobile action buttons */}
-          {isAdmin && (
+          {(canEdit || isAdmin) && (
             <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200 md:hidden">
-              <button
-                onClick={() => onEdit(purchase)}
-                className="p-3 text-primary-700 bg-primary-50 rounded-lg"
-              >
-                <SquarePen className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => onDelete(purchase)}
-                className="p-3 text-red-700 bg-red-50 rounded-lg"
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
+              {canEdit && (
+                <button
+                  onClick={() => onEdit(purchase)}
+                  className="p-3 text-primary-700 bg-primary-50 rounded-lg"
+                >
+                  <SquarePen className="w-5 h-5" />
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => onDelete(purchase)}
+                  className="p-3 text-red-700 bg-red-50 rounded-lg"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              )}
             </div>
           )}
         </div>

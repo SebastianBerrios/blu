@@ -10,6 +10,7 @@ interface SalesGroupedListProps {
   expandedSaleId: number | null;
   collapsedDates: Set<string>;
   isAdmin: boolean;
+  currentUserId: string | null;
   onToggleExpand: (id: number) => void;
   onToggleDateGroup: (date: string) => void;
   onEdit: (sale: SaleWithProducts) => void;
@@ -22,6 +23,7 @@ export default function SalesGroupedList({
   expandedSaleId,
   collapsedDates,
   isAdmin,
+  currentUserId,
   onToggleExpand,
   onToggleDateGroup,
   onEdit,
@@ -61,6 +63,7 @@ export default function SalesGroupedList({
                   sale={sale}
                   isExpanded={expandedSaleId === sale.id}
                   isAdmin={isAdmin}
+                  currentUserId={currentUserId}
                   onToggle={onToggleExpand}
                   onEdit={onEdit}
                   onDelete={onDelete}

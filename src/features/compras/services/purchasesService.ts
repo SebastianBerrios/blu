@@ -1,7 +1,6 @@
 import { createClient } from "@/utils/supabase/client";
 import { logAudit } from "@/utils/auditLog";
 import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
-import { recordTransaction } from "@/hooks/useTransactions";
 import { getPurchaseNumber } from "@/utils/purchaseNumber";
 import type { PurchaseItemLine } from "@/types";
 import type { CreatePurchaseParams, UpdatePurchaseParams } from "../types";
@@ -23,6 +22,10 @@ export function validatePurchaseForm(params: {
     return "Agrega al menos un ítem";
   }
 
+  if (params.total <= 0) {
+    return "El total de la compra debe ser mayor a 0";
+  }
+
   if (params.hasDelivery) {
     const dc = parseFloat(params.deliveryCost);
     if (isNaN(dc) || dc <= 0) {
@@ -34,12 +37,12 @@ export function validatePurchaseForm(params: {
     return "Selecciona una cuenta para la compra";
   }
 
-  if (params.hasPlinChange && !params.isEditMode) {
+  if (params.hasPlinChange) {
     const plinAmount = parseFloat(params.plinChange) || 0;
     if (plinAmount <= 0) {
       return "Ingresa un monto válido para el vuelto por Plin";
     }
-if (!params.hasBancoAccount) {
+    if (!params.hasBancoAccount) {
       return "No hay cuenta bancaria configurada para recibir el vuelto";
     }
   }
@@ -87,50 +90,55 @@ export async function createPurchase(params: CreatePurchaseParams): Promise<void
 
   const purchaseNumber = await getPurchaseNumber(newPurchase.id);
 
-  // Register financial transactions
+  const payments: Array<{
+    account_id: number;
+    type: string;
+    amount: number;
+    description: string;
+  }> = [];
+
   if (params.plinChangeAmount > 0) {
-    await recordTransaction({
-      accountId: params.cajaAccountId!,
+    if (!params.cajaAccountId) throw new Error("No se encontró la cuenta Caja");
+    if (!params.bancoAccountId) throw new Error("No se encontró la cuenta Bancaria");
+    payments.push({
+      account_id: params.cajaAccountId,
       type: "egreso_compra",
       amount: -(params.total + params.plinChangeAmount),
       description: `Compra #${purchaseNumber} (incluye vuelto Plin S/ ${params.plinChangeAmount.toFixed(2)})`,
-      referenceId: newPurchase.id,
-      referenceType: "purchase",
     });
-    await recordTransaction({
-      accountId: params.bancoAccountId!,
+    payments.push({
+      account_id: params.bancoAccountId,
       type: "ingreso_extra",
       amount: params.plinChangeAmount,
       description: `Vuelto Plin - Compra #${purchaseNumber}`,
-      referenceId: newPurchase.id,
-      referenceType: "purchase",
-    });
-    logAudit({
-      userId: params.userId,
-      userName: params.userName,
-      action: "crear_transaccion",
-      targetTable: "transactions",
-      targetDescription: `Compra #${purchaseNumber} - S/ ${params.total.toFixed(2)} (Vuelto Plin S/ ${params.plinChangeAmount.toFixed(2)})`,
-      details: { compra_id: newPurchase.id, total: params.total, vuelto_plin: params.plinChangeAmount },
     });
   } else {
-    await recordTransaction({
-      accountId: params.selectedAccountId,
+    payments.push({
+      account_id: params.selectedAccountId,
       type: "egreso_compra",
       amount: -params.total,
       description: `Compra #${purchaseNumber}`,
-      referenceId: newPurchase.id,
-      referenceType: "purchase",
-    });
-    logAudit({
-      userId: params.userId,
-      userName: params.userName,
-      action: "crear_transaccion",
-      targetTable: "transactions",
-      targetDescription: `Compra #${purchaseNumber} - S/ ${params.total.toFixed(2)}`,
-      details: { compra_id: newPurchase.id, total: params.total },
     });
   }
+
+  const { error: replaceError } = await supabase.rpc("replace_purchase_transactions", {
+    p_purchase_id: newPurchase.id,
+    p_payments: payments,
+  });
+  if (replaceError) throw replaceError;
+
+  logAudit({
+    userId: params.userId,
+    userName: params.userName,
+    action: "crear_transaccion",
+    targetTable: "transactions",
+    targetDescription: `Compra #${purchaseNumber} - S/ ${params.total.toFixed(2)}${params.plinChangeAmount > 0 ? ` (Vuelto Plin S/ ${params.plinChangeAmount.toFixed(2)})` : ""}`,
+    details: {
+      compra_id: newPurchase.id,
+      total: params.total,
+      vuelto_plin: params.plinChangeAmount,
+    },
+  });
 }
 
 export async function deletePurchase(
@@ -163,19 +171,9 @@ export async function deletePurchase(
 
 export async function updatePurchase(params: UpdatePurchaseParams): Promise<void> {
   const supabase = createClient();
+  const plinChangeAmount = params.plinChangeAmount;
 
-  const { data: existing, error: fetchError } = await supabase
-    .from("purchases")
-    .select("plin_change")
-    .eq("id", params.purchaseId)
-    .single();
-  if (fetchError) throw fetchError;
-  const plinChangeAmount = existing?.plin_change ?? 0;
-
-  const { error: deleteTxError } = await supabase.rpc("delete_purchase_transactions", {
-    p_purchase_id: params.purchaseId,
-  });
-  if (deleteTxError) throw deleteTxError;
+  const purchaseNumber = await getPurchaseNumber(params.purchaseId);
 
   const purchaseData = {
     has_delivery: params.hasDelivery,
@@ -183,6 +181,7 @@ export async function updatePurchase(params: UpdatePurchaseParams): Promise<void
     total: params.total,
     notes: params.notes.trim() || null,
     account_id: params.selectedAccountId,
+    plin_change: plinChangeAmount > 0 ? plinChangeAmount : null,
   };
 
   const { error } = await supabase
@@ -198,35 +197,42 @@ export async function updatePurchase(params: UpdatePurchaseParams): Promise<void
     .insert(buildPurchaseItems(params.purchaseId, params.items));
   if (itemsError) throw itemsError;
 
-  const purchaseNumber = await getPurchaseNumber(params.purchaseId);
+  const payments: Array<{
+    account_id: number;
+    type: string;
+    amount: number;
+    description: string;
+  }> = [];
 
   if (plinChangeAmount > 0) {
-    await recordTransaction({
-      accountId: params.cajaAccountId!,
+    if (!params.cajaAccountId) throw new Error("No se encontró la cuenta Caja");
+    if (!params.bancoAccountId) throw new Error("No se encontró la cuenta Bancaria");
+    payments.push({
+      account_id: params.cajaAccountId,
       type: "egreso_compra",
       amount: -(params.total + plinChangeAmount),
       description: `Compra #${purchaseNumber} (incluye vuelto Plin S/ ${plinChangeAmount.toFixed(2)})`,
-      referenceId: params.purchaseId,
-      referenceType: "purchase",
     });
-    await recordTransaction({
-      accountId: params.bancoAccountId!,
+    payments.push({
+      account_id: params.bancoAccountId,
       type: "ingreso_extra",
       amount: plinChangeAmount,
       description: `Vuelto Plin - Compra #${purchaseNumber}`,
-      referenceId: params.purchaseId,
-      referenceType: "purchase",
     });
   } else {
-    await recordTransaction({
-      accountId: params.selectedAccountId,
+    payments.push({
+      account_id: params.selectedAccountId,
       type: "egreso_compra",
       amount: -params.total,
       description: `Compra #${purchaseNumber}`,
-      referenceId: params.purchaseId,
-      referenceType: "purchase",
     });
   }
+
+  const { error: replaceError } = await supabase.rpc("replace_purchase_transactions", {
+    p_purchase_id: params.purchaseId,
+    p_payments: payments,
+  });
+  if (replaceError) throw replaceError;
 
   logAudit({
     userId: params.userId,

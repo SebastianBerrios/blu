@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, SquarePen, Trash2, Banknote } from "lucide-reac
 import type { SaleWithProducts } from "@/types";
 import { formatTime } from "@/utils/helpers/dateFormatters";
 import { getSaleCommission, getSaleNet } from "@/features/ventas/utils/saleAmounts";
+import { canEditFinancialRecord } from "@/utils/permissions/financialRecord";
 
 const ORDER_TYPE_BADGE: Record<string, string> = {
   Mesa: "bg-blue-100 text-blue-700",
@@ -15,6 +16,7 @@ interface SaleCardProps {
   sale: SaleWithProducts;
   isExpanded: boolean;
   isAdmin: boolean;
+  currentUserId: string | null;
   onToggle: (id: number) => void;
   onEdit: (sale: SaleWithProducts) => void;
   onDelete: (sale: SaleWithProducts) => void;
@@ -25,6 +27,7 @@ export default function SaleCard({
   sale,
   isExpanded,
   isAdmin,
+  currentUserId,
   onToggle,
   onEdit,
   onDelete,
@@ -35,6 +38,12 @@ export default function SaleCard({
   const commissionAmount = getSaleCommission(sale);
   const netAmount = getSaleNet(sale);
   const hasCommission = commissionAmount > 0;
+  const canEdit = canEditFinancialRecord({
+    isAdmin,
+    recordUserId: sale.user_id,
+    recordDateISO: sale.sale_date,
+    currentUserId,
+  });
 
   return (
     <div
@@ -118,7 +127,7 @@ export default function SaleCard({
             )}
           </div>
           <div className="flex items-center gap-1">
-            {!sale.payment_method && (
+            {!sale.payment_method && canEdit && (
               <button
                 onClick={(e) => { e.stopPropagation(); onRegisterPayment(sale); }}
                 className="p-3 text-green-700 hover:bg-green-100 rounded-lg transition-colors"
@@ -127,13 +136,15 @@ export default function SaleCard({
                 <Banknote className="w-5 h-5" />
               </button>
             )}
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(sale); }}
-              className="p-3 text-primary-700 hover:bg-primary-100 rounded-lg transition-colors"
-              title="Editar"
-            >
-              <SquarePen className="w-5 h-5" />
-            </button>
+            {canEdit && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(sale); }}
+                className="p-3 text-primary-700 hover:bg-primary-100 rounded-lg transition-colors"
+                title="Editar"
+              >
+                <SquarePen className="w-5 h-5" />
+              </button>
+            )}
             {isAdmin && (
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(sale); }}
@@ -234,31 +245,35 @@ export default function SaleCard({
           )}
 
           {/* Mobile action buttons */}
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200 md:hidden">
-            {!sale.payment_method && (
-              <button
-                onClick={() => onRegisterPayment(sale)}
-                className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-600 text-white rounded-lg font-medium text-sm active:scale-[0.97]"
-              >
-                <Banknote className="w-5 h-5" />
-                Pagar
-              </button>
-            )}
-            <button
-              onClick={() => onEdit(sale)}
-              className="p-3 text-primary-700 bg-primary-50 rounded-lg"
-            >
-              <SquarePen className="w-5 h-5" />
-            </button>
-            {isAdmin && (
-              <button
-                onClick={() => onDelete(sale)}
-                className="p-3 text-red-700 bg-red-50 rounded-lg"
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
-            )}
-          </div>
+          {(canEdit || isAdmin) && (
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200 md:hidden">
+              {!sale.payment_method && canEdit && (
+                <button
+                  onClick={() => onRegisterPayment(sale)}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-600 text-white rounded-lg font-medium text-sm active:scale-[0.97]"
+                >
+                  <Banknote className="w-5 h-5" />
+                  Pagar
+                </button>
+              )}
+              {canEdit && (
+                <button
+                  onClick={() => onEdit(sale)}
+                  className="p-3 text-primary-700 bg-primary-50 rounded-lg"
+                >
+                  <SquarePen className="w-5 h-5" />
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => onDelete(sale)}
+                  className="p-3 text-red-700 bg-red-50 rounded-lg"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Payment detail */}
           <div className="mt-3 pt-3 border-t border-slate-200">

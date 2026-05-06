@@ -23,6 +23,7 @@ export interface UpdatePurchaseParams {
   total: number;
   notes: string;
   selectedAccountId: number;
+  plinChangeAmount: number;
   // Context
   cajaAccountId: number | null;
   bancoAccountId: number | null;
