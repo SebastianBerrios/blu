@@ -1,3 +1,5 @@
+import { limaDateKey } from "@/utils/helpers/dateFormatters";
+
 export function canEditFinancialRecord(opts: {
   isAdmin: boolean;
   recordUserId: string | null;
@@ -8,9 +10,7 @@ export function canEditFinancialRecord(opts: {
   if (!opts.recordUserId || !opts.currentUserId) return false;
   if (opts.recordUserId !== opts.currentUserId) return false;
   if (!opts.recordDateISO) return false;
-  const recordDay = new Date(opts.recordDateISO).toDateString();
-  const today = new Date().toDateString();
-  return recordDay === today;
+  return limaDateKey(opts.recordDateISO) === limaDateKey();
 }
 
 export function canDeleteFinancialRecord(opts: { isAdmin: boolean }): boolean {

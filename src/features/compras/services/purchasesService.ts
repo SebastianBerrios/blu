@@ -184,11 +184,17 @@ export async function updatePurchase(params: UpdatePurchaseParams): Promise<void
     plin_change: plinChangeAmount > 0 ? plinChangeAmount : null,
   };
 
-  const { error } = await supabase
+  const { data: updatedRows, error } = await supabase
     .from("purchases")
     .update(purchaseData)
-    .eq("id", params.purchaseId);
+    .eq("id", params.purchaseId)
+    .select("id");
   if (error) throw error;
+  if (!updatedRows || updatedRows.length === 0) {
+    throw new Error(
+      "No se pudo actualizar la compra. Solo puedes editar tus propias compras del día actual.",
+    );
+  }
 
   await supabase.from("purchase_items").delete().eq("purchase_id", params.purchaseId);
 

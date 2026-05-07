@@ -214,6 +214,20 @@ describe("registerPaymentWithRewards", () => {
     expect(findReplaceCall(sb.rpcCalls)).toBeDefined();
   });
 
+  it("RLS rechaza update silenciosamente (0 filas): throws con mensaje claro y NO toca sale_products ni transacciones", async () => {
+    const sb = makeMockSupabase();
+    sb.setUpdateSelectResult("sales", { data: [], error: null });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(registerPaymentWithRewards(makeParams())).rejects.toThrow(
+      /Solo puedes pagar tus propias ventas del día actual/,
+    );
+
+    expect(sb.deleteCalls.find((c) => c.table === "sale_products")).toBeUndefined();
+    expect(sb.insertCalls.find((c) => c.table === "sale_products")).toBeUndefined();
+    expect(findReplaceCall(sb.rpcCalls)).toBeUndefined();
+  });
+
   it("preserva loyalty_reward al re-insertar sale_products", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);

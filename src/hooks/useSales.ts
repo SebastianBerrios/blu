@@ -1,16 +1,11 @@
 import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
 import { toLocalDateKey, groupByDate } from "@/utils/helpers/groupByDate";
+import { limaDayRangeISO } from "@/utils/helpers/dateFormatters";
 import { getSaleNet } from "@/features/ventas/utils/saleAmounts";
 import type { SaleWithProducts, SalesGroupedByDate } from "@/types";
 
 export { toLocalDateKey };
-
-function getTodayStart(): string {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  return now.toISOString();
-}
 
 const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
   const supabase = createClient();
@@ -56,7 +51,7 @@ const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
     );
 
   if (todayOnly) {
-    query = query.gte("sale_date", getTodayStart());
+    query = query.gte("sale_date", limaDayRangeISO().start);
   }
 
   const { data, error } = await query.order("sale_date", { ascending: false });

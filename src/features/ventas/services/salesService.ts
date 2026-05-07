@@ -259,7 +259,7 @@ export async function updateSale(
 
   if (fetchError) throw fetchError;
 
-  const { error } = await supabase
+  const { data: updatedRows, error } = await supabase
     .from("sales")
     .update({
       order_type: params.orderType,
@@ -273,9 +273,15 @@ export async function updateSale(
       notes: params.notes.trim() || null,
       ...paymentFields,
     })
-    .eq("id", saleId);
+    .eq("id", saleId)
+    .select("id");
 
   if (error) throw error;
+  if (!updatedRows || updatedRows.length === 0) {
+    throw new Error(
+      "No se pudo actualizar la venta. Solo puedes editar tus propias ventas del día actual.",
+    );
+  }
 
   const { error: deleteError } = await supabase
     .from("sale_products")

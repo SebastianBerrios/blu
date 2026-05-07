@@ -93,3 +93,40 @@ export function localDayRangeISO(dateKey: string): { start: string; end: string 
   const end = new Date(`${dateKey}T23:59:59.999`);
   return { start: start.toISOString(), end: end.toISOString() };
 }
+
+const LIMA_TZ = "America/Lima";
+
+const limaDateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: LIMA_TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/**
+ * "YYYY-MM-DD" for a given moment, interpreted in America/Lima.
+ * Use this whenever you need a date key that matches what the cafe staff calls "today",
+ * regardless of the browser's local timezone.
+ */
+export function limaDateKey(date: Date | string | number = new Date()): string {
+  const d = typeof date === "string" || typeof date === "number" ? new Date(date) : date;
+  return limaDateKeyFormatter.format(d);
+}
+
+/**
+ * UTC ISO range that covers exactly one Lima calendar day. Defaults to today (Lima).
+ *
+ * Use as `gte`/`lte` filters on Postgres timestamptz columns to query "the day Juan called X"
+ * even when the browser is in a different timezone than America/Lima.
+ *
+ * Lima is fixed UTC-5 (no DST), so day [00:00, 24:00) Lima =
+ * [05:00 UTC same day, 05:00 UTC next day).
+ */
+export function limaDayRangeISO(dateKey: string = limaDateKey()): { start: string; end: string } {
+  const startISO = `${dateKey}T05:00:00.000Z`;
+  const startMs = new Date(startISO).getTime();
+  return {
+    start: startISO,
+    end: new Date(startMs + 24 * 60 * 60 * 1000 - 1).toISOString(),
+  };
+}

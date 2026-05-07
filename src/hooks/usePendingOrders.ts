@@ -6,17 +6,12 @@ import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/utils/auditLog";
 import { getSaleNumber } from "@/utils/saleNumber";
+import { limaDayRangeISO } from "@/utils/helpers/dateFormatters";
 import type { SaleWithProducts, SaleProductStatus } from "@/types";
 
 export interface PendingOrderSale extends SaleWithProducts {
   pending_count: number;
   delivered_count: number;
-}
-
-function getTodayStart(): string {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  return now.toISOString();
 }
 
 const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
@@ -58,7 +53,7 @@ const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
       )
     `
     )
-    .gte("sale_date", getTodayStart())
+    .gte("sale_date", limaDayRangeISO().start)
     .order("sale_date", { ascending: true });
 
   if (error) {

@@ -54,7 +54,7 @@ export async function registerPaymentWithRewards(
 
   const supabase = createClient();
 
-  const { error: saleError } = await supabase
+  const { data: updatedRows, error: saleError } = await supabase
     .from("sales")
     .update({
       total_price: newTotalPrice,
@@ -64,9 +64,15 @@ export async function registerPaymentWithRewards(
       plin_amount: plin,
       cash_received,
     })
-    .eq("id", saleId);
+    .eq("id", saleId)
+    .select("id");
 
   if (saleError) throw saleError;
+  if (!updatedRows || updatedRows.length === 0) {
+    throw new Error(
+      "No se pudo registrar el pago. Solo puedes pagar tus propias ventas del día actual.",
+    );
+  }
 
   await supabase.from("sale_products").delete().eq("sale_id", saleId);
 

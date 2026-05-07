@@ -57,6 +57,9 @@ export interface MockSupabase {
   // Per-table override of result
   setResult(table: string, result: Result): void;
   setRpcResult(fn: string, result: Result): void;
+  /** Override the result of `.update().eq(...).select(...)` for a given table.
+   *  Use to simulate RLS rejecting silently (data: []). */
+  setUpdateSelectResult(table: string, result: Result): void;
 }
 
 /**
@@ -76,6 +79,7 @@ export function makeMockSupabase(defaults: MockSupabaseDefaults = {}): MockSupab
 
   const tableResults = new Map<string, Result>();
   const rpcResults = new Map<string, Result>();
+  const updateSelectResults = new Map<string, Result>();
 
   const single = defaults.single ?? { data: { id: 1 }, error: null };
   const eqTerminal = defaults.eqTerminal ?? { error: null };
@@ -144,12 +148,24 @@ export function makeMockSupabase(defaults: MockSupabaseDefaults = {}): MockSupab
     updateCalls.push({ table, payload, filters });
     const tableResult = () => tableResults.get(table) ?? {};
 
+    // `.update().eq().select(...)` chain.
+    // - Default: 1 row affected (data: [{id:1}]).
+    // - Per-table override via `setUpdateSelectResult` lets tests simulate
+    //   RLS rejecting silently (data: []).
+    // - Errors set via `eqTerminal` propagate so existing tests that mock
+    //   update failures via the eq chain keep working.
+    const select = vi.fn(() => {
+      const override = updateSelectResults.get(table);
+      if (override) return Promise.resolve({ ...eqTerminal, ...override });
+      return Promise.resolve({ data: [{ id: 1 }], ...eqTerminal });
+    });
+
     // Same pattern as delete: thenable + .eq for further chaining.
     const eq = vi.fn(function eqFn(col: string, val: unknown) {
       filters.push([col, val]);
       return Object.assign(
         Promise.resolve({ ...eqTerminal, ...tableResult() }),
-        { eq: eqFn },
+        { eq: eqFn, select },
       );
     });
 
@@ -214,6 +230,9 @@ export function makeMockSupabase(defaults: MockSupabaseDefaults = {}): MockSupab
     },
     setRpcResult(fn, result) {
       rpcResults.set(fn, result);
+    },
+    setUpdateSelectResult(table, result) {
+      updateSelectResults.set(table, result);
     },
   };
 }

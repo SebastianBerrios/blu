@@ -414,4 +414,20 @@ describe("updatePurchase", () => {
 
     await expect(updatePurchase(makeUpdateParams())).rejects.toBeTruthy();
   });
+
+  it("RLS rechaza update silenciosamente (0 filas): throws con mensaje claro y NO toca purchase_items ni transacciones", async () => {
+    const sb = makeMockSupabase();
+    sb.setUpdateSelectResult("purchases", { data: [], error: null });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(updatePurchase(makeUpdateParams())).rejects.toThrow(
+      /Solo puedes editar tus propias compras del día actual/,
+    );
+
+    expect(sb.deleteCalls.find((c) => c.table === "purchase_items")).toBeUndefined();
+    expect(sb.insertCalls.find((c) => c.table === "purchase_items")).toBeUndefined();
+    expect(
+      sb.rpcCalls.find((c) => c.fn === "replace_purchase_transactions"),
+    ).toBeUndefined();
+  });
 });

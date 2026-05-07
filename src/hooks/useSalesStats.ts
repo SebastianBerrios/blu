@@ -15,6 +15,7 @@ import type {
   Granularity,
 } from "@/types";
 import { toLocalDateKey } from "@/utils/helpers/groupByDate";
+import { limaDateKey, limaDayRangeISO } from "@/utils/helpers/dateFormatters";
 
 interface SaleRow {
   id: number;
@@ -137,13 +138,15 @@ function groupRevenueByBucket(
 }
 
 async function fetchStats(ranges: PeriodRanges): Promise<StatsData> {
-  const sparkStart = new Date();
-  sparkStart.setDate(sparkStart.getDate() - 6);
-  sparkStart.setHours(0, 0, 0, 0);
-  const sparkEnd = new Date();
-  sparkEnd.setHours(23, 59, 59, 999);
-  const sparkStartISO = sparkStart.toISOString();
-  const sparkEndISO = sparkEnd.toISOString();
+  // Sparkline window: last 7 Lima calendar days, anchored on today (Lima).
+  // Using Lima TZ keeps the buckets aligned with what cafe staff calls "today",
+  // regardless of the browser's local timezone.
+  const todayKey = limaDateKey();
+  const sparkStartKey = limaDateKey(
+    new Date(new Date(`${todayKey}T05:00:00.000Z`).getTime() - 6 * 24 * 60 * 60 * 1000),
+  );
+  const sparkStartISO = limaDayRangeISO(sparkStartKey).start;
+  const sparkEndISO = limaDayRangeISO(todayKey).end;
 
   const [currentSales, previousSales, sparkSales, expenses] = await Promise.all([
     fetchSales(ranges.current.start, ranges.current.end),
@@ -265,17 +268,16 @@ async function fetchStats(ranges: PeriodRanges): Promise<StatsData> {
       expenses: expByDayMap[date] || 0,
     }));
 
-  // Sparkline: last 7 days revenue (always anchored on today)
+  // Sparkline: last 7 Lima days revenue (always anchored on today Lima)
   const sparkMap = new Map<string, number>();
   for (const s of sparkSales) {
-    const d = toLocalDateKey(s.sale_date);
+    const d = limaDateKey(s.sale_date);
     sparkMap.set(d, (sparkMap.get(d) || 0) + getSaleNet(s));
   }
   const sparkline: number[] = [];
+  const todayMidnightUTC = new Date(`${todayKey}T05:00:00.000Z`).getTime();
   for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const key = limaDateKey(new Date(todayMidnightUTC - i * 24 * 60 * 60 * 1000));
     sparkline.push(sparkMap.get(key) || 0);
   }
 

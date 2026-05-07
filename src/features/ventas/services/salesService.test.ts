@@ -725,4 +725,17 @@ describe("updateSale", () => {
     await expect(updateSale(404, makeSubmitParams())).rejects.toBeTruthy();
     expect(sb.updateCalls.find((c) => c.table === "sales")).toBeUndefined();
   });
+
+  it("RLS rechaza update silenciosamente (0 filas): throws con mensaje claro y NO toca sale_products", async () => {
+    const sb = makeUpdateMock();
+    sb.setUpdateSelectResult("sales", { data: [], error: null });
+
+    await expect(
+      updateSale(99, makeSubmitParams({ totalPrice: 25, cashReceived: "25" })),
+    ).rejects.toThrow(/Solo puedes editar tus propias ventas del día actual/);
+
+    expect(sb.deleteCalls.find((c) => c.table === "sale_products")).toBeUndefined();
+    expect(sb.insertCalls.find((c) => c.table === "sale_products")).toBeUndefined();
+    expect(findReplaceCall(sb.rpcCalls)).toBeUndefined();
+  });
 });
