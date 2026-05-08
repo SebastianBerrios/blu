@@ -22,6 +22,8 @@ export interface SaleWithProducts extends Sale {
   sale_products: SaleProductWithDetails[];
   customer_dni?: number | null;
   creator_name?: string | null;
+  last_editor_name?: string | null;
+  payment_registrar_name?: string | null;
 }
 
 export interface SalesGroupedByDate {

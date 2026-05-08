@@ -607,10 +607,13 @@ export type Database = {
           commission: number | null
           customer_id: number | null
           id: number
+          last_edited_at: string | null
+          last_edited_by: string | null
           notes: string | null
           order_type: string
           payment_date: string | null
           payment_method: string | null
+          payment_registered_by: string | null
           plin_amount: number | null
           sale_date: string
           table_number: number | null
@@ -623,10 +626,13 @@ export type Database = {
           commission?: number | null
           customer_id?: number | null
           id?: number
+          last_edited_at?: string | null
+          last_edited_by?: string | null
           notes?: string | null
           order_type: string
           payment_date?: string | null
           payment_method?: string | null
+          payment_registered_by?: string | null
           plin_amount?: number | null
           sale_date?: string
           table_number?: number | null
@@ -639,10 +645,13 @@ export type Database = {
           commission?: number | null
           customer_id?: number | null
           id?: number
+          last_edited_at?: string | null
+          last_edited_by?: string | null
           notes?: string | null
           order_type?: string
           payment_date?: string | null
           payment_method?: string | null
+          payment_registered_by?: string | null
           plin_amount?: number | null
           sale_date?: string
           table_number?: number | null

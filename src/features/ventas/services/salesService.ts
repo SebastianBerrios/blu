@@ -1,6 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
 import { logAudit } from "@/utils/auditLog";
-import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import { getSaleNumber } from "@/utils/saleNumber";
 import type { SaleSubmitParams } from "../types";
 import { RAPPI_COMMISSION_RATE } from "../constants";
@@ -271,6 +270,8 @@ export async function updateSale(
           ? parseInt(params.tableNumber) || null
           : null,
       notes: params.notes.trim() || null,
+      last_edited_by: params.userId,
+      last_edited_at: new Date().toISOString(),
       ...paymentFields,
     })
     .eq("id", saleId)
@@ -298,12 +299,21 @@ export async function updateSale(
     if (productsError) throw productsError;
   }
 
-  // Re-sync transactions if payment state changed (including Rappi total changes)
+  // Re-sync transactions whenever the sale has an active payment, OR when a
+  // payment is being removed (existingSale had one, new state has none).
+  // replace_sale_transactions is idempotent (revert + insert) so this is safe
+  // and acts as auto-recovery for sales that were left orphaned by a prior
+  // partial failure (payment_method set in DB but no transactions).
   const rappiTotalChanged =
     paymentFields.payment_method === "Rappi" &&
     Math.abs(Number(existingSale.total_price ?? 0) - params.totalPrice) > 0.01;
-  const changed = paymentStateChanged(existingSale, paymentFields) || rappiTotalChanged;
-  if (changed) {
+  const paymentChanged =
+    paymentStateChanged(existingSale, paymentFields) || rappiTotalChanged;
+  const hasActivePayment = paymentFields.payment_method !== null;
+  const paymentRemoved =
+    !hasActivePayment && existingSale.payment_method !== null;
+
+  if (hasActivePayment || paymentRemoved) {
     const saleNumber = await getSaleNumber(saleId);
     await recordSaleTransactions({
       saleId,
@@ -318,24 +328,26 @@ export async function updateSale(
       rappiAccountId: params.rappiAccountId,
     });
 
-    logAudit({
-      userId: params.userId,
-      userName: params.userName,
-      action: "actualizar",
-      targetTable: "sales",
-      targetId: saleId,
-      targetDescription: paymentFields.payment_method
-        ? `Venta #${saleNumber} - ${paymentFields.payment_method} - S/ ${params.totalPrice.toFixed(2)}`
-        : `Venta #${saleNumber} - Pago removido`,
-      details: {
-        transacciones_regeneradas: true,
-        metodo_anterior: existingSale.payment_method,
-        metodo_nuevo: paymentFields.payment_method,
-        cash_amount: paymentFields.cash_amount,
-        plin_amount: paymentFields.plin_amount,
-        cash_received: paymentFields.cash_received,
-      },
-    });
+    if (paymentChanged || paymentRemoved) {
+      logAudit({
+        userId: params.userId,
+        userName: params.userName,
+        action: "actualizar",
+        targetTable: "sales",
+        targetId: saleId,
+        targetDescription: paymentFields.payment_method
+          ? `Venta #${saleNumber} - ${paymentFields.payment_method} - S/ ${params.totalPrice.toFixed(2)}`
+          : `Venta #${saleNumber} - Pago removido`,
+        details: {
+          transacciones_regeneradas: true,
+          metodo_anterior: existingSale.payment_method,
+          metodo_nuevo: paymentFields.payment_method,
+          cash_amount: paymentFields.cash_amount,
+          plin_amount: paymentFields.plin_amount,
+          cash_received: paymentFields.cash_received,
+        },
+      });
+    }
   }
 }
 
@@ -352,24 +364,18 @@ export async function deleteSale(
     .eq("id", saleId)
     .single();
 
-  const { error: reverseInvError } = await supabase.rpc("reverse_inventory_for_sale", {
+  const { error } = await supabase.rpc("delete_sale_atomic", {
     p_sale_id: saleId,
-    p_user_id: userId ?? undefined,
     p_user_name: userName ?? undefined,
   });
-  if (reverseInvError) throw reverseInvError;
+  if (error) throw error;
 
-  const { error: deleteTxError } = await supabase.rpc("delete_sale_transactions", {
-    p_sale_id: saleId,
-  });
-  if (deleteTxError) throw deleteTxError;
-
-  await deleteWithAudit({
-    table: "sales",
-    id: saleId,
+  logAudit({
     userId,
     userName,
-    auditTable: "sales",
-    description: `Venta #${saleNumber} - S/ ${sale?.total_price?.toFixed(2) ?? "?"}`,
+    action: "eliminar",
+    targetTable: "sales",
+    targetId: saleId,
+    targetDescription: `Venta #${saleNumber} - S/ ${sale?.total_price?.toFixed(2) ?? "?"}`,
   });
 }

@@ -5,7 +5,7 @@ import type { PaymentMethod } from "@/types";
 import type { SaleProductLine } from "../types";
 import { RAPPI_COMMISSION_RATE } from "../constants";
 import { buildPaymentAmounts, resolveCashReceived } from "./paymentHelpers";
-import { recordSaleTransactions } from "./salesService";
+import { buildSalePayments } from "./salesService";
 
 export interface RegisterPaymentWithRewardsParams {
   saleId: number;
@@ -40,6 +40,10 @@ export async function registerPaymentWithRewards(
     rappiAccountId,
   } = params;
 
+  if (newTotalPrice <= 0) {
+    throw new Error("El total de la venta debe ser mayor a 0");
+  }
+
   const { cash, plin } = buildPaymentAmounts(
     paymentMethod,
     newTotalPrice,
@@ -48,50 +52,7 @@ export async function registerPaymentWithRewards(
   );
   const cash_received = resolveCashReceived(cash, cashReceived);
 
-  if (newTotalPrice <= 0) {
-    throw new Error("El total de la venta debe ser mayor a 0");
-  }
-
   const supabase = createClient();
-
-  const { data: updatedRows, error: saleError } = await supabase
-    .from("sales")
-    .update({
-      total_price: newTotalPrice,
-      payment_method: paymentMethod,
-      payment_date: new Date().toISOString(),
-      cash_amount: cash,
-      plin_amount: plin,
-      cash_received,
-    })
-    .eq("id", saleId)
-    .select("id");
-
-  if (saleError) throw saleError;
-  if (!updatedRows || updatedRows.length === 0) {
-    throw new Error(
-      "No se pudo registrar el pago. Solo puedes pagar tus propias ventas del día actual.",
-    );
-  }
-
-  await supabase.from("sale_products").delete().eq("sale_id", saleId);
-
-  const { error: productsError } = await supabase
-    .from("sale_products")
-    .insert(
-      saleProducts.map((p) => ({
-        sale_id: saleId,
-        product_id: p.product_id,
-        quantity: p.quantity,
-        unit_price: p.unit_price,
-        temperatura: p.temperatura,
-        tipo_leche: p.tipo_leche,
-        loyalty_reward: p.loyalty_reward ?? null,
-      }))
-    );
-
-  if (productsError) throw productsError;
-
   const saleNumber = await getSaleNumber(saleId);
 
   const commission =
@@ -99,10 +60,7 @@ export async function registerPaymentWithRewards(
       ? Number((newTotalPrice * RAPPI_COMMISSION_RATE).toFixed(2))
       : null;
 
-  // recordSaleTransactions ahora usa replace_sale_transactions (atómica),
-  // que revierte cualquier transacción previa y registra las nuevas.
-  await recordSaleTransactions({
-    saleId,
+  const payments = buildSalePayments({
     saleNumber,
     paymentMethod,
     totalPrice: newTotalPrice,
@@ -113,6 +71,28 @@ export async function registerPaymentWithRewards(
     bancoAccountId,
     rappiAccountId,
   });
+
+  const productsPayload = saleProducts.map((p) => ({
+    product_id: p.product_id,
+    quantity: p.quantity,
+    unit_price: p.unit_price,
+    temperatura: p.temperatura ?? "",
+    tipo_leche: p.tipo_leche ?? "",
+    loyalty_reward: p.loyalty_reward ?? "",
+  }));
+
+  const { error } = await supabase.rpc("register_late_payment", {
+    p_sale_id: saleId,
+    p_total_price: newTotalPrice,
+    p_payment_method: paymentMethod,
+    p_cash_amount: cash,
+    p_plin_amount: plin,
+    p_cash_received: cash_received,
+    p_products: productsPayload,
+    p_payments: payments,
+  });
+
+  if (error) throw error;
 
   logAudit({
     userId,

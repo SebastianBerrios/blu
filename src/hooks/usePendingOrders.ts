@@ -35,6 +35,9 @@ const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
       cash_received,
       table_number,
       user_id,
+      last_edited_by,
+      last_edited_at,
+      payment_registered_by,
       customers (
         dni
       ),
@@ -140,18 +143,11 @@ export const usePendingOrders = () => {
   const markAsDelivered = useCallback(
     async (itemId: number) => {
       const supabase = createClient();
-      const { error: updateError } = await supabase
-        .from("sale_products")
-        .update({ status: "Entregado" })
-        .eq("id", itemId);
-
-      if (updateError) throw updateError;
-
-      await supabase.rpc("deduct_inventory_for_delivery", {
+      const { error } = await supabase.rpc("deliver_sale_product", {
         p_sale_product_id: itemId,
-        p_user_id: user?.id ?? null,
-        p_user_name: profile?.full_name ?? null,
+        p_user_name: profile?.full_name ?? undefined,
       });
+      if (error) throw error;
 
       logAudit({
         userId: user?.id ?? null,
@@ -170,30 +166,11 @@ export const usePendingOrders = () => {
   const markAllAsDelivered = useCallback(
     async (saleId: number) => {
       const supabase = createClient();
-
-      const { data: pendingItems } = await supabase
-        .from("sale_products")
-        .select("id")
-        .eq("sale_id", saleId)
-        .eq("status", "Pendiente");
-
-      const { error: updateError } = await supabase
-        .from("sale_products")
-        .update({ status: "Entregado" })
-        .eq("sale_id", saleId)
-        .eq("status", "Pendiente");
-
-      if (updateError) throw updateError;
-
-      if (pendingItems) {
-        for (const item of pendingItems) {
-          await supabase.rpc("deduct_inventory_for_delivery", {
-            p_sale_product_id: item.id,
-            p_user_id: user?.id ?? null,
-            p_user_name: profile?.full_name ?? null,
-          });
-        }
-      }
+      const { error } = await supabase.rpc("deliver_all_sale_products", {
+        p_sale_id: saleId,
+        p_user_name: profile?.full_name ?? undefined,
+      });
+      if (error) throw error;
 
       const saleNumber = await getSaleNumber(saleId);
 

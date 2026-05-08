@@ -100,6 +100,7 @@ export default function InitialBalanceForm({
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">S/</span>
               <input
                 type="number"
+                min="0"
                 step="0.01"
                 value={cajaBalance}
                 onChange={(e) => setCajaBalance(e.target.value)}
@@ -123,6 +124,7 @@ export default function InitialBalanceForm({
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">S/</span>
               <input
                 type="number"
+                min="0"
                 step="0.01"
                 value={bancoBalance}
                 onChange={(e) => setBancoBalance(e.target.value)}
@@ -146,6 +148,7 @@ export default function InitialBalanceForm({
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">S/</span>
               <input
                 type="number"
+                min="0"
                 step="0.01"
                 value={rappiBalance}
                 onChange={(e) => setRappiBalance(e.target.value)}

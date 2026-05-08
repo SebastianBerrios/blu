@@ -9,17 +9,14 @@ import type { PurchaseItemLine } from "@/types";
 import type { CreatePurchaseParams, UpdatePurchaseParams } from "../types";
 import { createClient } from "@/utils/supabase/client";
 import { getPurchaseNumber } from "@/utils/purchaseNumber";
-import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import { logAudit } from "@/utils/auditLog";
 import { makeMockSupabase } from "@/__tests__/mockSupabase";
 
 vi.mock("@/utils/supabase/client", () => ({ createClient: vi.fn() }));
 vi.mock("@/utils/auditLog", () => ({ logAudit: vi.fn() }));
 vi.mock("@/utils/purchaseNumber", () => ({ getPurchaseNumber: vi.fn() }));
-vi.mock("@/utils/helpers/deleteWithAudit", () => ({ deleteWithAudit: vi.fn() }));
 
 const mockedGetPurchaseNumber = vi.mocked(getPurchaseNumber);
-const mockedDeleteWithAudit = vi.mocked(deleteWithAudit);
 const mockedLogAudit = vi.mocked(logAudit);
 
 function makeCreateParams(
@@ -181,7 +178,7 @@ describe("deletePurchase", () => {
     mockedGetPurchaseNumber.mockResolvedValue(13);
   });
 
-  it("happy path: getPurchaseNumber → select total → RPC → deleteWithAudit", async () => {
+  it("happy path: llama delete_purchase_atomic + audit", async () => {
     const sb = makeMockSupabase({ single: { data: { total: 250.0 }, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
@@ -189,28 +186,28 @@ describe("deletePurchase", () => {
 
     expect(mockedGetPurchaseNumber).toHaveBeenCalledWith(5);
     expect(sb.rpcCalls).toEqual([
-      { fn: "delete_purchase_transactions", params: { p_purchase_id: 5 } },
+      { fn: "delete_purchase_atomic", params: { p_purchase_id: 5 } },
     ]);
-    expect(mockedDeleteWithAudit).toHaveBeenCalledWith({
-      table: "purchases",
-      id: 5,
-      userId: "user-1",
-      userName: "Seba",
-      auditTable: "purchases",
-      description: "Compra #13 - S/ 250.00",
-    });
+    expect(mockedLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "eliminar",
+        targetTable: "purchases",
+        targetId: 5,
+        targetDescription: "Compra #13 - S/ 250.00",
+      }),
+    );
   });
 
-  it("error en delete_purchase_transactions: throws sin llamar deleteWithAudit", async () => {
+  it("error en delete_purchase_atomic: propaga sin loguear audit", async () => {
     const sb = makeMockSupabase();
-    sb.setRpcResult("delete_purchase_transactions", {
+    sb.setRpcResult("delete_purchase_atomic", {
       data: null,
-      error: { message: "fk error" },
+      error: { message: "RLS denied" },
     });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await expect(deletePurchase(7, null, null)).rejects.toBeTruthy();
-    expect(mockedDeleteWithAudit).not.toHaveBeenCalled();
+    expect(mockedLogAudit).not.toHaveBeenCalled();
   });
 });
 
@@ -338,53 +335,55 @@ describe("updatePurchase", () => {
     mockedGetPurchaseNumber.mockResolvedValue(8);
   });
 
-  it("happy path sin Plin change: 1 entrada en payload via replace_purchase_transactions + audit", async () => {
+  function getAtomicParams(rpcCalls: Array<{ fn: string; params: unknown }>) {
+    const call = rpcCalls.find((c) => c.fn === "update_purchase_atomic");
+    return call?.params as Record<string, unknown> | undefined;
+  }
+
+  it("happy path sin Plin change: llama update_purchase_atomic con 1 payment + audit", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await updatePurchase(makeUpdateParams({ total: 25 }));
 
-    const purchaseUpdate = sb.updateCalls.find((c) => c.table === "purchases")!;
-    const payload = purchaseUpdate.payload as Record<string, unknown>;
-    expect(payload.plin_change).toBeNull();
-    expect(payload.total).toBe(25);
-
-    expect(sb.deleteCalls.find((c) => c.table === "purchase_items")).toBeDefined();
-    expect(sb.insertCalls.find((c) => c.table === "purchase_items")).toBeDefined();
-
-    const payments = getReplacePayments(sb.rpcCalls);
-    expect(payments).toEqual([
+    const params = getAtomicParams(sb.rpcCalls);
+    expect(params).toBeDefined();
+    expect(params?.p_total).toBe(25);
+    expect(params?.p_plin_change).toBe(0);
+    expect(params?.p_payments).toEqual([
       expect.objectContaining({
         account_id: 1,
         type: "egreso_compra",
         amount: -25,
       }),
     ]);
+    // No debe hacer las operaciones legacy directas
+    expect(sb.updateCalls.find((c) => c.table === "purchases")).toBeUndefined();
+    expect(sb.deleteCalls.find((c) => c.table === "purchase_items")).toBeUndefined();
+    expect(sb.insertCalls.find((c) => c.table === "purchase_items")).toBeUndefined();
     expect(mockedLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: "actualizar", targetTable: "purchases" }),
     );
   });
 
-  it("con plinChangeAmount nuevo: 2 entradas (caja+banco) y plin_change actualizado en row", async () => {
+  it("con plinChangeAmount nuevo: 2 payments (caja+banco) en RPC", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await updatePurchase(makeUpdateParams({ total: 50, plinChangeAmount: 12 }));
 
-    const purchaseUpdate = sb.updateCalls.find((c) => c.table === "purchases")!;
-    const payload = purchaseUpdate.payload as Record<string, unknown>;
-    expect(payload.plin_change).toBe(12);
-
-    const payments = getReplacePayments(sb.rpcCalls);
+    const params = getAtomicParams(sb.rpcCalls);
+    expect(params?.p_plin_change).toBe(12);
+    const payments = params?.p_payments as Array<Record<string, unknown>>;
     expect(payments).toHaveLength(2);
-    expect(payments![0]).toEqual(
+    expect(payments[0]).toEqual(
       expect.objectContaining({
         account_id: 1,
         type: "egreso_compra",
         amount: -62, // 50 + 12
       }),
     );
-    expect(payments![1]).toEqual(
+    expect(payments[1]).toEqual(
       expect.objectContaining({
         account_id: 2,
         type: "ingreso_extra",
@@ -393,7 +392,7 @@ describe("updatePurchase", () => {
     );
   });
 
-  it("plinChangeAmount > 0 sin cajaAccountId: throws", async () => {
+  it("plinChangeAmount > 0 sin cajaAccountId: throws antes de tocar la DB", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
@@ -402,32 +401,31 @@ describe("updatePurchase", () => {
         makeUpdateParams({ plinChangeAmount: 10, cajaAccountId: null }),
       ),
     ).rejects.toThrow("No se encontró la cuenta Caja");
+    expect(sb.rpcCalls).toEqual([]);
   });
 
-  it("error en RPC replace_purchase_transactions: propaga", async () => {
+  it("error en RPC update_purchase_atomic: propaga", async () => {
     const sb = makeMockSupabase();
-    sb.setRpcResult("replace_purchase_transactions", {
+    sb.setRpcResult("update_purchase_atomic", {
       data: null,
       error: { message: "denied" },
     });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await expect(updatePurchase(makeUpdateParams())).rejects.toBeTruthy();
+    expect(mockedLogAudit).not.toHaveBeenCalled();
   });
 
-  it("RLS rechaza update silenciosamente (0 filas): throws con mensaje claro y NO toca purchase_items ni transacciones", async () => {
+  it("hasDelivery=true: pasa delivery_cost al RPC", async () => {
     const sb = makeMockSupabase();
-    sb.setUpdateSelectResult("purchases", { data: [], error: null });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
-    await expect(updatePurchase(makeUpdateParams())).rejects.toThrow(
-      /Solo puedes editar tus propias compras del día actual/,
+    await updatePurchase(
+      makeUpdateParams({ hasDelivery: true, deliveryCost: 7.5 }),
     );
 
-    expect(sb.deleteCalls.find((c) => c.table === "purchase_items")).toBeUndefined();
-    expect(sb.insertCalls.find((c) => c.table === "purchase_items")).toBeUndefined();
-    expect(
-      sb.rpcCalls.find((c) => c.fn === "replace_purchase_transactions"),
-    ).toBeUndefined();
+    const params = getAtomicParams(sb.rpcCalls);
+    expect(params?.p_has_delivery).toBe(true);
+    expect(params?.p_delivery_cost).toBe(7.5);
   });
 });

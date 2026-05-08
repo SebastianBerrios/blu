@@ -1,6 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
 import { logAudit } from "@/utils/auditLog";
-import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import { getPurchaseNumber } from "@/utils/purchaseNumber";
 import type { PurchaseItemLine } from "@/types";
 import type { CreatePurchaseParams, UpdatePurchaseParams } from "../types";
@@ -90,36 +89,14 @@ export async function createPurchase(params: CreatePurchaseParams): Promise<void
 
   const purchaseNumber = await getPurchaseNumber(newPurchase.id);
 
-  const payments: Array<{
-    account_id: number;
-    type: string;
-    amount: number;
-    description: string;
-  }> = [];
-
-  if (params.plinChangeAmount > 0) {
-    if (!params.cajaAccountId) throw new Error("No se encontró la cuenta Caja");
-    if (!params.bancoAccountId) throw new Error("No se encontró la cuenta Bancaria");
-    payments.push({
-      account_id: params.cajaAccountId,
-      type: "egreso_compra",
-      amount: -(params.total + params.plinChangeAmount),
-      description: `Compra #${purchaseNumber} (incluye vuelto Plin S/ ${params.plinChangeAmount.toFixed(2)})`,
-    });
-    payments.push({
-      account_id: params.bancoAccountId,
-      type: "ingreso_extra",
-      amount: params.plinChangeAmount,
-      description: `Vuelto Plin - Compra #${purchaseNumber}`,
-    });
-  } else {
-    payments.push({
-      account_id: params.selectedAccountId,
-      type: "egreso_compra",
-      amount: -params.total,
-      description: `Compra #${purchaseNumber}`,
-    });
-  }
+  const payments = buildPurchasePayments({
+    purchaseNumber,
+    total: params.total,
+    plinChangeAmount: params.plinChangeAmount,
+    selectedAccountId: params.selectedAccountId,
+    cajaAccountId: params.cajaAccountId,
+    bancoAccountId: params.bancoAccountId,
+  });
 
   const { error: replaceError } = await supabase.rpc("replace_purchase_transactions", {
     p_purchase_id: newPurchase.id,
@@ -154,55 +131,29 @@ export async function deletePurchase(
     .eq("id", purchaseId)
     .single();
 
-  const { error: deleteTxError } = await supabase.rpc("delete_purchase_transactions", {
+  const { error } = await supabase.rpc("delete_purchase_atomic", {
     p_purchase_id: purchaseId,
   });
-  if (deleteTxError) throw deleteTxError;
+  if (error) throw error;
 
-  await deleteWithAudit({
-    table: "purchases",
-    id: purchaseId,
+  logAudit({
     userId,
     userName,
-    auditTable: "purchases",
-    description: `Compra #${purchaseNumber} - S/ ${purchase?.total?.toFixed(2) ?? "?"}`,
+    action: "eliminar",
+    targetTable: "purchases",
+    targetId: purchaseId,
+    targetDescription: `Compra #${purchaseNumber} - S/ ${purchase?.total?.toFixed(2) ?? "?"}`,
   });
 }
 
-export async function updatePurchase(params: UpdatePurchaseParams): Promise<void> {
-  const supabase = createClient();
-  const plinChangeAmount = params.plinChangeAmount;
-
-  const purchaseNumber = await getPurchaseNumber(params.purchaseId);
-
-  const purchaseData = {
-    has_delivery: params.hasDelivery,
-    delivery_cost: params.hasDelivery ? params.deliveryCost : null,
-    total: params.total,
-    notes: params.notes.trim() || null,
-    account_id: params.selectedAccountId,
-    plin_change: plinChangeAmount > 0 ? plinChangeAmount : null,
-  };
-
-  const { data: updatedRows, error } = await supabase
-    .from("purchases")
-    .update(purchaseData)
-    .eq("id", params.purchaseId)
-    .select("id");
-  if (error) throw error;
-  if (!updatedRows || updatedRows.length === 0) {
-    throw new Error(
-      "No se pudo actualizar la compra. Solo puedes editar tus propias compras del día actual.",
-    );
-  }
-
-  await supabase.from("purchase_items").delete().eq("purchase_id", params.purchaseId);
-
-  const { error: itemsError } = await supabase
-    .from("purchase_items")
-    .insert(buildPurchaseItems(params.purchaseId, params.items));
-  if (itemsError) throw itemsError;
-
+function buildPurchasePayments(params: {
+  purchaseNumber: number;
+  total: number;
+  plinChangeAmount: number;
+  selectedAccountId: number;
+  cajaAccountId: number | null;
+  bancoAccountId: number | null;
+}) {
   const payments: Array<{
     account_id: number;
     type: string;
@@ -210,35 +161,65 @@ export async function updatePurchase(params: UpdatePurchaseParams): Promise<void
     description: string;
   }> = [];
 
-  if (plinChangeAmount > 0) {
+  if (params.plinChangeAmount > 0) {
     if (!params.cajaAccountId) throw new Error("No se encontró la cuenta Caja");
     if (!params.bancoAccountId) throw new Error("No se encontró la cuenta Bancaria");
+    const totalEntregado = params.total + params.plinChangeAmount;
     payments.push({
       account_id: params.cajaAccountId,
       type: "egreso_compra",
-      amount: -(params.total + plinChangeAmount),
-      description: `Compra #${purchaseNumber} (incluye vuelto Plin S/ ${plinChangeAmount.toFixed(2)})`,
+      amount: -totalEntregado,
+      description: `Compra #${params.purchaseNumber} - S/ ${params.total.toFixed(2)} (entregado S/ ${totalEntregado.toFixed(2)}, vuelto Plin S/ ${params.plinChangeAmount.toFixed(2)})`,
     });
     payments.push({
       account_id: params.bancoAccountId,
       type: "ingreso_extra",
-      amount: plinChangeAmount,
-      description: `Vuelto Plin - Compra #${purchaseNumber}`,
+      amount: params.plinChangeAmount,
+      description: `Vuelto Plin recibido - Compra #${params.purchaseNumber}`,
     });
   } else {
     payments.push({
       account_id: params.selectedAccountId,
       type: "egreso_compra",
       amount: -params.total,
-      description: `Compra #${purchaseNumber}`,
+      description: `Compra #${params.purchaseNumber}`,
     });
   }
 
-  const { error: replaceError } = await supabase.rpc("replace_purchase_transactions", {
+  return payments;
+}
+
+export async function updatePurchase(params: UpdatePurchaseParams): Promise<void> {
+  const supabase = createClient();
+  const purchaseNumber = await getPurchaseNumber(params.purchaseId);
+
+  const payments = buildPurchasePayments({
+    purchaseNumber,
+    total: params.total,
+    plinChangeAmount: params.plinChangeAmount,
+    selectedAccountId: params.selectedAccountId,
+    cajaAccountId: params.cajaAccountId,
+    bancoAccountId: params.bancoAccountId,
+  });
+
+  const itemsPayload = params.items.map((i) => ({
+    item_name: i.item_name,
+    ingredient_id: i.ingredient_id == null ? "" : String(i.ingredient_id),
+    price: i.price,
+  }));
+
+  const { error } = await supabase.rpc("update_purchase_atomic", {
     p_purchase_id: params.purchaseId,
+    p_total: params.total,
+    p_has_delivery: params.hasDelivery,
+    p_delivery_cost: params.hasDelivery ? params.deliveryCost : null,
+    p_notes: params.notes,
+    p_account_id: params.selectedAccountId,
+    p_plin_change: params.plinChangeAmount,
+    p_items: itemsPayload,
     p_payments: payments,
   });
-  if (replaceError) throw replaceError;
+  if (error) throw error;
 
   logAudit({
     userId: params.userId,
@@ -250,7 +231,7 @@ export async function updatePurchase(params: UpdatePurchaseParams): Promise<void
     details: {
       transacciones_regeneradas: true,
       total: params.total,
-      vuelto_plin: plinChangeAmount,
+      vuelto_plin: params.plinChangeAmount,
     },
   });
 }

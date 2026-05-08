@@ -7,7 +7,6 @@ import {
 } from "./salesService";
 import { createClient } from "@/utils/supabase/client";
 import { getSaleNumber } from "@/utils/saleNumber";
-import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import { logAudit } from "@/utils/auditLog";
 import { makeMockSupabase } from "@/__tests__/mockSupabase";
 import type { SaleSubmitParams } from "../types";
@@ -15,10 +14,8 @@ import type { SaleSubmitParams } from "../types";
 vi.mock("@/utils/supabase/client", () => ({ createClient: vi.fn() }));
 vi.mock("@/utils/auditLog", () => ({ logAudit: vi.fn() }));
 vi.mock("@/utils/saleNumber", () => ({ getSaleNumber: vi.fn() }));
-vi.mock("@/utils/helpers/deleteWithAudit", () => ({ deleteWithAudit: vi.fn() }));
 
 const mockedGetSaleNumber = vi.mocked(getSaleNumber);
-const mockedDeleteWithAudit = vi.mocked(deleteWithAudit);
 const mockedLogAudit = vi.mocked(logAudit);
 
 function makeSubmitParams(overrides: Partial<SaleSubmitParams> = {}): SaleSubmitParams {
@@ -202,7 +199,7 @@ describe("deleteSale", () => {
     mockedGetSaleNumber.mockResolvedValue(42);
   });
 
-  it("happy path: getSaleNumber → select total → 2 RPCs → deleteWithAudit", async () => {
+  it("happy path: llama delete_sale_atomic atómico + audit log", async () => {
     const sb = makeMockSupabase({
       single: { data: { total_price: 75.5 }, error: null },
     });
@@ -214,48 +211,31 @@ describe("deleteSale", () => {
     expect(sb.from).toHaveBeenCalledWith("sales");
     expect(sb.rpcCalls).toEqual([
       {
-        fn: "reverse_inventory_for_sale",
-        params: { p_sale_id: 7, p_user_id: "user-1", p_user_name: "Seba" },
+        fn: "delete_sale_atomic",
+        params: { p_sale_id: 7, p_user_name: "Seba" },
       },
-      { fn: "delete_sale_transactions", params: { p_sale_id: 7 } },
     ]);
-    expect(mockedDeleteWithAudit).toHaveBeenCalledWith({
-      table: "sales",
-      id: 7,
-      userId: "user-1",
-      userName: "Seba",
-      auditTable: "sales",
-      description: "Venta #42 - S/ 75.50",
-    });
+    expect(mockedLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "eliminar",
+        targetTable: "sales",
+        targetId: 7,
+        targetDescription: "Venta #42 - S/ 75.50",
+      }),
+    );
   });
 
-  it("error en reverse_inventory_for_sale: throws sin llamar delete_sale_transactions", async () => {
+  it("error en delete_sale_atomic: propaga sin loguear audit", async () => {
     const sb = makeMockSupabase();
-    sb.setRpcResult("reverse_inventory_for_sale", {
+    sb.setRpcResult("delete_sale_atomic", {
       data: null,
-      error: { message: "stock corrupt" },
+      error: { message: "RLS denied" },
     });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await expect(deleteSale(1, null, null)).rejects.toBeTruthy();
-    expect(sb.rpcCalls.map((c) => c.fn)).toEqual(["reverse_inventory_for_sale"]);
-    expect(mockedDeleteWithAudit).not.toHaveBeenCalled();
-  });
-
-  it("error en delete_sale_transactions: throws sin llamar deleteWithAudit", async () => {
-    const sb = makeMockSupabase();
-    sb.setRpcResult("delete_sale_transactions", {
-      data: null,
-      error: { message: "fk violation" },
-    });
-    vi.mocked(createClient).mockReturnValue(sb.client as never);
-
-    await expect(deleteSale(2, null, null)).rejects.toBeTruthy();
-    expect(sb.rpcCalls.map((c) => c.fn)).toEqual([
-      "reverse_inventory_for_sale",
-      "delete_sale_transactions",
-    ]);
-    expect(mockedDeleteWithAudit).not.toHaveBeenCalled();
+    expect(sb.rpcCalls.map((c) => c.fn)).toEqual(["delete_sale_atomic"]);
+    expect(mockedLogAudit).not.toHaveBeenCalled();
   });
 
   it('formatea total como "?" cuando no hay total_price', async () => {
@@ -264,8 +244,8 @@ describe("deleteSale", () => {
 
     await deleteSale(8, null, null);
 
-    expect(mockedDeleteWithAudit).toHaveBeenCalledWith(
-      expect.objectContaining({ description: "Venta #42 - S/ ?" }),
+    expect(mockedLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ targetDescription: "Venta #42 - S/ ?" }),
     );
   });
 });
@@ -626,7 +606,7 @@ describe("updateSale", () => {
     expect(sb.insertCalls.find((c) => c.table === "sale_products")).toBeUndefined();
   });
 
-  it("sin cambio de payment ni Rappi total: NO llama replace_sale_transactions", async () => {
+  it("sin cambio de payment: SIEMPRE re-sync transacciones (idempotente, recupera ventas huérfanas)", async () => {
     const sb = makeUpdateMock({
       payment_method: "Efectivo",
       cash_amount: 12,
@@ -634,7 +614,20 @@ describe("updateSale", () => {
       total_price: 12,
     });
     await updateSale(99, makeSubmitParams({ totalPrice: 12, cashReceived: "12" }));
-    expect(findReplaceCall(sb.rpcCalls)).toBeUndefined();
+    // El flujo nuevo siempre llama replace_sale_transactions cuando hay
+    // payment_method activo (la RPC es idempotente). Esto recupera ventas
+    // huérfanas del bug de atomicidad anterior.
+    const payments = getReplacePayments(sb.rpcCalls);
+    expect(payments).toEqual([
+      expect.objectContaining({ account_id: 1, amount: 12 }),
+    ]);
+    // Pero NO loguea audit "actualizar" porque el estado de pago no cambió.
+    const auditUpdateCall = mockedLogAudit.mock.calls.find(
+      ([call]) =>
+        (call as { action?: string; targetTable?: string }).action === "actualizar"
+        && (call as { targetTable?: string }).targetTable === "sales",
+    );
+    expect(auditUpdateCall).toBeUndefined();
   });
 
   it("cambio payment_method (Efectivo → Plin): regenera transacciones via replace + audit con metodos", async () => {

@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp, SquarePen, Trash2, Banknote } from "lucide-reac
 import type { SaleWithProducts } from "@/types";
 import { formatTime } from "@/utils/helpers/dateFormatters";
 import { getSaleCommission, getSaleNet } from "@/features/ventas/utils/saleAmounts";
-import { canEditFinancialRecord } from "@/utils/permissions/financialRecord";
+import { canEditSale } from "@/utils/permissions/financialRecord";
 
 const ORDER_TYPE_BADGE: Record<string, string> = {
   Mesa: "bg-blue-100 text-blue-700",
@@ -27,7 +27,6 @@ export default function SaleCard({
   sale,
   isExpanded,
   isAdmin,
-  currentUserId,
   onToggle,
   onEdit,
   onDelete,
@@ -38,12 +37,19 @@ export default function SaleCard({
   const commissionAmount = getSaleCommission(sale);
   const netAmount = getSaleNet(sale);
   const hasCommission = commissionAmount > 0;
-  const canEdit = canEditFinancialRecord({
+  const canEdit = canEditSale({
     isAdmin,
-    recordUserId: sale.user_id,
     recordDateISO: sale.sale_date,
-    currentUserId,
   });
+  const editorName =
+    sale.last_editor_name && sale.last_edited_by !== sale.user_id
+      ? sale.last_editor_name
+      : null;
+  const registrarName =
+    sale.payment_registrar_name &&
+    sale.payment_registered_by !== sale.user_id
+      ? sale.payment_registrar_name
+      : null;
 
   return (
     <div
@@ -91,6 +97,12 @@ export default function SaleCard({
               <span className="text-xs text-slate-400">
                 por {sale.creator_name}
               </span>
+              {editorName && sale.last_edited_at && (
+                <span className="text-xs text-slate-400">
+                  {" · editado por "}
+                  {editorName} ({formatTime(sale.last_edited_at)})
+                </span>
+              )}
             </div>
           )}
           <div className="flex items-center justify-between mt-1 md:hidden">
@@ -289,6 +301,11 @@ export default function SaleCard({
                 {sale.payment_date && (
                   <span className="text-slate-400 text-xs">
                     {formatTime(sale.payment_date)}
+                  </span>
+                )}
+                {registrarName && (
+                  <span className="text-slate-400 text-xs">
+                    · registrado por {registrarName}
                   </span>
                 )}
               </div>

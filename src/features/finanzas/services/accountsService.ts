@@ -30,6 +30,12 @@ export async function setInitialBalances(params: SetInitialBalancesParams): Prom
   }
 
   for (const u of updates) {
+    if (!Number.isFinite(u.balance) || u.balance < 0) {
+      throw new Error(`El saldo de ${u.label} debe ser un número mayor o igual a 0`);
+    }
+  }
+
+  for (const u of updates) {
     const { error } = await supabase.rpc("adjust_account_balance", {
       p_account_id: u.id,
       p_new_balance: u.balance,

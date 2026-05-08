@@ -28,10 +28,19 @@ const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
       cash_received,
       table_number,
       user_id,
+      last_edited_by,
+      last_edited_at,
+      payment_registered_by,
       customers (
         dni
       ),
-      user_profiles (
+      creator:user_profiles!sales_user_id_fkey (
+        full_name
+      ),
+      last_editor:user_profiles!sales_last_edited_by_fkey (
+        full_name
+      ),
+      payment_registrar:user_profiles!sales_payment_registered_by_fkey (
         full_name
       ),
       sale_products (
@@ -64,7 +73,9 @@ const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
   return (data || []).map((sale) => ({
     ...sale,
     customer_dni: (sale.customers as unknown as { dni: number | null } | null)?.dni ?? null,
-    creator_name: (sale.user_profiles as unknown as { full_name: string | null } | null)?.full_name ?? null,
+    creator_name: (sale.creator as unknown as { full_name: string | null } | null)?.full_name ?? null,
+    last_editor_name: (sale.last_editor as unknown as { full_name: string | null } | null)?.full_name ?? null,
+    payment_registrar_name: (sale.payment_registrar as unknown as { full_name: string | null } | null)?.full_name ?? null,
     sale_products: (
       sale.sale_products as unknown as Array<{
         id: number;

@@ -45,14 +45,13 @@ function makeParams(
   };
 }
 
-function findReplaceCall(rpcCalls: Array<{ fn: string; params: unknown }>) {
-  return rpcCalls.find((c) => c.fn === "replace_sale_transactions");
+function findRegisterCall(rpcCalls: Array<{ fn: string; params: unknown }>) {
+  return rpcCalls.find((c) => c.fn === "register_late_payment");
 }
 
-function getReplacePayments(rpcCalls: Array<{ fn: string; params: unknown }>) {
-  const call = findReplaceCall(rpcCalls);
-  if (!call) return null;
-  return (call.params as { p_payments: Array<Record<string, unknown>> }).p_payments;
+function getRegisterParams(rpcCalls: Array<{ fn: string; params: unknown }>) {
+  const call = findRegisterCall(rpcCalls);
+  return call?.params as Record<string, unknown> | undefined;
 }
 
 describe("registerPaymentWithRewards", () => {
@@ -61,50 +60,43 @@ describe("registerPaymentWithRewards", () => {
     mockedGetSaleNumber.mockResolvedValue(77);
   });
 
-  it("rechaza newTotalPrice <= 0", async () => {
+  it("rechaza newTotalPrice <= 0 antes de tocar la DB", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await expect(
       registerPaymentWithRewards(makeParams({ newTotalPrice: 0 })),
     ).rejects.toThrow("El total de la venta debe ser mayor a 0");
-    expect(sb.updateCalls).toEqual([]);
+    expect(sb.rpcCalls).toEqual([]);
   });
 
-  it("happy path Efectivo: update sales, delete sale_products, insert, replace_sale_transactions atómico + audit", async () => {
+  it("happy path Efectivo: llama register_late_payment atómico con products + payments + audit", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await registerPaymentWithRewards(makeParams());
 
-    // update sales
-    const salesUpdate = sb.updateCalls.find((c) => c.table === "sales")!;
-    const payload = salesUpdate.payload as Record<string, unknown>;
-    expect(payload.payment_method).toBe("Efectivo");
-    expect(payload.cash_amount).toBe(12);
-    expect(payload.plin_amount).toBeNull();
-    expect(payload.cash_received).toBe(12);
+    const params = getRegisterParams(sb.rpcCalls);
+    expect(params).toBeDefined();
+    expect(params?.p_sale_id).toBe(99);
+    expect(params?.p_total_price).toBe(12);
+    expect(params?.p_payment_method).toBe("Efectivo");
+    expect(params?.p_cash_amount).toBe(12);
+    expect(params?.p_plin_amount).toBeNull();
+    expect(params?.p_cash_received).toBe(12);
 
-    // delete sale_products
-    expect(sb.deleteCalls.find((c) => c.table === "sale_products")).toBeDefined();
-
-    // insert sale_products
-    const productsInsert = sb.insertCalls.find((c) => c.table === "sale_products")!;
-    expect((productsInsert.payload as unknown[]).length).toBe(1);
-
-    // replace_sale_transactions con caja
-    const payments = getReplacePayments(sb.rpcCalls);
-    expect(payments).toEqual([
-      expect.objectContaining({ account_id: 1, amount: 12 }),
+    const products = params?.p_products as unknown[];
+    expect(products).toHaveLength(1);
+    expect(params?.p_payments).toEqual([
+      expect.objectContaining({ account_id: 1, amount: 12, type: "ingreso_venta" }),
     ]);
 
-    // audit final
     expect(mockedLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: "crear_transaccion" }),
     );
   });
 
-  it("split Efectivo + Plin con sumas válidas: parsea cash y plin correctos", async () => {
+  it("split Efectivo + Plin con sumas válidas: pasa cash y plin al RPC", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
@@ -118,15 +110,11 @@ describe("registerPaymentWithRewards", () => {
       }),
     );
 
-    const salesUpdate = sb.updateCalls.find((c) => c.table === "sales")!;
-    const payload = salesUpdate.payload as Record<string, unknown>;
-    expect(payload.cash_amount).toBe(60);
-    expect(payload.plin_amount).toBe(40);
-    expect(payload.cash_received).toBe(70);
-
-    const payments = getReplacePayments(sb.rpcCalls);
-    expect(payments).toHaveLength(2);
-    expect(payments).toEqual([
+    const params = getRegisterParams(sb.rpcCalls);
+    expect(params?.p_cash_amount).toBe(60);
+    expect(params?.p_plin_amount).toBe(40);
+    expect(params?.p_cash_received).toBe(70);
+    expect(params?.p_payments).toEqual([
       expect.objectContaining({ account_id: 1, amount: 60 }),
       expect.objectContaining({ account_id: 2, amount: 40 }),
     ]);
@@ -148,21 +136,20 @@ describe("registerPaymentWithRewards", () => {
       ),
     ).rejects.toThrow();
 
-    expect(sb.updateCalls).toHaveLength(0);
-    expect(findReplaceCall(sb.rpcCalls)).toBeUndefined();
+    expect(sb.rpcCalls).toEqual([]);
   });
 
-  it("error en update sales: propaga sin delete sale_products", async () => {
+  it("error del RPC: propaga", async () => {
     const sb = makeMockSupabase({
-      eqTerminal: { error: { message: "RLS denied" } },
+      rpc: { error: { message: "RLS denied" } },
     });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await expect(registerPaymentWithRewards(makeParams())).rejects.toBeTruthy();
-    expect(sb.deleteCalls.find((c) => c.table === "sale_products")).toBeUndefined();
+    expect(mockedLogAudit).not.toHaveBeenCalled();
   });
 
-  it("Rappi: calcula commission y registra net en cuenta Rappi via replace_sale_transactions", async () => {
+  it("Rappi: calcula commission y registra net en cuenta Rappi", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
@@ -176,8 +163,8 @@ describe("registerPaymentWithRewards", () => {
       }),
     );
 
-    const payments = getReplacePayments(sb.rpcCalls);
-    expect(payments).toEqual([
+    const params = getRegisterParams(sb.rpcCalls);
+    expect(params?.p_payments).toEqual([
       expect.objectContaining({
         account_id: 3,
         type: "ingreso_venta",
@@ -205,30 +192,21 @@ describe("registerPaymentWithRewards", () => {
     ).rejects.toThrow("No se encontró la cuenta Rappi");
   });
 
-  it("siempre llama replace_sale_transactions (atómica: revierte previas + inserta nuevas)", async () => {
+  it("siempre llama register_late_payment exactamente una vez (atómico)", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await registerPaymentWithRewards(makeParams({ paymentMethod: "Plin" }));
 
-    expect(findReplaceCall(sb.rpcCalls)).toBeDefined();
-  });
-
-  it("RLS rechaza update silenciosamente (0 filas): throws con mensaje claro y NO toca sale_products ni transacciones", async () => {
-    const sb = makeMockSupabase();
-    sb.setUpdateSelectResult("sales", { data: [], error: null });
-    vi.mocked(createClient).mockReturnValue(sb.client as never);
-
-    await expect(registerPaymentWithRewards(makeParams())).rejects.toThrow(
-      /Solo puedes pagar tus propias ventas del día actual/,
-    );
-
+    const calls = sb.rpcCalls.filter((c) => c.fn === "register_late_payment");
+    expect(calls).toHaveLength(1);
+    // No debe hacer las operaciones legacy directas (UPDATE/DELETE/INSERT a sales/sale_products)
+    expect(sb.updateCalls.find((c) => c.table === "sales")).toBeUndefined();
     expect(sb.deleteCalls.find((c) => c.table === "sale_products")).toBeUndefined();
     expect(sb.insertCalls.find((c) => c.table === "sale_products")).toBeUndefined();
-    expect(findReplaceCall(sb.rpcCalls)).toBeUndefined();
   });
 
-  it("preserva loyalty_reward al re-insertar sale_products", async () => {
+  it("preserva loyalty_reward en p_products", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
@@ -250,8 +228,8 @@ describe("registerPaymentWithRewards", () => {
       }),
     );
 
-    const productsInsert = sb.insertCalls.find((c) => c.table === "sale_products")!;
-    const rows = productsInsert.payload as Array<{ loyalty_reward: string | null }>;
-    expect(rows[0].loyalty_reward).toBe("50_postre");
+    const params = getRegisterParams(sb.rpcCalls);
+    const products = params?.p_products as Array<{ loyalty_reward: string }>;
+    expect(products[0].loyalty_reward).toBe("50_postre");
   });
 });
