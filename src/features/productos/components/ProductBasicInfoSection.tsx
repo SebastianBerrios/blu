@@ -27,7 +27,7 @@ export default function ProductBasicInfoSection({
             maxLength: { value: 50, message: "Máximo 50 caracteres" },
           })}
           disabled={isSubmitting}
-          className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+          className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none capitalize"
           placeholder="Ej: Cheesecake de Fresa"
         />
       </div>
@@ -42,7 +42,7 @@ export default function ProductBasicInfoSection({
           })}
           defaultValue=""
           disabled={isSubmitting}
-          className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white"
+          className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white capitalize"
         >
           <option value="">Seleccionar</option>
           {categories.map((category) => (

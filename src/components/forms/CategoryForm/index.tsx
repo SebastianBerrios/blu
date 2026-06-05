@@ -114,7 +114,7 @@ export default function CategoryForm({
                 maxLength: { value: 50, message: "Máximo 50 caracteres" },
               })}
               disabled={isSubmitting}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100 capitalize"
               placeholder="Ej: Cafes"
             />
           </div>
