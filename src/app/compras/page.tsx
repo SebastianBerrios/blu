@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, X } from "lucide-react";
 import { toast } from "sonner";
 import { usePurchases, groupPurchasesByDate } from "@/hooks/usePurchases";
 import { useIngredients } from "@/hooks/useIngredients";
@@ -18,7 +18,12 @@ import FAB from "@/components/ui/FAB";
 import EmptyState from "@/components/ui/EmptyState";
 
 export default function Compras() {
-  const { purchases, error, isLoading, mutate } = usePurchases();
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const { purchases, error, isLoading, mutate } = usePurchases({
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
+  });
   const { ingredients } = useIngredients();
   const { isAdmin, user, profile } = useAuth();
   const confirm = useConfirm();
@@ -81,6 +86,13 @@ export default function Compras() {
     });
   };
 
+  const hasFilters = !!(startDate || endDate);
+
+  const clearFilters = () => {
+    setStartDate("");
+    setEndDate("");
+  };
+
   return (
     <>
       <section className="h-full flex flex-col bg-slate-50">
@@ -96,6 +108,39 @@ export default function Compras() {
         />
 
         <div className="flex-1 px-4 py-4 md:px-6 md:py-6 overflow-auto">
+          <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-4 mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-900">Filtrar por fecha</h3>
+              {hasFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                  Limpiar
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input
+                type="date"
+                value={startDate}
+                max={endDate || undefined}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                aria-label="Desde"
+              />
+              <input
+                type="date"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                aria-label="Hasta"
+              />
+            </div>
+          </div>
+
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-700">Error al cargar las compras: {error.message}</p>

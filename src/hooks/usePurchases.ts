@@ -2,14 +2,20 @@ import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { groupByDate } from "@/utils/helpers/groupByDate";
-import type { PurchaseWithItems, PurchasesGroupedByDate } from "@/types";
+import { limaDayRangeISO } from "@/utils/helpers/dateFormatters";
+import type {
+  PurchaseWithItems,
+  PurchasesGroupedByDate,
+  PurchasesFilters,
+} from "@/types";
 
 const fetchPurchases = async (
-  isAdmin: boolean
+  isAdmin: boolean,
+  filters: PurchasesFilters = {}
 ): Promise<PurchaseWithItems[]> => {
   const supabase = createClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("purchases")
     .select(
       `
@@ -37,8 +43,16 @@ const fetchPurchases = async (
         price
       )
     `
-    )
-    .order("created_at", { ascending: false });
+    );
+
+  if (filters.startDate) {
+    query = query.gte("created_at", limaDayRangeISO(filters.startDate).start);
+  }
+  if (filters.endDate) {
+    query = query.lte("created_at", limaDayRangeISO(filters.endDate).end);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) {
     console.error("Error fetching purchases:", error);
@@ -80,12 +94,12 @@ export function groupPurchasesByDate(
   }));
 }
 
-export const usePurchases = () => {
+export const usePurchases = (filters: PurchasesFilters = {}) => {
   const { isAdmin, isLoading: authLoading } = useAuth();
 
   const { data, error, isLoading, mutate } = useSWR<PurchaseWithItems[]>(
-    authLoading ? null : ["purchases", isAdmin],
-    () => fetchPurchases(isAdmin),
+    authLoading ? null : ["purchases", isAdmin, filters],
+    () => fetchPurchases(isAdmin, filters),
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, X } from "lucide-react";
 import { toast } from "sonner";
 import { useSales, groupSalesByDate } from "@/hooks/useSales";
 import { useProducts } from "@/hooks/useProducts";
@@ -22,7 +22,13 @@ import EmptyState from "@/components/ui/EmptyState";
 export default function Sales() {
   const { isAdmin, user, profile } = useAuth();
   const confirm = useConfirm();
-  const { sales, error, isLoading, mutate } = useSales({ todayOnly: !isAdmin });
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const { sales, error, isLoading, mutate } = useSales({
+    todayOnly: !isAdmin,
+    startDate: isAdmin ? startDate || undefined : undefined,
+    endDate: isAdmin ? endDate || undefined : undefined,
+  });
   const { products } = useProducts();
   const { categories } = useCategories();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -88,6 +94,13 @@ export default function Sales() {
     });
   };
 
+  const hasFilters = !!(startDate || endDate);
+
+  const clearFilters = () => {
+    setStartDate("");
+    setEndDate("");
+  };
+
   return (
     <>
       <section className="h-full flex flex-col bg-slate-50">
@@ -103,6 +116,41 @@ export default function Sales() {
         />
 
         <div className="flex-1 px-4 py-4 md:px-6 md:py-6 overflow-auto">
+          {isAdmin && (
+            <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-4 mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-slate-900">Filtrar por fecha</h3>
+                {hasFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                    Limpiar
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  type="date"
+                  value={startDate}
+                  max={endDate || undefined}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                  aria-label="Desde"
+                />
+                <input
+                  type="date"
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                  aria-label="Hasta"
+                />
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-700">

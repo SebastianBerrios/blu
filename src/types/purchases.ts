@@ -29,3 +29,8 @@ export interface PurchaseItemLine {
   ingredient_id: number | null;
   price: number;
 }
+
+export interface PurchasesFilters {
+  startDate?: string;
+  endDate?: string;
+}
