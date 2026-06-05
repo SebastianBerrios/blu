@@ -528,6 +528,7 @@ export type Database = {
           id: number
           manufacturing_cost: number
           name: string
+          preparation_steps: string | null
           quantity: number
           unit_of_measure: string
         }
@@ -536,6 +537,7 @@ export type Database = {
           id?: never
           manufacturing_cost: number
           name: string
+          preparation_steps?: string | null
           quantity: number
           unit_of_measure: string
         }
@@ -544,6 +546,7 @@ export type Database = {
           id?: never
           manufacturing_cost?: number
           name?: string
+          preparation_steps?: string | null
           quantity?: number
           unit_of_measure?: string
         }

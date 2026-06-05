@@ -79,6 +79,7 @@ export default function RecipeForm({
         reset({
           name: recipe.name,
           description: recipe.description,
+          preparation_steps: recipe.preparation_steps ?? "",
           quantity: recipe.quantity,
           unit_of_measure: recipe.unit_of_measure,
           manufacturing_cost: recipe.manufacturing_cost,
@@ -86,7 +87,8 @@ export default function RecipeForm({
       } else {
         reset({
           name: "",
-          description: hidePrice ? "-" : "",
+          description: "",
+          preparation_steps: "",
           quantity: hidePrice ? 1 : 0,
           unit_of_measure: hidePrice ? "und" : "",
           manufacturing_cost: 0,
@@ -227,8 +229,8 @@ export default function RecipeForm({
           <RecipeMetadataSection
             register={register}
             isSubmitting={isSubmitting}
-            readOnlyMeta={effectiveReadOnlyMeta}
-            hidePrice={hidePrice}
+            nameReadOnly={effectiveReadOnlyMeta}
+            fieldsReadOnly={viewOnly}
           />
 
           {/* Ingredients section */}

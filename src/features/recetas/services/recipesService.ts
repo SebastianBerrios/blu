@@ -24,7 +24,11 @@ export async function updateRecipeIngredientsOnly(
 
   const { error: recipeError } = await supabase
     .from("recipes")
-    .update({ manufacturing_cost: Number(formData.manufacturing_cost) })
+    .update({
+      description: formData.description,
+      preparation_steps: formData.preparation_steps || null,
+      manufacturing_cost: Number(formData.manufacturing_cost),
+    })
     .eq("id", recipe.id);
   if (recipeError) throw recipeError;
 
@@ -74,6 +78,7 @@ export async function updateRecipe(params: RecipeSubmitParams): Promise<void> {
   const recipeData = {
     name: formData.name.toLowerCase(),
     description: formData.description,
+    preparation_steps: formData.preparation_steps || null,
     quantity: Number(formData.quantity),
     unit_of_measure: formData.unit_of_measure,
     manufacturing_cost: Number(formData.manufacturing_cost),
@@ -111,6 +116,7 @@ export async function createRecipe(params: RecipeSubmitParams): Promise<void> {
   const recipeData = {
     name: formData.name.toLowerCase(),
     description: formData.description,
+    preparation_steps: formData.preparation_steps || null,
     quantity: Number(formData.quantity),
     unit_of_measure: formData.unit_of_measure,
     manufacturing_cost: Number(formData.manufacturing_cost),

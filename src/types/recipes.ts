@@ -5,6 +5,7 @@ export type Recipe = Tables<"recipes">;
 export interface CreateRecipe {
   name: string;
   description: string;
+  preparation_steps: string;
   quantity: number;
   unit_of_measure: string;
   manufacturing_cost: number;
