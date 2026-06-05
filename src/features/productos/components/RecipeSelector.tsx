@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, X } from "lucide-react";
 import type { UseFormRegister, UseFormSetValue } from "react-hook-form";
 import type { CreateProduct, Recipe } from "@/types";
+import { normalizeText } from "@/utils/helpers";
 
 interface RecipeSelectorProps {
   recipes: Recipe[];
@@ -70,7 +71,7 @@ export default function RecipeSelector({
   }, [showRecipeDropdown]);
 
   const filteredRecipes = recipes.filter((recipe) =>
-    recipe.name.toLowerCase().includes(searchRecipe.toLowerCase())
+    normalizeText(recipe.name).includes(normalizeText(searchRecipe))
   );
 
   const handleSelect = (id: number, name: string) => {

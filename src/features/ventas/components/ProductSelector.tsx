@@ -5,6 +5,7 @@ import type { DiscountMode, SaleProductLine } from "../types";
 import { RAPPI_SUGGESTED_PRICE_MULTIPLIER } from "../constants";
 import { resolveLineDiscount, round2 } from "../utils/discount";
 import LineDiscountInput from "./LineDiscountInput";
+import { normalizeText } from "@/utils/helpers";
 
 interface ProductSelectorProps {
   products: Product[];
@@ -48,7 +49,7 @@ export default function ProductSelector({
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchProduct.toLowerCase()),
+    normalizeText(product.name).includes(normalizeText(searchProduct)),
   );
 
   const selectedProduct = selectedProductId

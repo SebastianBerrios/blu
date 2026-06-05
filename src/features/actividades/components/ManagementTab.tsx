@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Pencil, Trash2, ClipboardList, Plus, X, Search } from "lucide-react";
 import type { EmployeeTaskWithUser, TaskCategory } from "@/types";
 import Spinner from "@/components/ui/Spinner";
+import { normalizeText } from "@/utils/helpers";
 import {
   CATEGORY_LABELS,
   CATEGORY_STYLES,
@@ -34,11 +35,11 @@ export default function ManagementTab({
   const hasFilters = !!selectedUserId || !!selectedCategory || query.trim().length > 0;
 
   const filteredTasks = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = normalizeText(query);
     const filtered = tasks.filter((t) => {
       if (selectedUserId && t.user_id !== selectedUserId) return false;
       if (selectedCategory && t.category !== selectedCategory) return false;
-      if (q && !t.title.toLowerCase().includes(q)) return false;
+      if (q && !normalizeText(t.title).includes(q)) return false;
       return true;
     });
     return [...filtered].sort((a, b) => {

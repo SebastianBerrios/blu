@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
+import { normalizeText } from "@/utils/helpers";
 
 type SortDirection = "asc" | "desc" | null;
 
@@ -49,8 +50,8 @@ export default function DataTable<T extends { id: number; name: string }>({
 
   const filteredData = useMemo(() => {
     if (!searchQuery.trim()) return data;
-    const query = searchQuery.toLowerCase().trim();
-    return data.filter((item) => item.name.toLowerCase().includes(query));
+    const query = normalizeText(searchQuery);
+    return data.filter((item) => normalizeText(item.name).includes(query));
   }, [data, searchQuery]);
 
   const sortedData = useMemo(() => {

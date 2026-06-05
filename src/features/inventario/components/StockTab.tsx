@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { Package, Check, X, ArrowUpDown, ShoppingCart, Search } from "lucide-react";
 import type { Ingredient, IngredientGroup } from "@/types";
+import { normalizeText } from "@/utils/helpers";
 import { groupIngredientsByGroup } from "../utils/groupIngredients";
 
 const LOW_STOCK_THRESHOLD = 0.1;
@@ -71,9 +72,9 @@ export default function StockTab({
   );
 
   const filteredIngredients = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const query = normalizeText(searchQuery);
     if (!query) return visibleIngredients;
-    return visibleIngredients.filter((i) => i.name.toLowerCase().includes(query));
+    return visibleIngredients.filter((i) => normalizeText(i.name).includes(query));
   }, [visibleIngredients, searchQuery]);
 
   const sortIngredients = (items: Ingredient[]) => {

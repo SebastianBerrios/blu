@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import { toggleProductAvailability } from "../services/productAvailabilityService";
+import { normalizeText } from "@/utils/helpers";
 import type { Product, Category } from "@/types";
 import type { KeyedMutator } from "swr";
 import type { Tables } from "@/types/database";
@@ -35,7 +36,7 @@ export default function AvailabilityTab({
 
   const filtered = useMemo(() => {
     const list = search.trim()
-      ? products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+      ? products.filter((p) => normalizeText(p.name).includes(normalizeText(search)))
       : [...products];
     return list.sort((a, b) => a.name.localeCompare(b.name, "es"));
   }, [products, search]);

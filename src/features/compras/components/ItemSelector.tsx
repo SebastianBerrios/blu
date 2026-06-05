@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Ingredient, PurchaseItemLine } from "@/types";
+import { normalizeText } from "@/utils/helpers";
 
 interface ItemSelectorProps {
   ingredients: Ingredient[];
@@ -21,7 +22,7 @@ export default function ItemSelector({
   const [error, setError] = useState<string | null>(null);
 
   const filteredIngredients = ingredients.filter((ing) =>
-    ing.name.toLowerCase().includes(searchText.toLowerCase())
+    normalizeText(ing.name).includes(normalizeText(searchText))
   );
 
   const handleSelectIngredient = (id: number, name: string) => {

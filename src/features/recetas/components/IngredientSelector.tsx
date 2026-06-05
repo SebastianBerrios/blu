@@ -5,6 +5,7 @@ import type { Ingredient } from "@/types";
 import type { RecipeIngredientLine } from "../types";
 import { UNIT_OPTIONS } from "../constants";
 import { calculateIngredientCost } from "../services/recipeCalculations";
+import { normalizeText } from "@/utils/helpers";
 
 interface IngredientSelectorProps {
   ingredients: Ingredient[];
@@ -51,7 +52,7 @@ export default function IngredientSelector({
   };
 
   const filteredIngredients = ingredients.filter((ingredient) =>
-    ingredient.name.toLowerCase().includes(searchIngredient.toLowerCase())
+    normalizeText(ingredient.name).includes(normalizeText(searchIngredient))
   );
 
   const selectedIngredient = selectedIngredientId
