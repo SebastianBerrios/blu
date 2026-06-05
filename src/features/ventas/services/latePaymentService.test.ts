@@ -32,6 +32,7 @@ function makeParams(
       },
     ],
     newTotalPrice: 12,
+    discountAmount: 0,
     paymentMethod: "Efectivo",
     cashAmount: "",
     plinAmount: "",
@@ -66,7 +67,7 @@ describe("registerPaymentWithRewards", () => {
 
     await expect(
       registerPaymentWithRewards(makeParams({ newTotalPrice: 0 })),
-    ).rejects.toThrow("El total de la venta debe ser mayor a 0");
+    ).rejects.toThrow("El total a cobrar debe ser mayor a 0");
     expect(sb.rpcCalls).toEqual([]);
   });
 
@@ -204,6 +205,41 @@ describe("registerPaymentWithRewards", () => {
     expect(sb.updateCalls.find((c) => c.table === "sales")).toBeUndefined();
     expect(sb.deleteCalls.find((c) => c.table === "sale_products")).toBeUndefined();
     expect(sb.insertCalls.find((c) => c.table === "sale_products")).toBeUndefined();
+  });
+
+  it("con descuento: p_total_price bruto, p_discount_amount y pago al neto", async () => {
+    const sb = makeMockSupabase();
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await registerPaymentWithRewards(
+      makeParams({
+        newTotalPrice: 100,
+        discountAmount: 30,
+        paymentMethod: "Efectivo",
+        cashReceived: "70",
+        saleProducts: [
+          {
+            product_id: 1,
+            product_name: "Latte",
+            quantity: 1,
+            unit_price: 100,
+            subtotal: 100,
+            temperatura: null,
+            tipo_leche: null,
+            category_id: 10,
+            loyalty_reward: null,
+          },
+        ],
+      }),
+    );
+
+    const params = getRegisterParams(sb.rpcCalls);
+    expect(params?.p_total_price).toBe(100); // bruto
+    expect(params?.p_discount_amount).toBe(30);
+    expect(params?.p_cash_amount).toBe(70); // neto
+    expect(params?.p_payments).toEqual([
+      expect.objectContaining({ account_id: 1, amount: 70 }),
+    ]);
   });
 
   it("preserva loyalty_reward en p_products", async () => {

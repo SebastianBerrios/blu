@@ -4,6 +4,7 @@ import { getSaleNumber } from "@/utils/saleNumber";
 import type { PaymentMethod } from "@/types";
 import type { SaleProductLine } from "../types";
 import { RAPPI_COMMISSION_RATE } from "../constants";
+import { resolveLineDiscount, round2 } from "../utils/discount";
 import { buildPaymentAmounts, resolveCashReceived } from "./paymentHelpers";
 import { buildSalePayments } from "./salesService";
 
@@ -11,6 +12,7 @@ export interface RegisterPaymentWithRewardsParams {
   saleId: number;
   saleProducts: SaleProductLine[];
   newTotalPrice: number;
+  discountAmount: number;
   paymentMethod: PaymentMethod;
   cashAmount: string;
   plinAmount: string;
@@ -29,6 +31,7 @@ export async function registerPaymentWithRewards(
     saleId,
     saleProducts,
     newTotalPrice,
+    discountAmount: rawDiscount,
     paymentMethod,
     cashAmount,
     plinAmount,
@@ -40,13 +43,18 @@ export async function registerPaymentWithRewards(
     rappiAccountId,
   } = params;
 
-  if (newTotalPrice <= 0) {
-    throw new Error("El total de la venta debe ser mayor a 0");
+  const discountAmount = round2(
+    Math.min(Math.max(rawDiscount || 0, 0), newTotalPrice),
+  );
+  // Neto a cobrar = bruto − descuento. Las utilidades de pago operan sobre él.
+  const netPayable = round2(newTotalPrice - discountAmount);
+  if (netPayable <= 0) {
+    throw new Error("El total a cobrar debe ser mayor a 0");
   }
 
   const { cash, plin } = buildPaymentAmounts(
     paymentMethod,
-    newTotalPrice,
+    netPayable,
     cashAmount,
     plinAmount
   );
@@ -57,13 +65,13 @@ export async function registerPaymentWithRewards(
 
   const commission =
     paymentMethod === "Rappi"
-      ? Number((newTotalPrice * RAPPI_COMMISSION_RATE).toFixed(2))
+      ? Number((netPayable * RAPPI_COMMISSION_RATE).toFixed(2))
       : null;
 
   const payments = buildSalePayments({
     saleNumber,
     paymentMethod,
-    totalPrice: newTotalPrice,
+    totalPrice: netPayable,
     commission,
     cashAmount: cash,
     plinAmount: plin,
@@ -79,11 +87,13 @@ export async function registerPaymentWithRewards(
     temperatura: p.temperatura ?? "",
     tipo_leche: p.tipo_leche ?? "",
     loyalty_reward: p.loyalty_reward ?? "",
+    discount_amount: resolveLineDiscount(p),
   }));
 
   const { error } = await supabase.rpc("register_late_payment", {
     p_sale_id: saleId,
     p_total_price: newTotalPrice,
+    p_discount_amount: discountAmount,
     p_payment_method: paymentMethod,
     p_cash_amount: cash,
     p_plin_amount: plin,

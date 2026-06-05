@@ -21,6 +21,7 @@ interface SaleRow {
   id: number;
   sale_date: string;
   total_price: number;
+  discount_amount: number | null;
   commission: number | null;
   order_type: string;
   payment_method: string | null;
@@ -29,6 +30,7 @@ interface SaleRow {
   sale_products: Array<{
     quantity: number;
     unit_price: number;
+    discount_amount: number | null;
     products: { name: string; manufacturing_cost: number | null } | null;
   }>;
 }
@@ -61,7 +63,7 @@ interface StatsData {
 }
 
 const SELECT_CLAUSE =
-  "id, sale_date, total_price, commission, order_type, payment_method, cash_amount, plin_amount, sale_products(quantity, unit_price, products(name, manufacturing_cost))";
+  "id, sale_date, total_price, discount_amount, commission, order_type, payment_method, cash_amount, plin_amount, sale_products(quantity, unit_price, discount_amount, products(name, manufacturing_cost))";
 
 async function fetchSales(start: string, end: string): Promise<SaleRow[]> {
   const supabase = createClient();
@@ -194,7 +196,9 @@ async function fetchStats(ranges: PeriodRanges): Promise<StatsData> {
     for (const sp of s.sale_products) {
       const name = sp.products?.name ?? "Desconocido";
       if (!productMap[name]) productMap[name] = { revenue: 0, quantity: 0 };
-      productMap[name].revenue += Number(sp.quantity) * Number(sp.unit_price);
+      productMap[name].revenue +=
+        Number(sp.quantity) * Number(sp.unit_price) -
+        Number(sp.discount_amount ?? 0);
       productMap[name].quantity += Number(sp.quantity);
     }
   }

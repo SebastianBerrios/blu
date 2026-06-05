@@ -15,8 +15,16 @@ import type {
   Product,
   SaleWithProducts,
 } from "@/types";
-import type { LoyaltyReward, SaleProductLine } from "@/features/ventas/types";
+import type {
+  DiscountMode,
+  LoyaltyReward,
+  SaleProductLine,
+} from "@/features/ventas/types";
 import LoyaltyRewardsSection from "@/features/ventas/components/LoyaltyRewardsSection";
+import DiscountSection from "@/features/ventas/components/DiscountSection";
+import LineDiscountInput from "@/features/ventas/components/LineDiscountInput";
+import { useSaleDiscount } from "@/features/ventas/hooks/useSaleDiscount";
+import { resolveLineDiscount, round2 } from "@/features/ventas/utils/discount";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -41,7 +49,7 @@ export default function PaymentModal({
   products,
   categories,
 }: PaymentModalProps) {
-  const { user, profile } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const {
     cajaAccount,
     bancoAccount,
@@ -55,6 +63,8 @@ export default function PaymentModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saleProducts, setSaleProducts] = useState<SaleProductLine[]>([]);
+
+  const discount = useSaleDiscount(saleProducts, setSaleProducts);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -80,14 +90,30 @@ export default function PaymentModal({
             sp.loyalty_reward === "bebida_gratis"
               ? sp.loyalty_reward
               : null,
+          discount_amount: sp.discount_amount ?? 0,
+          discount_mode:
+            (sp.discount_amount ?? 0) > 0 ? ("monto" as const) : undefined,
+          discount_value:
+            (sp.discount_amount ?? 0) > 0 ? sp.discount_amount : undefined,
         };
       }),
     );
+    const lineDiscountSum = sale.sale_products.reduce(
+      (s, sp) => s + (sp.discount_amount ?? 0),
+      0,
+    );
+    const totalLevelDiscount = round2(
+      (sale.discount_amount ?? 0) - lineDiscountSum,
+    );
+    discount.initTotalDiscount(totalLevelDiscount > 0 ? totalLevelDiscount : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, sale, products]);
 
   if (!isOpen) return null;
 
-  const totalPrice = saleProducts.reduce((sum, p) => sum + p.subtotal, 0);
+  const grossTotal = saleProducts.reduce((sum, p) => sum + p.subtotal, 0);
+  const discountAmount = isAdmin ? discount.discountAmount : 0;
+  const totalPrice = isAdmin ? discount.netPayable : grossTotal;
   const isMixed = paymentMethod === "Efectivo + Plin";
   const showCashReceived =
     paymentMethod === "Efectivo" || paymentMethod === "Efectivo + Plin";
@@ -134,7 +160,8 @@ export default function PaymentModal({
       await registerPaymentWithRewards({
         saleId: sale.id,
         saleProducts,
-        newTotalPrice: totalPrice,
+        newTotalPrice: grossTotal,
+        discountAmount,
         paymentMethod,
         cashAmount,
         plinAmount,
@@ -199,6 +226,58 @@ export default function PaymentModal({
             onRemoveReward={handleRemoveReward}
             isSubmitting={isSubmitting}
           />
+
+          {/* Descuentos por producto (admin) */}
+          {isAdmin && saleProducts.length > 0 && (
+            <div className="space-y-2">
+              {saleProducts.map((item, idx) => {
+                const lineDiscount = resolveLineDiscount(item);
+                const lineNet = round2(item.subtotal - lineDiscount);
+                return (
+                  <div
+                    key={`${item.product_id}-${item.temperatura}-${item.tipo_leche}-${item.loyalty_reward ?? "none"}-${idx}`}
+                    className="flex items-center justify-between gap-2 p-2.5 bg-slate-50 rounded-lg"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-900 capitalize truncate">
+                        {item.product_name}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {item.quantity} × S/ {item.unit_price.toFixed(2)}
+                        {lineDiscount > 0 && (
+                          <span className="ml-1 text-green-700">
+                            → S/ {lineNet.toFixed(2)}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <LineDiscountInput
+                      mode={item.discount_mode ?? "monto"}
+                      value={item.discount_value}
+                      onChange={(mode, value) =>
+                        discount.setLineDiscount(idx, mode as DiscountMode, value)
+                      }
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Descuento total + resumen (admin) */}
+          {isAdmin && saleProducts.length > 0 && (
+            <DiscountSection
+              grossTotal={grossTotal}
+              discountAmount={discountAmount}
+              netPayable={totalPrice}
+              totalDiscountMode={discount.totalDiscountMode}
+              totalDiscountValue={discount.totalDiscountValue}
+              onModeChange={discount.setTotalDiscountMode}
+              onValueChange={discount.setTotalDiscountValue}
+              isSubmitting={isSubmitting}
+            />
+          )}
 
           {/* Método de pago */}
           <div>

@@ -67,6 +67,18 @@ describe("getSaleCommission", () => {
       }),
     ).toBe(6.67);
   });
+
+  it("Rappi: computa comisión sobre el monto rebajado por descuento", () => {
+    expect(
+      getSaleCommission({
+        total_price: 100,
+        discount_amount: 20,
+        commission: null,
+        payment_method: null,
+        order_type: "Rappi",
+      }),
+    ).toBe(16); // (100 − 20) × 0.2
+  });
 });
 
 describe("getSaleNet", () => {
@@ -112,5 +124,29 @@ describe("getSaleNet", () => {
         order_type: "Rappi",
       }),
     ).toBe(26.66);
+  });
+
+  it("resta el descuento en ventas no-Rappi", () => {
+    expect(
+      getSaleNet({
+        total_price: 100,
+        discount_amount: 30,
+        commission: null,
+        payment_method: "Efectivo",
+        order_type: "Mesa",
+      }),
+    ).toBe(70);
+  });
+
+  it("Rappi con descuento: neto = (total − desc) × 0.8", () => {
+    expect(
+      getSaleNet({
+        total_price: 100,
+        discount_amount: 20,
+        commission: null,
+        payment_method: null,
+        order_type: "Rappi",
+      }),
+    ).toBe(64); // 80 − 16
   });
 });

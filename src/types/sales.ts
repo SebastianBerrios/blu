@@ -11,6 +11,7 @@ export interface SaleProductWithDetails {
   product_id: number;
   quantity: number;
   unit_price: number;
+  discount_amount: number;
   product_name: string;
   status: SaleProductStatus;
   temperatura: string | null;

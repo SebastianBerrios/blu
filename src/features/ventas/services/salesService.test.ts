@@ -37,6 +37,7 @@ function makeSubmitParams(overrides: Partial<SaleSubmitParams> = {}): SaleSubmit
       },
     ],
     totalPrice: 12,
+    discountAmount: 0,
     registerPayment: true,
     paymentMethod: "Efectivo",
     cashAmount: "",
@@ -261,7 +262,7 @@ describe("createSale", () => {
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await expect(createSale(makeSubmitParams({ totalPrice: 0 }))).rejects.toThrow(
-      "El total de la venta debe ser mayor a 0",
+      "El total a cobrar debe ser mayor a 0",
     );
     expect(sb.insertCalls).toEqual([]);
   });
@@ -459,6 +460,97 @@ describe("createSale", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].product_id).toBe(2);
   });
+
+  it("con descuento total: guarda total_price bruto + discount_amount, transacción al neto", async () => {
+    const sb = makeMockSupabase({ single: { data: { id: 999 }, error: null } });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await createSale(
+      makeSubmitParams({
+        totalPrice: 100,
+        discountAmount: 30,
+        paymentMethod: "Efectivo",
+        cashReceived: "70",
+      }),
+    );
+
+    const salesInsert = sb.insertCalls.find((c) => c.table === "sales")!;
+    const payload = salesInsert.payload as Record<string, unknown>;
+    expect(payload.total_price).toBe(100);
+    expect(payload.discount_amount).toBe(30);
+    expect(payload.cash_amount).toBe(70); // neto a cobrar
+
+    const payments = getReplacePayments(sb.rpcCalls);
+    expect(payments).toEqual([
+      expect.objectContaining({ account_id: 1, amount: 70 }),
+    ]);
+  });
+
+  it("descuento por línea: persiste discount_amount en sale_products", async () => {
+    const sb = makeMockSupabase({ single: { data: { id: 999 }, error: null } });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await createSale(
+      makeSubmitParams({
+        saleProducts: [
+          {
+            product_id: 1,
+            product_name: "Latte",
+            quantity: 1,
+            unit_price: 20,
+            subtotal: 20,
+            temperatura: null,
+            tipo_leche: null,
+            category_id: 10,
+            loyalty_reward: null,
+            discount_mode: "porcentaje",
+            discount_value: 25,
+          },
+        ],
+        totalPrice: 20,
+        discountAmount: 5, // 25% de 20
+        cashReceived: "15",
+      }),
+    );
+
+    const productsInsert = sb.insertCalls.find((c) => c.table === "sale_products")!;
+    const rows = productsInsert.payload as Array<{ discount_amount: number }>;
+    expect(rows[0].discount_amount).toBe(5);
+
+    const payments = getReplacePayments(sb.rpcCalls);
+    expect(payments).toEqual([
+      expect.objectContaining({ account_id: 1, amount: 15 }),
+    ]);
+  });
+
+  it("Rappi con descuento: commission sobre el neto, registra (total−desc)×0.8", async () => {
+    const sb = makeMockSupabase({ single: { data: { id: 999 }, error: null } });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await createSale(
+      makeSubmitParams({
+        orderType: "Rappi",
+        tableNumber: "",
+        totalPrice: 100,
+        discountAmount: 20,
+        paymentMethod: "Rappi",
+        cashAmount: "",
+        plinAmount: "",
+        cashReceived: "",
+      }),
+    );
+
+    const salesInsert = sb.insertCalls.find((c) => c.table === "sales")!;
+    const payload = salesInsert.payload as Record<string, unknown>;
+    expect(payload.total_price).toBe(100);
+    expect(payload.discount_amount).toBe(20);
+    expect(payload.commission).toBe(16); // (100 − 20) × 0.2
+
+    const payments = getReplacePayments(sb.rpcCalls);
+    expect(payments).toEqual([
+      expect.objectContaining({ account_id: 3, amount: 64 }), // 80 − 16
+    ]);
+  });
 });
 
 describe("updateSale", () => {
@@ -488,7 +580,7 @@ describe("updateSale", () => {
     const sb = makeUpdateMock();
     await expect(
       updateSale(99, makeSubmitParams({ totalPrice: 0 })),
-    ).rejects.toThrow("El total de la venta debe ser mayor a 0");
+    ).rejects.toThrow("El total a cobrar debe ser mayor a 0");
     expect(sb.updateCalls).toEqual([]);
   });
 
@@ -707,6 +799,53 @@ describe("updateSale", () => {
       ([call]) => (call as { details?: { metodo_nuevo?: unknown } }).details?.metodo_nuevo === null,
     );
     expect(auditCall).toBeDefined();
+  });
+
+  it("editar solo el descuento: re-sincroniza transacciones al nuevo neto", async () => {
+    const sb = makeUpdateMock({
+      payment_method: "Efectivo",
+      cash_amount: 100,
+      plin_amount: null,
+      total_price: 100,
+      discount_amount: 0,
+    });
+    await updateSale(
+      99,
+      makeSubmitParams({
+        saleProducts: [
+          {
+            product_id: 1,
+            product_name: "A",
+            quantity: 1,
+            unit_price: 100,
+            subtotal: 100,
+            temperatura: null,
+            tipo_leche: null,
+            category_id: null,
+            loyalty_reward: null,
+          },
+        ],
+        totalPrice: 100,
+        discountAmount: 30,
+        paymentMethod: "Efectivo",
+        cashReceived: "70",
+      }),
+    );
+
+    const salesUpdate = sb.updateCalls.find((c) => c.table === "sales")!;
+    expect((salesUpdate.payload as Record<string, unknown>).discount_amount).toBe(30);
+
+    const payments = getReplacePayments(sb.rpcCalls);
+    expect(payments).toEqual([
+      expect.objectContaining({ account_id: 1, amount: 70 }),
+    ]);
+    // El monto neto cambió (100 → 70) ⇒ audit "actualizar" registrado.
+    const auditUpdateCall = mockedLogAudit.mock.calls.find(
+      ([call]) =>
+        (call as { action?: string; targetTable?: string }).action === "actualizar" &&
+        (call as { targetTable?: string }).targetTable === "sales",
+    );
+    expect(auditUpdateCall).toBeDefined();
   });
 
   it("error en fetch existing sale: propaga sin update", async () => {

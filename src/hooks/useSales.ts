@@ -3,11 +3,14 @@ import { createClient } from "@/utils/supabase/client";
 import { toLocalDateKey, groupByDate } from "@/utils/helpers/groupByDate";
 import { limaDayRangeISO } from "@/utils/helpers/dateFormatters";
 import { getSaleNet } from "@/features/ventas/utils/saleAmounts";
-import type { SaleWithProducts, SalesGroupedByDate } from "@/types";
+import type { SaleWithProducts, SalesGroupedByDate, SalesFilters } from "@/types";
 
 export { toLocalDateKey };
 
-const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
+const fetchSales = async (
+  opts: { todayOnly?: boolean; startDate?: string; endDate?: string } = {}
+): Promise<SaleWithProducts[]> => {
+  const { todayOnly = false, startDate, endDate } = opts;
   const supabase = createClient();
 
   let query = supabase
@@ -18,6 +21,7 @@ const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
       sale_date,
       notes,
       total_price,
+      discount_amount,
       commission,
       order_type,
       customer_id,
@@ -48,6 +52,7 @@ const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
         product_id,
         quantity,
         unit_price,
+        discount_amount,
         status,
         temperatura,
         tipo_leche,
@@ -61,6 +66,9 @@ const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
 
   if (todayOnly) {
     query = query.gte("sale_date", limaDayRangeISO().start);
+  } else {
+    if (startDate) query = query.gte("sale_date", limaDayRangeISO(startDate).start);
+    if (endDate) query = query.lte("sale_date", limaDayRangeISO(endDate).end);
   }
 
   const { data, error } = await query.order("sale_date", { ascending: false });
@@ -82,6 +90,7 @@ const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
         product_id: number;
         quantity: number;
         unit_price: number;
+        discount_amount: number | null;
         status: string;
         temperatura: string | null;
         tipo_leche: string | null;
@@ -93,6 +102,7 @@ const fetchSales = async (todayOnly = false): Promise<SaleWithProducts[]> => {
       product_id: sp.product_id,
       quantity: sp.quantity,
       unit_price: sp.unit_price,
+      discount_amount: sp.discount_amount ?? 0,
       product_name: sp.products?.name ?? "Producto eliminado",
       status: sp.status as "Pendiente" | "Entregado",
       temperatura: sp.temperatura,
@@ -112,11 +122,14 @@ export function groupSalesByDate(
   }));
 }
 
-export const useSales = ({ todayOnly = false }: { todayOnly?: boolean } = {}) => {
-  const key = todayOnly ? "sales-today" : "sales";
+export const useSales = ({
+  todayOnly = false,
+  startDate,
+  endDate,
+}: SalesFilters & { todayOnly?: boolean } = {}) => {
   const { data, error, isLoading, mutate } = useSWR<SaleWithProducts[]>(
-    key,
-    () => fetchSales(todayOnly),
+    ["sales", { todayOnly, startDate, endDate }],
+    () => fetchSales({ todayOnly, startDate, endDate }),
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,

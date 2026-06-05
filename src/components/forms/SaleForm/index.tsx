@@ -15,6 +15,9 @@ import {
 import ProductSelector from "@/features/ventas/components/ProductSelector";
 import PaymentSection from "@/features/ventas/components/PaymentSection";
 import LoyaltyRewardsSection from "@/features/ventas/components/LoyaltyRewardsSection";
+import DiscountSection from "@/features/ventas/components/DiscountSection";
+import { useSaleDiscount } from "@/features/ventas/hooks/useSaleDiscount";
+import { round2 } from "@/features/ventas/utils/discount";
 
 interface SaleFormProps {
   isOpen: boolean;
@@ -45,7 +48,11 @@ export default function SaleForm({
   const [cashReceived, setCashReceived] = useState("");
   const [notes, setNotes] = useState("");
 
+  const discount = useSaleDiscount(saleProducts, setSaleProducts);
+
   const totalPrice = saleProducts.reduce((sum, p) => sum + p.subtotal, 0);
+  const netPayable = isAdmin ? discount.netPayable : totalPrice;
+  const discountAmount = isAdmin ? discount.discountAmount : 0;
   const isRappi = orderType === "Rappi";
   const title = isEditMode ? "Editar Venta" : "Registrar Venta";
   const submitLabel = isSubmitting
@@ -80,9 +87,23 @@ export default function SaleForm({
                 ? sp.loyalty_reward
                 : null,
             status: sp.status,
+            discount_amount: sp.discount_amount ?? 0,
+            discount_mode:
+              (sp.discount_amount ?? 0) > 0 ? ("monto" as const) : undefined,
+            discount_value:
+              (sp.discount_amount ?? 0) > 0 ? sp.discount_amount : undefined,
           };
         }),
       );
+      // Descuento de nivel total = total de la venta − suma de descuentos de línea.
+      const lineDiscountSum = sale.sale_products.reduce(
+        (s, sp) => s + (sp.discount_amount ?? 0),
+        0,
+      );
+      const totalLevelDiscount = round2(
+        (sale.discount_amount ?? 0) - lineDiscountSum,
+      );
+      discount.initTotalDiscount(totalLevelDiscount > 0 ? totalLevelDiscount : 0);
       setNotes(sale.notes ?? "");
       if (sale.payment_method) {
         setRegisterPayment(true);
@@ -108,7 +129,9 @@ export default function SaleForm({
       setPlinAmount("");
       setCashReceived("");
       setNotes("");
+      discount.resetTotalDiscount();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, sale, products]);
 
   if (!isOpen) return null;
@@ -136,7 +159,7 @@ export default function SaleForm({
 
   const handleRemoveProduct = (index: number) => {
     setSaleProducts((prev) => {
-      if (prev[index]?.status === "Entregado") return prev;
+      if (prev[index]?.status === "Entregado" && !isAdmin) return prev;
       return prev.filter((_, i) => i !== index);
     });
   };
@@ -178,7 +201,9 @@ export default function SaleForm({
 
   const handleSubmit = async () => {
     if (saleProducts.length === 0) {
-      setSubmitError("Debes agregar al menos un producto");
+      setSubmitError(
+        "La venta debe tener al menos un producto. Para vaciarla, elimina la venta.",
+      );
       return;
     }
     setIsSubmitting(true);
@@ -186,6 +211,7 @@ export default function SaleForm({
     try {
       const params = {
         orderType, tableNumber, customerDni, saleProducts, totalPrice,
+        discountAmount,
         registerPayment, paymentMethod, cashAmount, plinAmount, cashReceived,
         notes,
         userId: user?.id ?? null,
@@ -271,6 +297,9 @@ export default function SaleForm({
         totalPrice={totalPrice}
         isSubmitting={isSubmitting}
         isRappi={isRappi}
+        canRemoveDelivered={isAdmin}
+        isAdmin={isAdmin}
+        onSetLineDiscount={discount.setLineDiscount}
       />
       <LoyaltyRewardsSection
         saleProducts={saleProducts}
@@ -279,6 +308,18 @@ export default function SaleForm({
         onRemoveReward={handleRemoveReward}
         isSubmitting={isSubmitting}
       />
+      {isAdmin && saleProducts.length > 0 && (
+        <DiscountSection
+          grossTotal={totalPrice}
+          discountAmount={discountAmount}
+          netPayable={netPayable}
+          totalDiscountMode={discount.totalDiscountMode}
+          totalDiscountValue={discount.totalDiscountValue}
+          onModeChange={discount.setTotalDiscountMode}
+          onValueChange={discount.setTotalDiscountValue}
+          isSubmitting={isSubmitting}
+        />
+      )}
       {(!isRappi || isAdmin) && (
         <PaymentSection
           registerPayment={registerPayment}
@@ -291,7 +332,7 @@ export default function SaleForm({
           setPlinAmount={setPlinAmount}
           cashReceived={cashReceived}
           setCashReceived={setCashReceived}
-          totalPrice={totalPrice}
+          totalPrice={netPayable}
           isSubmitting={isSubmitting}
           isEditMode={isEditMode}
           existingPaymentMethod={sale?.payment_method}

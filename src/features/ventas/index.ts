@@ -5,3 +5,5 @@ export * from "./types";
 export * from "./constants";
 export * from "./utils/loyaltyUtils";
 export * from "./utils/saleAmounts";
+export * from "./utils/discount";
+export * from "./hooks/useSaleDiscount";

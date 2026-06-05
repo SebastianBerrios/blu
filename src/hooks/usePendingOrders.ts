@@ -25,6 +25,7 @@ const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
       sale_date,
       notes,
       total_price,
+      discount_amount,
       commission,
       order_type,
       customer_id,
@@ -46,6 +47,7 @@ const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
         product_id,
         quantity,
         unit_price,
+        discount_amount,
         status,
         temperatura,
         tipo_leche,
@@ -71,6 +73,7 @@ const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
         product_id: number;
         quantity: number;
         unit_price: number;
+        discount_amount: number | null;
         status: string;
         temperatura: string | null;
         tipo_leche: string | null;
@@ -82,6 +85,7 @@ const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
       product_id: sp.product_id,
       quantity: sp.quantity,
       unit_price: sp.unit_price,
+      discount_amount: sp.discount_amount ?? 0,
       product_name: sp.products?.name ?? "Producto eliminado",
       status: sp.status as SaleProductStatus,
       temperatura: sp.temperatura,

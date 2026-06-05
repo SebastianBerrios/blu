@@ -3,6 +3,7 @@ import { logAudit } from "@/utils/auditLog";
 import { getSaleNumber } from "@/utils/saleNumber";
 import type { SaleSubmitParams } from "../types";
 import { RAPPI_COMMISSION_RATE } from "../constants";
+import { resolveLineDiscount, round2 } from "../utils/discount";
 import {
   buildPaymentFields,
   validateSplitPayment,
@@ -17,9 +18,15 @@ interface SalePayment {
   description: string;
 }
 
-export function computeCommission(orderType: string, totalPrice: number): number | null {
+export function computeCommission(
+  orderType: string,
+  totalPrice: number,
+  discountAmount = 0,
+): number | null {
   if (orderType !== "Rappi") return null;
-  return Number((totalPrice * RAPPI_COMMISSION_RATE).toFixed(2));
+  // La comisión Rappi se calcula sobre el monto rebajado por descuento.
+  const base = Math.max(0, totalPrice - (discountAmount || 0));
+  return Number((base * RAPPI_COMMISSION_RATE).toFixed(2));
 }
 
 async function resolveCustomerId(dni: string): Promise<number | null> {
@@ -57,6 +64,7 @@ function buildSaleProductRows(saleId: number, params: SaleSubmitParams) {
       temperatura: p.temperatura,
       tipo_leche: p.tipo_leche,
       loyalty_reward: p.loyalty_reward ?? null,
+      discount_amount: resolveLineDiscount(p),
     }));
 }
 
@@ -146,23 +154,34 @@ export async function recordSaleTransactions(params: {
 }
 
 export async function createSale(params: SaleSubmitParams): Promise<void> {
-  if (params.totalPrice <= 0) {
-    throw new Error("El total de la venta debe ser mayor a 0");
+  const discountAmount = round2(
+    Math.min(Math.max(params.discountAmount || 0, 0), params.totalPrice),
+  );
+  const netPayable = round2(params.totalPrice - discountAmount);
+  if (netPayable <= 0) {
+    throw new Error("El total a cobrar debe ser mayor a 0");
   }
-  validateSplitPayment(params);
+  // Las utilidades de pago operan sobre el neto a cobrar (total − descuento).
+  const netParams = { ...params, totalPrice: netPayable };
+  validateSplitPayment(netParams);
 
   const supabase = createClient();
   const customerId = await resolveCustomerId(params.customerDni);
-  const paymentFields = buildPaymentFields(params);
+  const paymentFields = buildPaymentFields(netParams);
   validateCashReceived(paymentFields);
 
-  const commission = computeCommission(params.orderType, params.totalPrice);
+  const commission = computeCommission(
+    params.orderType,
+    params.totalPrice,
+    discountAmount,
+  );
 
   const { data: newSale, error } = await supabase
     .from("sales")
     .insert({
       order_type: params.orderType,
       total_price: params.totalPrice,
+      discount_amount: discountAmount,
       commission,
       customer_id: customerId,
       table_number:
@@ -208,7 +227,7 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
       saleId: newSale.id,
       saleNumber,
       paymentMethod: paymentFields.payment_method,
-      totalPrice: params.totalPrice,
+      totalPrice: netPayable,
       commission,
       cashAmount: paymentFields.cash_amount,
       plinAmount: paymentFields.plin_amount,
@@ -237,22 +256,31 @@ export async function updateSale(
   saleId: number,
   params: SaleSubmitParams
 ): Promise<void> {
-  if (params.totalPrice <= 0) {
-    throw new Error("El total de la venta debe ser mayor a 0");
+  const discountAmount = round2(
+    Math.min(Math.max(params.discountAmount || 0, 0), params.totalPrice),
+  );
+  const netPayable = round2(params.totalPrice - discountAmount);
+  if (netPayable <= 0) {
+    throw new Error("El total a cobrar debe ser mayor a 0");
   }
-  validateSplitPayment(params);
+  const netParams = { ...params, totalPrice: netPayable };
+  validateSplitPayment(netParams);
 
   const supabase = createClient();
   const customerId = await resolveCustomerId(params.customerDni);
-  const paymentFields = buildPaymentFields(params);
+  const paymentFields = buildPaymentFields(netParams);
   validateCashReceived(paymentFields);
 
-  const commission = computeCommission(params.orderType, params.totalPrice);
+  const commission = computeCommission(
+    params.orderType,
+    params.totalPrice,
+    discountAmount,
+  );
 
   // Fetch existing payment state to detect changes for transaction re-sync
   const { data: existingSale, error: fetchError } = await supabase
     .from("sales")
-    .select("payment_method, cash_amount, plin_amount, total_price")
+    .select("payment_method, cash_amount, plin_amount, total_price, discount_amount")
     .eq("id", saleId)
     .single();
 
@@ -263,6 +291,7 @@ export async function updateSale(
     .update({
       order_type: params.orderType,
       total_price: params.totalPrice,
+      discount_amount: discountAmount,
       commission,
       customer_id: customerId,
       table_number:
@@ -282,6 +311,43 @@ export async function updateSale(
     throw new Error(
       "No se pudo actualizar la venta. Solo puedes editar tus propias ventas del día actual.",
     );
+  }
+
+  // Eliminar items "Entregado" que el admin quitó: revierte inventario y borra
+  // la fila de forma atómica vía RPC (valida rol admin en el servidor).
+  const { data: existingDelivered } = await supabase
+    .from("sale_products")
+    .select("id")
+    .eq("sale_id", saleId)
+    .eq("status", "Entregado");
+
+  const keptDeliveredIds = new Set(
+    params.saleProducts
+      .filter((p) => p.status === "Entregado" && p.id)
+      .map((p) => p.id),
+  );
+  const removedDeliveredIds = (existingDelivered ?? [])
+    .map((r) => r.id)
+    .filter((id) => !keptDeliveredIds.has(id));
+
+  for (const spId of removedDeliveredIds) {
+    const { error: rpcError } = await supabase.rpc(
+      "delete_delivered_sale_product",
+      {
+        p_sale_product_id: spId,
+        p_user_name: params.userName ?? undefined,
+      },
+    );
+    if (rpcError) throw rpcError;
+
+    logAudit({
+      userId: params.userId,
+      userName: params.userName,
+      action: "eliminar",
+      targetTable: "sale_products",
+      targetId: spId,
+      targetDescription: `Item entregado eliminado de venta #${saleId}`,
+    });
   }
 
   const { error: deleteError } = await supabase
@@ -304,11 +370,14 @@ export async function updateSale(
   // replace_sale_transactions is idempotent (revert + insert) so this is safe
   // and acts as auto-recovery for sales that were left orphaned by a prior
   // partial failure (payment_method set in DB but no transactions).
-  const rappiTotalChanged =
-    paymentFields.payment_method === "Rappi" &&
-    Math.abs(Number(existingSale.total_price ?? 0) - params.totalPrice) > 0.01;
+  // Neto anterior vs nuevo: detecta cambios de monto (incl. solo descuento) que
+  // requieren regenerar transacciones aunque el método de pago no cambie.
+  const existingNet = round2(
+    Number(existingSale.total_price ?? 0) - Number(existingSale.discount_amount ?? 0),
+  );
+  const netAmountChanged = Math.abs(existingNet - netPayable) > 0.01;
   const paymentChanged =
-    paymentStateChanged(existingSale, paymentFields) || rappiTotalChanged;
+    paymentStateChanged(existingSale, paymentFields) || netAmountChanged;
   const hasActivePayment = paymentFields.payment_method !== null;
   const paymentRemoved =
     !hasActivePayment && existingSale.payment_method !== null;
@@ -319,7 +388,7 @@ export async function updateSale(
       saleId,
       saleNumber,
       paymentMethod: paymentFields.payment_method,
-      totalPrice: params.totalPrice,
+      totalPrice: netPayable,
       commission,
       cashAmount: paymentFields.cash_amount,
       plinAmount: paymentFields.plin_amount,

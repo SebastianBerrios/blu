@@ -2,6 +2,8 @@ import type { PaymentMethod, SaleProductStatus } from "@/types";
 
 export type LoyaltyReward = "50_postre" | "bebida_gratis";
 
+export type DiscountMode = "monto" | "porcentaje";
+
 export interface SaleProductLine {
   id?: number;
   product_id: number;
@@ -14,6 +16,11 @@ export interface SaleProductLine {
   category_id: number | null;
   loyalty_reward?: LoyaltyReward | null;
   status?: SaleProductStatus;
+  // Descuento por línea (solo admin). `discount_mode`/`discount_value` son del
+  // formulario; `discount_amount` es el monto resuelto (S/) que se persiste.
+  discount_mode?: DiscountMode;
+  discount_value?: number;
+  discount_amount?: number;
 }
 
 export interface SaleSubmitParams {
@@ -22,6 +29,7 @@ export interface SaleSubmitParams {
   customerDni: string;
   saleProducts: SaleProductLine[];
   totalPrice: number;
+  discountAmount: number;
   registerPayment: boolean;
   paymentMethod: PaymentMethod;
   cashAmount: string;

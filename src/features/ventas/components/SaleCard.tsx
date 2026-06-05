@@ -37,6 +37,14 @@ export default function SaleCard({
   const commissionAmount = getSaleCommission(sale);
   const netAmount = getSaleNet(sale);
   const hasCommission = commissionAmount > 0;
+  const discountAmount = Number(sale.discount_amount ?? 0);
+  const hasDiscount = discountAmount > 0;
+  const showBreakdown = hasCommission || hasDiscount;
+  const grossNote = showBreakdown
+    ? `S/ ${sale.total_price.toFixed(2)} bruto` +
+      (hasDiscount ? ` · −S/ ${discountAmount.toFixed(2)} desc.` : "") +
+      (hasCommission ? " · −20% comisión" : "")
+    : "";
   const canEdit = canEditSale({
     isAdmin,
     recordDateISO: sale.sale_date,
@@ -114,9 +122,9 @@ export default function SaleCard({
               <span className="font-bold text-slate-900 text-sm">
                 S/ {netAmount.toFixed(2)}
               </span>
-              {hasCommission && (
+              {showBreakdown && (
                 <span className="text-[10px] text-slate-400">
-                  S/ {sale.total_price.toFixed(2)} bruto · -20% comisión
+                  {grossNote}
                 </span>
               )}
             </div>
@@ -132,9 +140,9 @@ export default function SaleCard({
             <span className="font-bold text-slate-900">
               S/ {netAmount.toFixed(2)}
             </span>
-            {hasCommission && (
+            {showBreakdown && (
               <span className="text-[10px] text-slate-400 leading-tight">
-                S/ {sale.total_price.toFixed(2)} bruto · -20% comisión
+                {grossNote}
               </span>
             )}
           </div>
@@ -209,7 +217,7 @@ export default function SaleCard({
                 <tr key={sp.id}>
                   <td className="py-2 text-sm text-slate-900 capitalize">
                     {sp.product_name}
-                    {(sp.temperatura || sp.tipo_leche || sp.loyalty_reward) && (
+                    {(sp.temperatura || sp.tipo_leche || sp.loyalty_reward || sp.discount_amount > 0) && (
                       <div className="flex gap-1.5 mt-0.5 flex-wrap">
                         {sp.temperatura && (
                           <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
@@ -226,6 +234,11 @@ export default function SaleCard({
                             {sp.loyalty_reward === "50_postre" ? "50% desc." : "Gratis"}
                           </span>
                         )}
+                        {sp.discount_amount > 0 && (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700">
+                            −S/ {sp.discount_amount.toFixed(2)}
+                          </span>
+                        )}
                       </div>
                     )}
                   </td>
@@ -239,16 +252,24 @@ export default function SaleCard({
             </tbody>
           </table>
 
-          {hasCommission && (
+          {showBreakdown && (
             <div className="mt-3 pt-2 border-t border-slate-200 space-y-1 text-sm">
               <div className="flex justify-between text-slate-600">
                 <span>Subtotal:</span>
                 <span className="tabular-nums">S/ {sale.total_price.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-red-700">
-                <span>Comisión Rappi 20%:</span>
-                <span className="tabular-nums">−S/ {commissionAmount.toFixed(2)}</span>
-              </div>
+              {hasDiscount && (
+                <div className="flex justify-between text-red-700">
+                  <span>Descuento:</span>
+                  <span className="tabular-nums">−S/ {discountAmount.toFixed(2)}</span>
+                </div>
+              )}
+              {hasCommission && (
+                <div className="flex justify-between text-red-700">
+                  <span>Comisión Rappi 20%:</span>
+                  <span className="tabular-nums">−S/ {commissionAmount.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-green-700">
                 <span>Neto recibido:</span>
                 <span className="tabular-nums">S/ {netAmount.toFixed(2)}</span>

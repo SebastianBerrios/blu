@@ -551,6 +551,7 @@ export type Database = {
       }
       sale_products: {
         Row: {
+          discount_amount: number
           id: number
           loyalty_reward: string | null
           product_id: number
@@ -562,6 +563,7 @@ export type Database = {
           unit_price: number
         }
         Insert: {
+          discount_amount?: number
           id?: never
           loyalty_reward?: string | null
           product_id: number
@@ -573,6 +575,7 @@ export type Database = {
           unit_price?: number
         }
         Update: {
+          discount_amount?: number
           id?: never
           loyalty_reward?: string | null
           product_id?: number
@@ -606,6 +609,7 @@ export type Database = {
           cash_received: number | null
           commission: number | null
           customer_id: number | null
+          discount_amount: number
           id: number
           last_edited_at: string | null
           last_edited_by: string | null
@@ -625,6 +629,7 @@ export type Database = {
           cash_received?: number | null
           commission?: number | null
           customer_id?: number | null
+          discount_amount?: number
           id?: number
           last_edited_at?: string | null
           last_edited_by?: string | null
@@ -644,6 +649,7 @@ export type Database = {
           cash_received?: number | null
           commission?: number | null
           customer_id?: number | null
+          discount_amount?: number
           id?: number
           last_edited_at?: string | null
           last_edited_by?: string | null
@@ -664,6 +670,20 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_last_edited_by_fkey"
+            columns: ["last_edited_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_payment_registered_by_fkey"
+            columns: ["payment_registered_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -981,6 +1001,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      adjust_account_balance: {
+        Args: {
+          p_account_id: number
+          p_description?: string
+          p_new_balance: number
+          p_user_id?: string
+        }
+        Returns: number
+      }
       approve_time_off_request: {
         Args: {
           p_admin_id: string
@@ -998,12 +1027,40 @@ export type Database = {
         }
         Returns: undefined
       }
+      delete_delivered_sale_product: {
+        Args: {
+          p_sale_product_id: number
+          p_user_id?: string
+          p_user_name?: string
+        }
+        Returns: undefined
+      }
+      delete_purchase_atomic: {
+        Args: { p_purchase_id: number; p_user_id?: string }
+        Returns: undefined
+      }
       delete_purchase_transactions: {
         Args: { p_purchase_id: number }
         Returns: undefined
       }
+      delete_sale_atomic: {
+        Args: { p_sale_id: number; p_user_id?: string; p_user_name?: string }
+        Returns: undefined
+      }
       delete_sale_transactions: {
         Args: { p_sale_id: number }
+        Returns: undefined
+      }
+      deliver_all_sale_products: {
+        Args: { p_sale_id: number; p_user_id?: string; p_user_name?: string }
+        Returns: number
+      }
+      deliver_sale_product: {
+        Args: {
+          p_sale_product_id: number
+          p_user_id?: string
+          p_user_name?: string
+        }
         Returns: undefined
       }
       record_transaction: {
@@ -1018,8 +1075,56 @@ export type Database = {
         }
         Returns: number
       }
+      register_late_payment: {
+        Args: {
+          p_cash_amount: number
+          p_cash_received: number
+          p_discount_amount?: number
+          p_payment_method: string
+          p_payments: Json
+          p_plin_amount: number
+          p_products: Json
+          p_sale_id: number
+          p_total_price: number
+          p_user_id?: string
+        }
+        Returns: undefined
+      }
+      replace_purchase_transactions: {
+        Args: { p_payments: Json; p_purchase_id: number; p_user_id?: string }
+        Returns: undefined
+      }
+      replace_sale_transactions: {
+        Args: { p_payments: Json; p_sale_id: number; p_user_id?: string }
+        Returns: undefined
+      }
       reverse_inventory_for_sale: {
         Args: { p_sale_id: number; p_user_id?: string; p_user_name?: string }
+        Returns: undefined
+      }
+      transfer_between_accounts: {
+        Args: {
+          p_amount: number
+          p_description?: string
+          p_from_account_id: number
+          p_to_account_id: number
+          p_user_id?: string
+        }
+        Returns: undefined
+      }
+      update_purchase_atomic: {
+        Args: {
+          p_account_id: number
+          p_delivery_cost: number
+          p_has_delivery: boolean
+          p_items: Json
+          p_notes: string
+          p_payments: Json
+          p_plin_change: number
+          p_purchase_id: number
+          p_total: number
+          p_user_id?: string
+        }
         Returns: undefined
       }
     }
