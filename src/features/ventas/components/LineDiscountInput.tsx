@@ -9,7 +9,7 @@ interface LineDiscountInputProps {
 
 /**
  * Control compacto de descuento por línea: alterna entre S/ y % e ingresa el
- * valor. Solo se usa cuando el usuario es admin.
+ * valor.
  */
 export default function LineDiscountInput({
   mode,

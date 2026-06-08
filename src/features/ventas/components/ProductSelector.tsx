@@ -16,7 +16,6 @@ interface ProductSelectorProps {
   isSubmitting: boolean;
   isRappi?: boolean;
   canRemoveDelivered?: boolean;
-  isAdmin?: boolean;
   onSetLineDiscount?: (index: number, mode: DiscountMode, value: number) => void;
 }
 
@@ -35,7 +34,6 @@ export default function ProductSelector({
   isSubmitting,
   isRappi = false,
   canRemoveDelivered = false,
-  isAdmin = false,
   onSetLineDiscount,
 }: ProductSelectorProps) {
   const [searchProduct, setSearchProduct] = useState("");
@@ -281,7 +279,7 @@ export default function ProductSelector({
           <div className="space-y-2 md:hidden">
             {saleProducts.map((item, idx) => {
               const locked = item.status === "Entregado";
-              const showDiscount = isAdmin && !!onSetLineDiscount && !locked;
+              const showDiscount = !!onSetLineDiscount && !locked;
               const lineDiscount = resolveLineDiscount(item);
               const lineNet = round2(item.subtotal - lineDiscount);
               return (
@@ -398,7 +396,7 @@ export default function ProductSelector({
               <tbody className="divide-y divide-slate-200">
                 {saleProducts.map((item, idx) => {
                   const locked = item.status === "Entregado";
-                  const showDiscount = isAdmin && !!onSetLineDiscount && !locked;
+                  const showDiscount = !!onSetLineDiscount && !locked;
                   const lineDiscount = resolveLineDiscount(item);
                   const lineNet = round2(item.subtotal - lineDiscount);
                   return (

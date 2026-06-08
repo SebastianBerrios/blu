@@ -49,7 +49,7 @@ export default function PaymentModal({
   products,
   categories,
 }: PaymentModalProps) {
-  const { user, profile, isAdmin } = useAuth();
+  const { user, profile } = useAuth();
   const {
     cajaAccount,
     bancoAccount,
@@ -112,8 +112,8 @@ export default function PaymentModal({
   if (!isOpen) return null;
 
   const grossTotal = saleProducts.reduce((sum, p) => sum + p.subtotal, 0);
-  const discountAmount = isAdmin ? discount.discountAmount : 0;
-  const totalPrice = isAdmin ? discount.netPayable : grossTotal;
+  const discountAmount = discount.discountAmount;
+  const totalPrice = discount.netPayable;
   const isMixed = paymentMethod === "Efectivo + Plin";
   const showCashReceived =
     paymentMethod === "Efectivo" || paymentMethod === "Efectivo + Plin";
@@ -227,8 +227,8 @@ export default function PaymentModal({
             isSubmitting={isSubmitting}
           />
 
-          {/* Descuentos por producto (admin) */}
-          {isAdmin && saleProducts.length > 0 && (
+          {/* Descuentos por producto */}
+          {saleProducts.length > 0 && (
             <div className="space-y-2">
               {saleProducts.map((item, idx) => {
                 const lineDiscount = resolveLineDiscount(item);
@@ -265,8 +265,8 @@ export default function PaymentModal({
             </div>
           )}
 
-          {/* Descuento total + resumen (admin) */}
-          {isAdmin && saleProducts.length > 0 && (
+          {/* Descuento total + resumen */}
+          {saleProducts.length > 0 && (
             <DiscountSection
               grossTotal={grossTotal}
               discountAmount={discountAmount}

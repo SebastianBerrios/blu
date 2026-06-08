@@ -51,8 +51,8 @@ export default function SaleForm({
   const discount = useSaleDiscount(saleProducts, setSaleProducts);
 
   const totalPrice = saleProducts.reduce((sum, p) => sum + p.subtotal, 0);
-  const netPayable = isAdmin ? discount.netPayable : totalPrice;
-  const discountAmount = isAdmin ? discount.discountAmount : 0;
+  const netPayable = discount.netPayable;
+  const discountAmount = discount.discountAmount;
   const isRappi = orderType === "Rappi";
   const title = isEditMode ? "Editar Venta" : "Registrar Venta";
   const submitLabel = isSubmitting
@@ -298,7 +298,6 @@ export default function SaleForm({
         isSubmitting={isSubmitting}
         isRappi={isRappi}
         canRemoveDelivered={isAdmin}
-        isAdmin={isAdmin}
         onSetLineDiscount={discount.setLineDiscount}
       />
       <LoyaltyRewardsSection
@@ -308,7 +307,7 @@ export default function SaleForm({
         onRemoveReward={handleRemoveReward}
         isSubmitting={isSubmitting}
       />
-      {isAdmin && saleProducts.length > 0 && (
+      {saleProducts.length > 0 && (
         <DiscountSection
           grossTotal={totalPrice}
           discountAmount={discountAmount}

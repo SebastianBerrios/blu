@@ -13,8 +13,8 @@ interface DiscountSectionProps {
 }
 
 /**
- * Descuento de nivel total (admin) + resumen Bruto / Descuento / Neto. El
- * descuento por producto se ingresa en la lista de productos; aquí se suma.
+ * Descuento de nivel total + resumen Bruto / Descuento / Neto. El descuento por
+ * producto se ingresa en la lista de productos; aquí se suma.
  */
 export default function DiscountSection({
   grossTotal,
@@ -31,7 +31,7 @@ export default function DiscountSection({
       <div className="flex items-center gap-2">
         <Tag className="w-4 h-4 text-amber-700" />
         <span className="text-sm font-semibold text-amber-900">
-          Descuento (admin)
+          Descuento
         </span>
       </div>
 

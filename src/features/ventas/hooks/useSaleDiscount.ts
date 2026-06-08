@@ -4,7 +4,7 @@ import type { DiscountMode, SaleProductLine } from "../types";
 import { computeSaleDiscount } from "../utils/discount";
 
 /**
- * Estado reutilizable de descuento de venta (solo admin), compartido por
+ * Estado reutilizable de descuento de venta, compartido por
  * `SaleForm` y `PaymentModal`. Maneja el descuento de nivel total y expone
  * helpers para descuentos por línea. Los montos resueltos (S/) y el neto se
  * derivan vía `computeSaleDiscount`.

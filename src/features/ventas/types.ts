@@ -16,7 +16,7 @@ export interface SaleProductLine {
   category_id: number | null;
   loyalty_reward?: LoyaltyReward | null;
   status?: SaleProductStatus;
-  // Descuento por línea (solo admin). `discount_mode`/`discount_value` son del
+  // Descuento por línea. `discount_mode`/`discount_value` son del
   // formulario; `discount_amount` es el monto resuelto (S/) que se persiste.
   discount_mode?: DiscountMode;
   discount_value?: number;
