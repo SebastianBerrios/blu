@@ -61,14 +61,35 @@ describe("registerPaymentWithRewards", () => {
     mockedGetSaleNumber.mockResolvedValue(77);
   });
 
-  it("rechaza newTotalPrice <= 0 antes de tocar la DB", async () => {
+  it("permite total 0 (pedido gratis): llama RPC sin generar transacción", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
-    await expect(
-      registerPaymentWithRewards(makeParams({ newTotalPrice: 0 })),
-    ).rejects.toThrow("El total a cobrar debe ser mayor a 0");
-    expect(sb.rpcCalls).toEqual([]);
+    await registerPaymentWithRewards(
+      makeParams({
+        newTotalPrice: 0,
+        cashReceived: "",
+        saleProducts: [
+          {
+            product_id: 1,
+            product_name: "Flat White",
+            quantity: 1,
+            unit_price: 0,
+            subtotal: 0,
+            temperatura: "caliente",
+            tipo_leche: "entera",
+            category_id: 10,
+            loyalty_reward: "bebida_gratis",
+          },
+        ],
+      }),
+    );
+
+    const params = getRegisterParams(sb.rpcCalls);
+    expect(params).toBeDefined();
+    expect(params?.p_total_price).toBe(0);
+    expect(params?.p_cash_amount).toBe(0);
+    expect(params?.p_payments).toEqual([]);
   });
 
   it("happy path Efectivo: llama register_late_payment atómico con products + payments + audit", async () => {

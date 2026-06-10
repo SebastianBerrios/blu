@@ -158,8 +158,8 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
     Math.min(Math.max(params.discountAmount || 0, 0), params.totalPrice),
   );
   const netPayable = round2(params.totalPrice - discountAmount);
-  if (netPayable <= 0) {
-    throw new Error("El total a cobrar debe ser mayor a 0");
+  if (netPayable < 0) {
+    throw new Error("El total a cobrar no puede ser negativo");
   }
   // Las utilidades de pago operan sobre el neto a cobrar (total − descuento).
   const netParams = { ...params, totalPrice: netPayable };
@@ -260,8 +260,8 @@ export async function updateSale(
     Math.min(Math.max(params.discountAmount || 0, 0), params.totalPrice),
   );
   const netPayable = round2(params.totalPrice - discountAmount);
-  if (netPayable <= 0) {
-    throw new Error("El total a cobrar debe ser mayor a 0");
+  if (netPayable < 0) {
+    throw new Error("El total a cobrar no puede ser negativo");
   }
   const netParams = { ...params, totalPrice: netPayable };
   validateSplitPayment(netParams);

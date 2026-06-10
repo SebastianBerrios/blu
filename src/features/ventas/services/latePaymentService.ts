@@ -48,8 +48,8 @@ export async function registerPaymentWithRewards(
   );
   // Neto a cobrar = bruto − descuento. Las utilidades de pago operan sobre él.
   const netPayable = round2(newTotalPrice - discountAmount);
-  if (netPayable <= 0) {
-    throw new Error("El total a cobrar debe ser mayor a 0");
+  if (netPayable < 0) {
+    throw new Error("El total a cobrar no puede ser negativo");
   }
 
   const { cash, plin } = buildPaymentAmounts(

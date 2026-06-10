@@ -257,14 +257,46 @@ describe("createSale", () => {
     mockedGetSaleNumber.mockResolvedValue(101);
   });
 
-  it("rechaza totalPrice <= 0", async () => {
-    const sb = makeMockSupabase();
+  it("permite venta gratis (total 0): inserta venta sin generar transacción", async () => {
+    const sb = makeMockSupabase({
+      single: { data: { id: 999 }, error: null },
+    });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
-    await expect(createSale(makeSubmitParams({ totalPrice: 0 }))).rejects.toThrow(
-      "El total a cobrar debe ser mayor a 0",
+    await createSale(
+      makeSubmitParams({
+        totalPrice: 0,
+        cashReceived: "",
+        saleProducts: [
+          {
+            product_id: 1,
+            product_name: "Flat White",
+            quantity: 1,
+            unit_price: 0,
+            subtotal: 0,
+            temperatura: "caliente",
+            tipo_leche: "entera",
+            category_id: 10,
+            loyalty_reward: "bebida_gratis",
+          },
+        ],
+      }),
     );
-    expect(sb.insertCalls).toEqual([]);
+
+    // La venta se inserta con total 0 y método Efectivo (cash_amount 0)
+    const salesInsert = sb.insertCalls.find((c) => c.table === "sales");
+    expect(salesInsert).toBeDefined();
+    const payload = salesInsert!.payload as Record<string, unknown>;
+    expect(payload.total_price).toBe(0);
+    expect(payload.payment_method).toBe("Efectivo");
+    expect(payload.cash_amount).toBe(0);
+
+    // sale_products se inserta
+    const productsInsert = sb.insertCalls.find((c) => c.table === "sale_products");
+    expect(productsInsert).toBeDefined();
+
+    // No se genera ninguna transacción de ingreso (payments vacío)
+    expect(getReplacePayments(sb.rpcCalls)).toEqual([]);
   });
 
   it("happy path Mesa con Efectivo y sin DNI: insert sales, sale_products, audit + transacciones via RPC", async () => {
@@ -576,12 +608,36 @@ describe("updateSale", () => {
     return sb;
   }
 
-  it("rechaza totalPrice <= 0", async () => {
-    const sb = makeUpdateMock();
-    await expect(
-      updateSale(99, makeSubmitParams({ totalPrice: 0 })),
-    ).rejects.toThrow("El total a cobrar debe ser mayor a 0");
-    expect(sb.updateCalls).toEqual([]);
+  it("permite actualizar a venta gratis (total 0): actualiza sin generar transacción", async () => {
+    const sb = makeUpdateMock({ total_price: 12, discount_amount: 0 });
+    await updateSale(
+      99,
+      makeSubmitParams({
+        totalPrice: 0,
+        cashReceived: "",
+        saleProducts: [
+          {
+            product_id: 1,
+            product_name: "Flat White",
+            quantity: 1,
+            unit_price: 0,
+            subtotal: 0,
+            temperatura: "caliente",
+            tipo_leche: "entera",
+            category_id: 10,
+            loyalty_reward: "bebida_gratis",
+          },
+        ],
+      }),
+    );
+
+    // La venta se actualiza con total 0
+    const salesUpdate = sb.updateCalls.find((c) => c.table === "sales");
+    expect(salesUpdate).toBeDefined();
+    expect((salesUpdate!.payload as Record<string, unknown>).total_price).toBe(0);
+
+    // Pago activo (Efectivo) → se regeneran transacciones, pero sin pagos (monto 0)
+    expect(getReplacePayments(sb.rpcCalls)).toEqual([]);
   });
 
   it("regresión bug fix: items con status=Entregado se preservan (DELETE filtra status='Pendiente')", async () => {
