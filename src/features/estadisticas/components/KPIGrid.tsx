@@ -8,6 +8,7 @@ interface KPIGridProps {
   kpis: SalesKPIsWithDelta;
   sparkline: number[];
   previousLabel: string;
+  currentLabel: string;
   onKpiClick?: (id: KPIId) => void;
 }
 
@@ -23,7 +24,7 @@ function formatCurrency(v: number): string {
   return `S/ ${v.toFixed(2)}`;
 }
 
-export default function KPIGrid({ kpis, sparkline, previousLabel, onKpiClick }: KPIGridProps) {
+export default function KPIGrid({ kpis, sparkline, previousLabel, currentLabel, onKpiClick }: KPIGridProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
       <KPICard
@@ -32,6 +33,7 @@ export default function KPIGrid({ kpis, sparkline, previousLabel, onKpiClick }: 
         value={formatCurrency(kpis.revenue.current)}
         kpi={kpis.revenue}
         previousLabel={previousLabel}
+        currentLabel={currentLabel}
         formatPrevious={formatCurrency}
         sparkline={sparkline}
         accent="green"
@@ -43,6 +45,7 @@ export default function KPIGrid({ kpis, sparkline, previousLabel, onKpiClick }: 
         value={formatCurrency(kpis.avgTicket.current)}
         kpi={kpis.avgTicket}
         previousLabel={previousLabel}
+        currentLabel={currentLabel}
         formatPrevious={formatCurrency}
         sparkline={sparkline}
         accent="purple"
@@ -54,6 +57,7 @@ export default function KPIGrid({ kpis, sparkline, previousLabel, onKpiClick }: 
         value={String(kpis.totalSales.current)}
         kpi={kpis.totalSales}
         previousLabel={previousLabel}
+        currentLabel={currentLabel}
         formatPrevious={(v) => String(Math.round(v))}
         sparkline={sparkline}
         accent="primary"
@@ -65,6 +69,7 @@ export default function KPIGrid({ kpis, sparkline, previousLabel, onKpiClick }: 
         value={String(kpis.productsSold.current)}
         kpi={kpis.productsSold}
         previousLabel={previousLabel}
+        currentLabel={currentLabel}
         formatPrevious={(v) => String(Math.round(v))}
         sparkline={sparkline}
         accent="amber"
@@ -76,6 +81,7 @@ export default function KPIGrid({ kpis, sparkline, previousLabel, onKpiClick }: 
         value={formatCurrency(kpis.grossMargin.current)}
         kpi={kpis.grossMargin}
         previousLabel={previousLabel}
+        currentLabel={currentLabel}
         formatPrevious={formatCurrency}
         sparkline={sparkline}
         accent="emerald"
@@ -87,6 +93,7 @@ export default function KPIGrid({ kpis, sparkline, previousLabel, onKpiClick }: 
         value={`${kpis.grossMarginPct.current.toFixed(1)}%`}
         kpi={kpis.grossMarginPct}
         previousLabel={previousLabel}
+        currentLabel={currentLabel}
         formatPrevious={(v) => `${v.toFixed(1)}%`}
         accent="blue"
         onClick={onKpiClick ? () => onKpiClick("grossMarginPct") : undefined}

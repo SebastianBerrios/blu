@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import type { KPIValue } from "@/types";
 import Sparkline from "./Sparkline";
 
@@ -10,6 +9,7 @@ interface KPICardProps {
   label: string;
   value: string;
   kpi: KPIValue;
+  currentLabel: string;
   previousLabel?: string;
   sparkline?: number[];
   accent: "green" | "blue" | "purple" | "amber" | "primary" | "emerald";
@@ -77,6 +77,7 @@ export default function KPICard({
   label,
   value,
   kpi,
+  currentLabel,
   previousLabel,
   sparkline,
   accent,
@@ -94,15 +95,18 @@ export default function KPICard({
   const goodDirection = invertDelta ? isNegative : isPositive;
   const badDirection = invertDelta ? isPositive : isNegative;
 
-  const deltaColor = isFlat
-    ? "text-slate-400 bg-slate-100"
+  const deltaTextColor = isFlat
+    ? "text-slate-400"
     : goodDirection
-    ? "text-emerald-700 bg-emerald-50"
+    ? "text-emerald-600"
     : badDirection
-    ? "text-red-700 bg-red-50"
-    : "text-slate-400 bg-slate-100";
+    ? "text-red-600"
+    : "text-slate-400";
 
-  const DeltaIcon = isFlat ? Minus : isPositive ? ArrowUpRight : ArrowDownRight;
+  const deltaText =
+    delta === null || delta === 0
+      ? "0%"
+      : `${delta > 0 ? "+" : ""}${delta.toFixed(1)}%`;
 
   const prevFormatted =
     formatPrevious?.(kpi.previous) ?? kpi.previous.toFixed(2);
@@ -133,32 +137,32 @@ export default function KPICard({
       <p className={`text-[11px] md:text-xs font-medium mt-2 ${palette.text} opacity-75`}>
         {label}
       </p>
-      <p className={`text-lg md:text-2xl font-bold mt-0.5 tabular-nums ${palette.text}`}>
-        {value}
-      </p>
-      <div className="mt-2 flex items-center gap-1.5 min-h-[22px]">
-        {delta !== null && (
-          <span
-            className={`inline-flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-full tabular-nums ${deltaColor}`}
-          >
-            <DeltaIcon className="w-3 h-3" />
-            {isFlat
-              ? "0%"
-              : `${delta > 0 ? "+" : ""}${delta.toFixed(1)}%`}
-          </span>
-        )}
-        {previousLabel && (
-          <span className="text-[10px] text-slate-500 truncate">
-            vs {previousLabel}
-            {kpi.previous > 0 && (
-              <>
-                {" · "}
-                <span className="tabular-nums">{prevFormatted}</span>
-              </>
-            )}
-          </span>
-        )}
+
+      {/* Current period amount */}
+      <div className="mt-1 flex items-baseline justify-between gap-1 whitespace-nowrap">
+        <span className={`text-[11px] font-medium ${palette.text} opacity-60`}>
+          {currentLabel}
+        </span>
+        <span className={`text-lg md:text-2xl font-bold tabular-nums ${palette.text}`}>
+          {value}
+        </span>
       </div>
+
+      {/* Compared period amount + delta */}
+      <div className="mt-0.5 flex items-baseline justify-between gap-1 whitespace-nowrap">
+        <span className="text-[10px] font-medium text-slate-500">Antes</span>
+        <span className="text-[11px] font-semibold tabular-nums text-slate-600">
+          {prevFormatted}
+          {delta !== null && (
+            <span className={`ml-1 ${deltaTextColor}`}>({deltaText})</span>
+          )}
+        </span>
+      </div>
+
+      {/* Compared period label */}
+      {previousLabel && (
+        <p className="mt-1.5 text-[10px] text-slate-400 capitalize">vs {previousLabel}</p>
+      )}
     </Wrapper>
   );
 }

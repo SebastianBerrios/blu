@@ -25,6 +25,7 @@ import {
   Heatmap,
   ExportButton,
   getPeriodRanges,
+  getDefaultComparisonAnchor,
 } from "@/features/estadisticas";
 import type { KPIId } from "@/features/estadisticas/components/KPIGrid";
 
@@ -44,11 +45,27 @@ export default function EstadisticasPage() {
   const [preset, setPreset] = useState<DateRangePreset>("today");
   const [anchor, setAnchor] = useState<Date>(() => new Date());
   const [custom, setCustom] = useState<{ startDate: string; endDate: string } | undefined>();
+  const [comparisonAnchor, setComparisonAnchor] = useState<Date | null>(null);
 
   const ranges = useMemo(
-    () => getPeriodRanges(preset, anchor, custom),
-    [preset, anchor, custom],
+    () => getPeriodRanges(preset, anchor, custom, comparisonAnchor),
+    [preset, anchor, custom, comparisonAnchor],
   );
+
+  const currentLabel = useMemo<string>(() => {
+    switch (preset) {
+      case "today":
+        return "Hoy";
+      case "week":
+        return "Semana";
+      case "month":
+        return "Mes";
+      case "year":
+        return "Año";
+      default:
+        return "Periodo";
+    }
+  }, [preset]);
 
   const {
     kpis,
@@ -108,12 +125,23 @@ export default function EstadisticasPage() {
           anchor={anchor}
           label={ranges.label}
           custom={custom}
+          comparisonLabel={ranges.previousLabel}
+          comparisonAnchor={comparisonAnchor}
+          defaultComparisonAnchor={getDefaultComparisonAnchor(preset, anchor, custom)}
           onPresetChange={(p) => {
             setPreset(p);
+            setComparisonAnchor(null);
             if (p !== "custom") setCustom(undefined);
           }}
-          onAnchorChange={setAnchor}
-          onCustomChange={setCustom}
+          onAnchorChange={(a) => {
+            setAnchor(a);
+            setComparisonAnchor(null);
+          }}
+          onCustomChange={(range) => {
+            setCustom(range);
+            setComparisonAnchor(null);
+          }}
+          onComparisonChange={setComparisonAnchor}
         />
 
         {isLoading ? (
@@ -125,6 +153,7 @@ export default function EstadisticasPage() {
                 kpis={kpis}
                 sparkline={sparkline}
                 previousLabel={ranges.previousLabel}
+                currentLabel={currentLabel}
                 onKpiClick={handleKpiClick}
               />
             </div>

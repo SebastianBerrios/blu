@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Calendar, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, GitCompareArrows, X } from "lucide-react";
 import type { DateRangePreset } from "@/types";
 import { PRESETS, canNavigateForward, navigateAnchor } from "../constants";
 
@@ -10,9 +10,13 @@ interface PeriodSelectorProps {
   anchor: Date;
   label: string;
   custom?: { startDate: string; endDate: string };
+  comparisonLabel: string;
+  comparisonAnchor: Date | null;
+  defaultComparisonAnchor: Date;
   onPresetChange: (preset: DateRangePreset) => void;
   onAnchorChange: (anchor: Date) => void;
   onCustomChange: (range: { startDate: string; endDate: string }) => void;
+  onComparisonChange: (anchor: Date | null) => void;
 }
 
 function toLocalKey(d: Date): string {
@@ -24,13 +28,37 @@ export default function PeriodSelector({
   anchor,
   label,
   custom,
+  comparisonLabel,
+  comparisonAnchor,
+  defaultComparisonAnchor,
   onPresetChange,
   onAnchorChange,
   onCustomChange,
+  onComparisonChange,
 }: PeriodSelectorProps) {
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [draftStart, setDraftStart] = useState(custom?.startDate ?? toLocalKey(anchor));
   const [draftEnd, setDraftEnd] = useState(custom?.endDate ?? toLocalKey(anchor));
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
+  const [draftComparison, setDraftComparison] = useState(
+    toLocalKey(comparisonAnchor ?? defaultComparisonAnchor),
+  );
+
+  const openComparisonModal = () => {
+    setDraftComparison(toLocalKey(comparisonAnchor ?? defaultComparisonAnchor));
+    setShowComparisonModal(true);
+  };
+
+  const applyComparison = () => {
+    if (!draftComparison) return;
+    onComparisonChange(new Date(`${draftComparison}T12:00:00`));
+    setShowComparisonModal(false);
+  };
+
+  const resetComparison = () => {
+    onComparisonChange(null);
+    setShowComparisonModal(false);
+  };
 
   const handlePresetClick = (p: DateRangePreset) => {
     if (p === "custom") {
@@ -115,6 +143,89 @@ export default function PeriodSelector({
           >
             Cambiar
           </button>
+        </div>
+      )}
+
+      {/* Comparison selector */}
+      <div className="flex items-center gap-2 self-start">
+        <button
+          onClick={openComparisonModal}
+          className="inline-flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+        >
+          <GitCompareArrows className="w-4 h-4 text-slate-500" />
+          <span className="text-slate-500">Comparar con:</span>
+          <span className="font-medium capitalize">{comparisonLabel}</span>
+          {comparisonAnchor && (
+            <span className="ml-1 text-[10px] font-semibold text-primary-700 bg-primary-100 rounded-full px-1.5 py-0.5">
+              manual
+            </span>
+          )}
+        </button>
+        {comparisonAnchor && (
+          <button
+            onClick={resetComparison}
+            className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+          >
+            Restablecer
+          </button>
+        )}
+      </div>
+
+      {/* Comparison modal */}
+      {showComparisonModal && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4"
+          onClick={() => setShowComparisonModal(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-slate-900">Comparar con</h3>
+              <button
+                onClick={() => setShowComparisonModal(false)}
+                className="p-1 hover:bg-slate-100 rounded"
+              >
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+            <label className="block">
+              <span className="text-xs font-medium text-slate-600">
+                {preset === "today"
+                  ? "Día de comparación"
+                  : preset === "week"
+                  ? "Una fecha dentro de la semana a comparar"
+                  : preset === "month"
+                  ? "Una fecha dentro del mes a comparar"
+                  : preset === "year"
+                  ? "Una fecha dentro del año a comparar"
+                  : "Fecha de inicio de la comparación"}
+              </span>
+              <input
+                type="date"
+                value={draftComparison}
+                max={toLocalKey(new Date())}
+                onChange={(e) => setDraftComparison(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+              />
+            </label>
+            <div className="mt-5 flex gap-2">
+              <button
+                onClick={resetComparison}
+                className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50"
+              >
+                Automático
+              </button>
+              <button
+                onClick={applyComparison}
+                disabled={!draftComparison}
+                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
+              >
+                Aplicar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

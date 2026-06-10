@@ -75,6 +75,7 @@ export function getPeriodRanges(
   preset: DateRangePreset,
   anchor: Date = new Date(),
   custom?: { startDate: string; endDate: string },
+  comparisonAnchor?: Date | null,
 ): PeriodRanges {
   let curStart: Date;
   let curEnd: Date;
@@ -107,11 +108,29 @@ export function getPeriodRanges(
     granularity = days > 120 ? "month" : days <= 1 ? "hour" : "day";
   }
 
-  // Previous period: shift back by the same span
+  // Previous period: span back by default, or anchored to a user-chosen comparison date
   const spanMs = curEnd.getTime() - curStart.getTime();
   let prevStart: Date;
   let prevEnd: Date;
-  if (preset === "month") {
+  if (comparisonAnchor) {
+    // User picked a specific comparison date — normalize it to the current granularity
+    if (preset === "today") {
+      prevStart = startOfDay(comparisonAnchor);
+      prevEnd = endOfDay(comparisonAnchor);
+    } else if (preset === "week") {
+      prevStart = startOfWeek(comparisonAnchor);
+      prevEnd = endOfWeek(comparisonAnchor);
+    } else if (preset === "month") {
+      prevStart = startOfMonth(comparisonAnchor);
+      prevEnd = endOfMonth(comparisonAnchor);
+    } else if (preset === "year") {
+      prevStart = startOfYear(comparisonAnchor);
+      prevEnd = endOfYear(comparisonAnchor);
+    } else {
+      prevStart = startOfDay(comparisonAnchor);
+      prevEnd = new Date(prevStart.getTime() + spanMs);
+    }
+  } else if (preset === "month") {
     prevEnd = endOfMonth(new Date(curStart.getFullYear(), curStart.getMonth() - 1, 15));
     prevStart = startOfMonth(prevEnd);
   } else if (preset === "year") {
@@ -135,6 +154,38 @@ export function getPeriodRanges(
     label: formatRange(curStart, curEnd, preset),
     previousLabel: formatRange(prevStart, prevEnd, preset),
   };
+}
+
+/**
+ * Returns the date that reproduces the *default* comparison period for a given
+ * preset/anchor — i.e. the value the comparison picker should show before the
+ * user overrides it. Mirrors the default "previous period" logic in getPeriodRanges.
+ */
+export function getDefaultComparisonAnchor(
+  preset: DateRangePreset,
+  anchor: Date = new Date(),
+  custom?: { startDate: string; endDate: string },
+): Date {
+  if (preset === "today" || preset === "week") {
+    const d = new Date(anchor);
+    d.setDate(d.getDate() - 7);
+    return d;
+  }
+  if (preset === "month") {
+    return new Date(anchor.getFullYear(), anchor.getMonth() - 1, 15);
+  }
+  if (preset === "year") {
+    return new Date(anchor.getFullYear() - 1, 5, 15);
+  }
+  // custom: span back from the start by the same length
+  const curStart = custom
+    ? startOfDay(new Date(`${custom.startDate}T12:00:00`))
+    : startOfDay(anchor);
+  const curEnd = custom
+    ? endOfDay(new Date(`${custom.endDate}T12:00:00`))
+    : endOfDay(anchor);
+  const spanMs = curEnd.getTime() - curStart.getTime();
+  return new Date(curStart.getTime() - spanMs - 1);
 }
 
 export function navigateAnchor(
