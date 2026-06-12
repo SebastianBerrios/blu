@@ -54,6 +54,7 @@ interface StatsData {
   previousRevenueByBucket: RevenueByDay[];
   revenueByMethod: RevenueByPaymentMethod[];
   topProducts: TopProduct[];
+  allProducts: TopProduct[];
   salesByOrderType: SalesByOrderType[];
   salesByHour: SalesByHour[];
   revenueVsExpenses: RevenueVsExpenses[];
@@ -202,14 +203,14 @@ async function fetchStats(ranges: PeriodRanges): Promise<StatsData> {
       productMap[name].quantity += Number(sp.quantity);
     }
   }
-  const topProducts: TopProduct[] = Object.entries(productMap)
+  const allProducts: TopProduct[] = Object.entries(productMap)
     .map(([productName, { revenue, quantity }]) => ({
       productName,
       totalRevenue: revenue,
       quantitySold: quantity,
     }))
-    .sort((a, b) => b.totalRevenue - a.totalRevenue)
-    .slice(0, 10);
+    .sort((a, b) => b.totalRevenue - a.totalRevenue);
+  const topProducts: TopProduct[] = allProducts.slice(0, 10);
 
   // Sales by order type
   const orderTypeMap: Record<string, { count: number; revenue: number }> = {};
@@ -291,6 +292,7 @@ async function fetchStats(ranges: PeriodRanges): Promise<StatsData> {
     previousRevenueByBucket,
     revenueByMethod,
     topProducts,
+    allProducts,
     salesByOrderType,
     salesByHour,
     revenueVsExpenses,
@@ -329,6 +331,7 @@ export const useSalesStats = (ranges: PeriodRanges) => {
     previousRevenueByBucket: data?.previousRevenueByBucket ?? [],
     revenueByMethod: data?.revenueByMethod ?? [],
     topProducts: data?.topProducts ?? [],
+    allProducts: data?.allProducts ?? [],
     salesByOrderType: data?.salesByOrderType ?? [],
     salesByHour: data?.salesByHour ?? [],
     revenueVsExpenses: data?.revenueVsExpenses ?? [],

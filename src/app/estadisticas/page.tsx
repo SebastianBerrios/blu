@@ -73,6 +73,7 @@ export default function EstadisticasPage() {
     previousRevenueByBucket,
     revenueByMethod,
     topProducts,
+    allProducts,
     salesByOrderType,
     salesByHour,
     revenueVsExpenses,
@@ -80,8 +81,6 @@ export default function EstadisticasPage() {
     sparkline,
     isLoading,
   } = useSalesStats(ranges);
-
-  const totalRevenue = topProducts.reduce((sum, p) => sum + p.totalRevenue, 0);
 
   const trendRef = useRef<HTMLDivElement>(null);
   const topProductsRef = useRef<HTMLDivElement>(null);
@@ -175,7 +174,7 @@ export default function EstadisticasPage() {
             <Heatmap data={heatmap} />
 
             <div ref={topProductsRef}>
-              <TopProductsTable topProducts={topProducts} totalRevenue={totalRevenue} />
+              <TopProductsTable products={allProducts} />
             </div>
           </>
         )}
