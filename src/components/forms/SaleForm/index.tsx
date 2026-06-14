@@ -33,7 +33,7 @@ export default function SaleForm({
 }: SaleFormProps) {
   const isEditMode = !!sale;
   const { user, profile, isAdmin } = useAuth();
-  const { cajaAccount, bancoAccount, rappiAccount } = useAccounts();
+  const { cajaAccount, bancoAccount, rappiAccount, posAccount } = useAccounts();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -219,6 +219,7 @@ export default function SaleForm({
         cajaAccountId: cajaAccount?.id ?? null,
         bancoAccountId: bancoAccount?.id ?? null,
         rappiAccountId: rappiAccount?.id ?? null,
+        posAccountId: posAccount?.id ?? null,
         existingPaymentDate: sale?.payment_date,
       };
       if (isEditMode && sale) {

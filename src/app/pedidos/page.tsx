@@ -7,14 +7,10 @@ import type { PendingOrderSale } from "@/hooks/usePendingOrders";
 import Spinner from "@/components/ui/Spinner";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
+import Badge, { ORDER_TYPE_TONE } from "@/components/ui/Badge";
+import type { OrderType } from "@/types";
 
 import { formatTime } from "@/utils/helpers/dateFormatters";
-
-const ORDER_TYPE_BADGE: Record<string, string> = {
-  Mesa: "bg-blue-100 text-blue-700",
-  "Para llevar": "bg-amber-100 text-amber-700",
-  Delivery: "bg-green-100 text-green-700",
-};
 
 function OrderCard({
   sale,
@@ -67,17 +63,16 @@ function OrderCard({
             <span className="text-base md:text-lg font-semibold text-slate-900">
               {formatTime(sale.sale_date)}
             </span>
-            <span
-              className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                ORDER_TYPE_BADGE[sale.order_type] ?? "bg-gray-100 text-gray-700"
-              }`}
+            <Badge
+              tone={ORDER_TYPE_TONE[sale.order_type as OrderType] ?? "neutral"}
+              size="lg"
             >
               {sale.order_type}
-            </span>
+            </Badge>
             {sale.order_type === "Mesa" && sale.table_number && (
-              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+              <Badge tone="mesa" size="lg">
                 Mesa {sale.table_number}
-              </span>
+              </Badge>
             )}
           </div>
           <div className="flex items-center gap-3">
@@ -142,15 +137,9 @@ function OrderCard({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                <span
-                  className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    isPending
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-green-100 text-green-700"
-                  }`}
-                >
+                <Badge tone={isPending ? "prepPending" : "delivered"}>
                   {product.status}
-                </span>
+                </Badge>
 
                 {isPending && (
                   <button

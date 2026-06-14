@@ -49,6 +49,7 @@ function makeSubmitParams(overrides: Partial<SaleSubmitParams> = {}): SaleSubmit
     cajaAccountId: 1,
     bancoAccountId: 2,
     rappiAccountId: 3,
+    posAccountId: 4,
     existingPaymentDate: null,
     ...overrides,
   };
@@ -66,6 +67,7 @@ function baseParams(overrides: Partial<Parameters<typeof recordSaleTransactions>
     cajaAccountId: 1,
     bancoAccountId: 2,
     rappiAccountId: 3,
+    posAccountId: 4,
     ...overrides,
   };
 }
@@ -123,6 +125,36 @@ describe("recordSaleTransactions", () => {
       baseParams({ paymentMethod: "Rappi", totalPrice: 50, commission: 60 }),
     );
     expect(getReplacePayments(sb.rpcCalls)).toEqual([]);
+  });
+
+  it("POS sin posAccountId → throws", async () => {
+    const sb = makeMockSupabase();
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(
+      recordSaleTransactions(
+        baseParams({ paymentMethod: "POS", posAccountId: null, totalPrice: 100, commission: 3.44 }),
+      ),
+    ).rejects.toThrow("No se encontró la cuenta POS");
+    expect(sb.rpcCalls).toEqual([]);
+  });
+
+  it("POS con commission: registra net = total − commission a la cuenta POS", async () => {
+    const sb = makeMockSupabase();
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await recordSaleTransactions(
+      baseParams({ paymentMethod: "POS", totalPrice: 100, commission: 3.44 }),
+    );
+    const payments = getReplacePayments(sb.rpcCalls);
+    expect(payments).toEqual([
+      {
+        account_id: 4,
+        type: "ingreso_venta",
+        amount: 96.56,
+        description: "Venta #100 - POS (neto)",
+      },
+    ]);
   });
 
   it("Efectivo + Plin: 2 transacciones (caja + banco) en mismo payload", async () => {

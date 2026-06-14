@@ -3,7 +3,7 @@ import { logAudit } from "@/utils/auditLog";
 import { getSaleNumber } from "@/utils/saleNumber";
 import type { PaymentMethod } from "@/types";
 import type { SaleProductLine } from "../types";
-import { RAPPI_COMMISSION_RATE } from "../constants";
+import { RAPPI_COMMISSION_RATE, POS_COMMISSION_RATE } from "../constants";
 import { resolveLineDiscount, round2 } from "../utils/discount";
 import { buildPaymentAmounts, resolveCashReceived } from "./paymentHelpers";
 import { buildSalePayments } from "./salesService";
@@ -22,6 +22,7 @@ export interface RegisterPaymentWithRewardsParams {
   cajaAccountId: number | null;
   bancoAccountId: number | null;
   rappiAccountId: number | null;
+  posAccountId: number | null;
 }
 
 export async function registerPaymentWithRewards(
@@ -41,6 +42,7 @@ export async function registerPaymentWithRewards(
     cajaAccountId,
     bancoAccountId,
     rappiAccountId,
+    posAccountId,
   } = params;
 
   const discountAmount = round2(
@@ -66,7 +68,9 @@ export async function registerPaymentWithRewards(
   const commission =
     paymentMethod === "Rappi"
       ? Number((netPayable * RAPPI_COMMISSION_RATE).toFixed(2))
-      : null;
+      : paymentMethod === "POS"
+        ? Number((netPayable * POS_COMMISSION_RATE).toFixed(2))
+        : null;
 
   const payments = buildSalePayments({
     saleNumber,
@@ -78,6 +82,7 @@ export async function registerPaymentWithRewards(
     cajaAccountId,
     bancoAccountId,
     rappiAccountId,
+    posAccountId,
   });
 
   const productsPayload = saleProducts.map((p) => ({

@@ -5,6 +5,7 @@ import type { DiscountMode, SaleProductLine } from "../types";
 import { RAPPI_SUGGESTED_PRICE_MULTIPLIER } from "../constants";
 import { resolveLineDiscount, round2 } from "../utils/discount";
 import LineDiscountInput from "./LineDiscountInput";
+import Badge from "@/components/ui/Badge";
 import { normalizeText } from "@/utils/helpers";
 
 interface ProductSelectorProps {
@@ -310,9 +311,9 @@ export default function ProductSelector({
                           </span>
                         )}
                         {locked && (
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">
+                          <Badge tone="delivered" size="sm">
                             Entregado
-                          </span>
+                          </Badge>
                         )}
                       </div>
                     )}
@@ -424,9 +425,9 @@ export default function ProductSelector({
                             </span>
                           )}
                           {locked && (
-                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">
+                            <Badge tone="delivered" size="sm">
                               Entregado
-                            </span>
+                            </Badge>
                           )}
                         </div>
                       )}

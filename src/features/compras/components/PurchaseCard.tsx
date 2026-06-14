@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, SquarePen, Trash2, Truck } from "lucide-react";
 import type { PurchaseWithItems } from "@/types";
 import { formatTime } from "@/utils/helpers/dateFormatters";
 import { canEditFinancialRecord } from "@/utils/permissions/financialRecord";
+import Badge from "@/components/ui/Badge";
 
 interface PurchaseCardProps {
   purchase: PurchaseWithItems;
@@ -46,14 +47,10 @@ export default function PurchaseCard({
               {purchase.purchaser_name ?? "Usuario"}
             </span>
             {purchase.account_type === "caja" && (
-              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                Efectivo
-              </span>
+              <Badge tone="efectivo">Efectivo</Badge>
             )}
             {purchase.account_type === "banco" && (
-              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
-                Plin
-              </span>
+              <Badge tone="plin">Plin</Badge>
             )}
             {purchase.plin_change != null && purchase.plin_change > 0 && (
               <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
@@ -61,10 +58,10 @@ export default function PurchaseCard({
               </span>
             )}
             {purchase.has_delivery && (
-              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 flex items-center gap-1">
+              <Badge tone="delivery">
                 <Truck className="w-3 h-3" />
                 Delivery
-              </span>
+              </Badge>
             )}
           </div>
           <div className="flex items-center justify-between mt-1 md:hidden">

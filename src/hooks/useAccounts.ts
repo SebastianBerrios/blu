@@ -33,6 +33,7 @@ export const useAccounts = () => {
   const cajaAccount = accounts.find((a) => a.type === "caja");
   const bancoAccount = accounts.find((a) => a.type === "banco");
   const rappiAccount = accounts.find((a) => a.type === "rappi");
+  const posAccount = accounts.find((a) => a.type === "pos");
 
-  return { accounts, cajaAccount, bancoAccount, rappiAccount, error, isLoading, mutate };
+  return { accounts, cajaAccount, bancoAccount, rappiAccount, posAccount, error, isLoading, mutate };
 };

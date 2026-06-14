@@ -1,4 +1,4 @@
-import { RAPPI_COMMISSION_RATE } from "../constants";
+import { RAPPI_COMMISSION_RATE, POS_COMMISSION_RATE } from "../constants";
 
 interface SaleAmountInput {
   total_price: number;
@@ -16,10 +16,15 @@ function discountedSubtotal(sale: SaleAmountInput): number {
 
 export function getSaleCommission(sale: SaleAmountInput): number {
   if (sale.commission != null && sale.commission > 0) return Number(sale.commission);
+  // La comisión se calcula sobre el monto ya rebajado por descuento.
   const isRappi = sale.order_type === "Rappi" || sale.payment_method === "Rappi";
-  if (!isRappi) return 0;
-  // La comisión Rappi se calcula sobre el monto ya rebajado por descuento.
-  return Number((discountedSubtotal(sale) * RAPPI_COMMISSION_RATE).toFixed(2));
+  if (isRappi) {
+    return Number((discountedSubtotal(sale) * RAPPI_COMMISSION_RATE).toFixed(2));
+  }
+  if (sale.payment_method === "POS") {
+    return Number((discountedSubtotal(sale) * POS_COMMISSION_RATE).toFixed(2));
+  }
+  return 0;
 }
 
 export function getSaleNet(sale: SaleAmountInput): number {

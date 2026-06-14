@@ -20,9 +20,9 @@ export function buildPaymentFields(params: SaleSubmitParams): PaymentFields {
     };
   }
 
-  if (params.paymentMethod === "Rappi") {
+  if (params.paymentMethod === "Rappi" || params.paymentMethod === "POS") {
     return {
-      payment_method: "Rappi",
+      payment_method: params.paymentMethod,
       payment_date: params.existingPaymentDate ?? new Date().toISOString(),
       cash_amount: null,
       plin_amount: null,
@@ -94,7 +94,7 @@ export function buildPaymentAmounts(
   if (paymentMethod === "Plin") {
     return { cash: null, plin: totalPrice };
   }
-  if (paymentMethod === "Rappi") {
+  if (paymentMethod === "Rappi" || paymentMethod === "POS") {
     return { cash: null, plin: null };
   }
   const cash = parseFloat(cashAmount);

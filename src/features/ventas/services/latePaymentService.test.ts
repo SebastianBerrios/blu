@@ -42,6 +42,7 @@ function makeParams(
     cajaAccountId: 1,
     bancoAccountId: 2,
     rappiAccountId: 3,
+    posAccountId: 4,
     ...overrides,
   };
 }

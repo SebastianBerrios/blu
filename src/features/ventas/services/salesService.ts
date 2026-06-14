@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/client";
 import { logAudit } from "@/utils/auditLog";
 import { getSaleNumber } from "@/utils/saleNumber";
 import type { SaleSubmitParams } from "../types";
-import { RAPPI_COMMISSION_RATE } from "../constants";
+import { RAPPI_COMMISSION_RATE, POS_COMMISSION_RATE } from "../constants";
 import { resolveLineDiscount, round2 } from "../utils/discount";
 import {
   buildPaymentFields,
@@ -22,11 +22,19 @@ export function computeCommission(
   orderType: string,
   totalPrice: number,
   discountAmount = 0,
+  paymentMethod?: string | null,
 ): number | null {
-  if (orderType !== "Rappi") return null;
-  // La comisión Rappi se calcula sobre el monto rebajado por descuento.
+  // La comisión se calcula sobre el monto rebajado por descuento (neto a cobrar).
   const base = Math.max(0, totalPrice - (discountAmount || 0));
-  return Number((base * RAPPI_COMMISSION_RATE).toFixed(2));
+  // Rappi está acoplado al tipo de pedido (el pedido Rappi fuerza el pago Rappi).
+  if (orderType === "Rappi") {
+    return Number((base * RAPPI_COMMISSION_RATE).toFixed(2));
+  }
+  // POS es un método de pago puro: la comisión depende del método, no del pedido.
+  if (paymentMethod === "POS") {
+    return Number((base * POS_COMMISSION_RATE).toFixed(2));
+  }
+  return null;
 }
 
 async function resolveCustomerId(dni: string): Promise<number | null> {
@@ -78,6 +86,7 @@ export function buildSalePayments(params: {
   cajaAccountId: number | null;
   bancoAccountId: number | null;
   rappiAccountId: number | null;
+  posAccountId: number | null;
 }): SalePayment[] {
   const {
     saleNumber,
@@ -89,6 +98,7 @@ export function buildSalePayments(params: {
     cajaAccountId,
     bancoAccountId,
     rappiAccountId,
+    posAccountId,
   } = params;
 
   if (!paymentMethod) return [];
@@ -102,6 +112,18 @@ export function buildSalePayments(params: {
       type: "ingreso_venta",
       amount: net,
       description: `Venta #${saleNumber} - Rappi (neto)`,
+    }];
+  }
+
+  if (paymentMethod === "POS") {
+    if (!posAccountId) throw new Error("No se encontró la cuenta POS");
+    const net = Number((totalPrice - (commission ?? 0)).toFixed(2));
+    if (net <= 0) return [];
+    return [{
+      account_id: posAccountId,
+      type: "ingreso_venta",
+      amount: net,
+      description: `Venta #${saleNumber} - POS (neto)`,
     }];
   }
 
@@ -143,6 +165,7 @@ export async function recordSaleTransactions(params: {
   cajaAccountId: number | null;
   bancoAccountId: number | null;
   rappiAccountId: number | null;
+  posAccountId: number | null;
 }): Promise<void> {
   const supabase = createClient();
   const payments = buildSalePayments(params);
@@ -174,6 +197,7 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
     params.orderType,
     params.totalPrice,
     discountAmount,
+    paymentFields.payment_method,
   );
 
   const { data: newSale, error } = await supabase
@@ -234,6 +258,7 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
       cajaAccountId: params.cajaAccountId,
       bancoAccountId: params.bancoAccountId,
       rappiAccountId: params.rappiAccountId,
+      posAccountId: params.posAccountId,
     });
 
     logAudit({
@@ -275,6 +300,7 @@ export async function updateSale(
     params.orderType,
     params.totalPrice,
     discountAmount,
+    paymentFields.payment_method,
   );
 
   // Fetch existing payment state to detect changes for transaction re-sync
@@ -395,6 +421,7 @@ export async function updateSale(
       cajaAccountId: params.cajaAccountId,
       bancoAccountId: params.bancoAccountId,
       rappiAccountId: params.rappiAccountId,
+      posAccountId: params.posAccountId,
     });
 
     if (paymentChanged || paymentRemoved) {

@@ -11,6 +11,7 @@ import {
   Building2,
   Banknote,
   Bike,
+  CreditCard,
   ListFilter,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,6 +40,7 @@ const FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "caja", label: "Caja" },
   { value: "banco", label: "Banco" },
   { value: "rappi", label: "Rappi" },
+  { value: "pos", label: "POS" },
 ];
 
 export default function FinanzasPage() {
@@ -47,7 +49,7 @@ export default function FinanzasPage() {
   if (!authLoading && !isAdmin) {
     redirect("/");
   }
-  const { cajaAccount, bancoAccount, rappiAccount, mutate: mutateAccounts } = useAccounts();
+  const { cajaAccount, bancoAccount, rappiAccount, posAccount, mutate: mutateAccounts } = useAccounts();
   const [accountFilter, setAccountFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState<TransactionType | "">("");
   const [showTransfer, setShowTransfer] = useState(false);
@@ -65,6 +67,8 @@ export default function FinanzasPage() {
       ? bancoAccount?.id
       : accountFilter === "rappi"
       ? rappiAccount?.id
+      : accountFilter === "pos"
+      ? posAccount?.id
       : undefined;
 
   const { transactions, isLoading, mutate: mutateTransactions } = useTransactions({
@@ -88,6 +92,7 @@ export default function FinanzasPage() {
   const cajaBalance = Number(cajaAccount?.balance ?? 0);
   const bancoBalance = Number(bancoAccount?.balance ?? 0);
   const rappiBalance = Number(rappiAccount?.balance ?? 0);
+  const posBalance = Number(posAccount?.balance ?? 0);
 
   const hasActiveFilter = accountFilter !== "all" || typeFilter !== "";
 
@@ -103,7 +108,7 @@ export default function FinanzasPage() {
         <DailySummary date={summaryDate} onDateChange={setSummaryDate} />
 
         {/* Balance cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
           <BalanceCard
             label="Caja"
             balance={cajaBalance}
@@ -126,6 +131,14 @@ export default function FinanzasPage() {
             Icon={Bike}
             accent="orange"
             onExpense={isAdmin && rappiAccount ? () => setExpenseAccountId(rappiAccount.id) : undefined}
+            onIncome={isAdmin ? () => setShowIncome(true) : undefined}
+          />
+          <BalanceCard
+            label="POS"
+            balance={posBalance}
+            Icon={CreditCard}
+            accent="indigo"
+            onExpense={isAdmin && posAccount ? () => setExpenseAccountId(posAccount.id) : undefined}
             onIncome={isAdmin ? () => setShowIncome(true) : undefined}
           />
         </div>
@@ -234,12 +247,15 @@ export default function FinanzasPage() {
                       const isCaja = t.account_id === cajaAccount?.id;
                       const isBanco = t.account_id === bancoAccount?.id;
                       const isRappi = t.account_id === rappiAccount?.id;
+                      const isPos = t.account_id === posAccount?.id;
                       const accentBar = isCaja
                         ? "bg-green-400"
                         : isBanco
                         ? "bg-blue-400"
                         : isRappi
                         ? "bg-orange-400"
+                        : isPos
+                        ? "bg-indigo-400"
                         : "bg-slate-300";
 
                       return (
@@ -301,7 +317,7 @@ interface BalanceCardProps {
   label: string;
   balance: number;
   Icon: typeof Banknote;
-  accent: "green" | "blue" | "orange";
+  accent: "green" | "blue" | "orange" | "indigo";
   onExpense?: () => void;
   onIncome?: () => void;
 }
@@ -324,6 +340,14 @@ function BalanceCard({ label, balance, Icon, accent, onExpense, onIncome }: Bala
           icon: "text-blue-700",
           label: "text-blue-800",
           value: "text-blue-900",
+        }
+      : accent === "indigo"
+      ? {
+          border: "border-indigo-200",
+          bg: "bg-indigo-50",
+          icon: "text-indigo-700",
+          label: "text-indigo-800",
+          value: "text-indigo-900",
         }
       : {
           border: "border-orange-200",

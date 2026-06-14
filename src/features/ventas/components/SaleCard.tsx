@@ -1,16 +1,11 @@
 "use client";
 
 import { ChevronDown, ChevronUp, SquarePen, Trash2, Banknote } from "lucide-react";
-import type { SaleWithProducts } from "@/types";
+import type { OrderType, PaymentMethod, SaleWithProducts } from "@/types";
 import { formatTime } from "@/utils/helpers/dateFormatters";
 import { getSaleCommission, getSaleNet } from "@/features/ventas/utils/saleAmounts";
 import { canEditSale } from "@/utils/permissions/financialRecord";
-
-const ORDER_TYPE_BADGE: Record<string, string> = {
-  Mesa: "bg-blue-100 text-blue-700",
-  "Para llevar": "bg-amber-100 text-amber-700",
-  Delivery: "bg-green-100 text-green-700",
-};
+import Badge, { ORDER_TYPE_TONE, PAYMENT_TONE } from "@/components/ui/Badge";
 
 interface SaleCardProps {
   sale: SaleWithProducts;
@@ -32,8 +27,6 @@ export default function SaleCard({
   onDelete,
   onRegisterPayment,
 }: SaleCardProps) {
-  const badgeClass =
-    ORDER_TYPE_BADGE[sale.order_type] || "bg-gray-100 text-gray-700";
   const commissionAmount = getSaleCommission(sale);
   const netAmount = getSaleNet(sale);
   const hasCommission = commissionAmount > 0;
@@ -77,22 +70,18 @@ export default function SaleCard({
             <span className="text-sm text-slate-600 font-medium">
               {formatTime(sale.sale_date)}
             </span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}
-            >
+            <Badge tone={ORDER_TYPE_TONE[sale.order_type as OrderType] ?? "neutral"}>
               {sale.order_type}
               {sale.order_type === "Mesa" && sale.table_number
                 ? ` ${sale.table_number}`
                 : ""}
-            </span>
+            </Badge>
             {sale.payment_method ? (
-              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+              <Badge tone={PAYMENT_TONE[sale.payment_method as PaymentMethod] ?? "neutral"}>
                 {sale.payment_method}
-              </span>
+              </Badge>
             ) : (
-              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
-                Pendiente
-              </span>
+              <Badge tone="paymentPending">Pendiente</Badge>
             )}
             {sale.customer_dni && (
               <span className="hidden md:inline px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">

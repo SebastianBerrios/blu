@@ -131,7 +131,13 @@ export default function StatsChartsGrid({
               datasets: [
                 {
                   data: revenueByMethod.map((d) => d.total),
-                  backgroundColor: [CHART_COLORS.green, CHART_COLORS.violet, CHART_COLORS.indigo],
+                  backgroundColor: [
+                    CHART_COLORS.green,
+                    CHART_COLORS.violet,
+                    CHART_COLORS.indigo,
+                    CHART_COLORS.amber,
+                    CHART_COLORS.blue,
+                  ],
                   borderWidth: 2,
                   borderColor: "#fff",
                 },
