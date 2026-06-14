@@ -41,6 +41,16 @@ description: >
 - Las skills pueden invocarse secuencialmente: terminar una sección de trabajo bajo la guía de una skill antes de pasar a la siguiente.
 - `react-doctor` es built-in de Claude Code (no vive en `.claude/skills/`); las otras cuatro sí están versionadas en el repo.
 
+### Subagentes de revisión (tool `Agent`)
+
+Además de las skills, el repo versiona 3 subagentes en `.claude/agents/` para revisión profunda. Se invocan con el tool `Agent` (no con `Skill`) y complementan —no reemplazan— a `/review` y `/security-review` built-in:
+
+| Cuándo invocar | Agent | Para qué |
+|---|---|---|
+| Tras cambios de RLS / RPC / policy / lógica financiera | `security-auditor` | Verifica el modelo de seguridad de Blu (record_transaction única vía, RPCs SECURITY DEFINER, owner+día TZ Lima, audit_logs sin impersonación, validación de accountId) |
+| Al crear/cambiar lógica de un service | `test-engineer` | Coverage-gap en flujos de dinero (Vitest, env node) + Prove-It pattern para bugs |
+| Antes de commit en un cambio significativo | `code-reviewer` | Review multi-eje contra las reglas de esta skill (capas, LOC, sin alert/createClient, logAudit) |
+
 ## Quick Decision Guide
 
 Antes de escribir código, responde:
@@ -316,3 +326,4 @@ Ver `references/migration.md` para el plan de resolución gradual.
 - `references/principles.md` — SOLID con ejemplos reales del proyecto Blu
 - `references/patterns.md` — Templates de código basados en archivos de referencia
 - `references/migration.md` — Plan de migración gradual con fases y checklists
+- `references/external-providers.md` — Patrón interface+factory para servicios de terceros. **LATENTE**: aplicar SOLO al integrar una API externa real (pasarela de pago, email, push, SMS, IA). Hoy POS/Plin/Rappi son modelos de cálculo, no aplican.
