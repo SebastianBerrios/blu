@@ -315,7 +315,7 @@ export default function SaleCard({
                 )}
                 {registrarName && (
                   <span className="text-slate-400 text-xs">
-                    · registrado por {registrarName}
+                    · cobrado por {registrarName}
                   </span>
                 )}
               </div>

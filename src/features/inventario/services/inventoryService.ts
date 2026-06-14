@@ -10,23 +10,15 @@ export async function adjustInventory(
 ): Promise<void> {
   const supabase = createClient();
 
-  const { error: updateError } = await supabase
-    .from("ingredients")
-    .update({ stock_quantity: newQuantity })
-    .eq("id", ingredient.id);
-  if (updateError) throw updateError;
-
-  const { error: movError } = await supabase
-    .from("inventory_movements")
-    .insert({
-      ingredient_id: ingredient.id,
-      user_id: userId,
-      user_name: userName,
-      old_quantity: ingredient.stock_quantity,
-      new_quantity: newQuantity,
-      reason: "manual",
-    });
-  if (movError) throw movError;
+  // Ajuste atómico vía RPC: actualiza stock e inserta el movimiento en una sola
+  // transacción. El INSERT directo a inventory_movements está bloqueado por RLS.
+  const { error } = await supabase.rpc("adjust_inventory_manual", {
+    p_ingredient_id: ingredient.id,
+    p_new_quantity: newQuantity,
+    p_user_id: userId ?? undefined,
+    p_user_name: userName ?? undefined,
+  });
+  if (error) throw error;
 
   logAudit({
     userId,

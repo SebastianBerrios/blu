@@ -43,11 +43,14 @@ async function resolveCustomerId(dni: string): Promise<number | null> {
   const supabase = createClient();
   const dniNumber = parseInt(dni.trim());
 
-  const { data: existing } = await supabase
+  if (Number.isNaN(dniNumber)) return null;
+
+  const { data: existing, error: lookupError } = await supabase
     .from("customers")
     .select("id")
     .eq("dni", dniNumber)
-    .single();
+    .maybeSingle();
+  if (lookupError) throw lookupError;
 
   if (existing) return existing.id;
 
@@ -335,7 +338,7 @@ export async function updateSale(
   if (error) throw error;
   if (!updatedRows || updatedRows.length === 0) {
     throw new Error(
-      "No se pudo actualizar la venta. Solo puedes editar tus propias ventas del día actual.",
+      "No se pudo actualizar la venta. Solo se pueden editar ventas del día actual.",
     );
   }
 

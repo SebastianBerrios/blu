@@ -116,6 +116,7 @@ export function makeMockSupabase(defaults: MockSupabaseDefaults = {}): MockSupab
         return chain;
       }),
       single: vi.fn(async () => ({ ...single, ...tableResult() })),
+      maybeSingle: vi.fn(async () => ({ ...single, ...tableResult() })),
       // Allow `await` on a chain without .single() — resolves to data array
       then: (
         onFulfilled: (v: { data: unknown; error: unknown }) => unknown,

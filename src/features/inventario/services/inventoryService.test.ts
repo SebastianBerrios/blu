@@ -36,21 +36,22 @@ function ingredient(overrides: Partial<Ingredient> = {}): Ingredient {
 describe("adjustInventory", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("update stock + insert movement + audit", async () => {
+  it("llama RPC atómica adjust_inventory_manual + audit", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await adjustInventory(ingredient(), 12, "u1", "Seba");
 
-    expect(sb.updateCalls.find((c) => c.table === "ingredients")).toBeDefined();
-    const movInsert = sb.insertCalls.find((c) => c.table === "inventory_movements")!;
-    const payload = movInsert.payload as Record<string, unknown>;
-    expect(payload).toMatchObject({
-      ingredient_id: 7,
-      old_quantity: 5,
-      new_quantity: 12,
-      reason: "manual",
+    const rpcCall = sb.rpcCalls.find((c) => c.fn === "adjust_inventory_manual")!;
+    expect(rpcCall).toBeDefined();
+    expect(rpcCall.params).toMatchObject({
+      p_ingredient_id: 7,
+      p_new_quantity: 12,
+      p_user_id: "u1",
+      p_user_name: "Seba",
     });
+    // El INSERT directo a inventory_movements ya no existe (lo hace la RPC).
+    expect(sb.insertCalls).toHaveLength(0);
     expect(mockedLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "ajustar_inventario",
@@ -59,13 +60,12 @@ describe("adjustInventory", () => {
     );
   });
 
-  it("error en update: propaga sin insert ni audit", async () => {
+  it("error en la RPC: propaga sin audit", async () => {
     const sb = makeMockSupabase();
-    sb.setResult("ingredients", { error: { message: "x" } });
+    sb.setRpcResult("adjust_inventory_manual", { error: { message: "x" } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await expect(adjustInventory(ingredient(), 10, null, null)).rejects.toBeTruthy();
-    expect(sb.insertCalls).toHaveLength(0);
     expect(mockedLogAudit).not.toHaveBeenCalled();
   });
 });
