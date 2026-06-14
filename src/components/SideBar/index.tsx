@@ -63,7 +63,7 @@ export default function SideBar() {
     <>
       <aside className="hidden md:flex md:flex-col w-64 h-full bg-white border-r border-slate-200 shadow-sm">
         {/* Logo */}
-        <div className="p-6 flex items-center gap-3 border-b border-slate-200">
+        <div className="h-20 px-6 flex items-center gap-3 border-b border-slate-200">
           <div className="p-2 bg-primary-500 rounded-lg">
             <Coffee size={24} className="text-white" />
           </div>
