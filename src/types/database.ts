@@ -1013,6 +1013,15 @@ export type Database = {
         }
         Returns: number
       }
+      adjust_inventory_manual: {
+        Args: {
+          p_ingredient_id: number
+          p_new_quantity: number
+          p_user_id?: string
+          p_user_name?: string
+        }
+        Returns: undefined
+      }
       approve_time_off_request: {
         Args: {
           p_admin_id: string

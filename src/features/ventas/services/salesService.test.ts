@@ -390,7 +390,7 @@ describe("createSale", () => {
         return {
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
-              single: vi.fn(async () => ({
+              maybeSingle: vi.fn(async () => ({
                 data: isFirstCall ? null : { id: 555 },
                 error: null,
               })),
@@ -952,7 +952,7 @@ describe("updateSale", () => {
 
     await expect(
       updateSale(99, makeSubmitParams({ totalPrice: 25, cashReceived: "25" })),
-    ).rejects.toThrow(/Solo puedes editar tus propias ventas del día actual/);
+    ).rejects.toThrow(/Solo se pueden editar ventas del día actual/);
 
     expect(sb.deleteCalls.find((c) => c.table === "sale_products")).toBeUndefined();
     expect(sb.insertCalls.find((c) => c.table === "sale_products")).toBeUndefined();

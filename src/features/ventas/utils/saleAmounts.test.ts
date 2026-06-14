@@ -79,6 +79,62 @@ describe("getSaleCommission", () => {
       }),
     ).toBe(16); // (100 − 20) × 0.2
   });
+
+  it("POS: computa 3.44% cuando payment_method es POS", () => {
+    expect(
+      getSaleCommission({
+        total_price: 100,
+        commission: null,
+        payment_method: "POS",
+        order_type: "Mesa",
+      }),
+    ).toBe(3.44); // 100 × 0.0344
+  });
+
+  it("POS: computa comisión sobre el monto rebajado por descuento", () => {
+    expect(
+      getSaleCommission({
+        total_price: 100,
+        discount_amount: 20,
+        commission: null,
+        payment_method: "POS",
+        order_type: "Mesa",
+      }),
+    ).toBe(2.75); // (100 − 20) × 0.0344 = 2.752 → 2.75
+  });
+
+  it("POS: redondea la comisión computada a 2 decimales", () => {
+    expect(
+      getSaleCommission({
+        total_price: 33.33,
+        commission: null,
+        payment_method: "POS",
+        order_type: "Mesa",
+      }),
+    ).toBe(1.15); // 33.33 × 0.0344 = 1.146552 → 1.15
+  });
+
+  it("Rappi tiene precedencia sobre POS cuando ambos aplican", () => {
+    expect(
+      getSaleCommission({
+        total_price: 100,
+        commission: null,
+        payment_method: "POS",
+        order_type: "Rappi",
+      }),
+    ).toBe(20); // isRappi gana → 20%, no 3.44%
+  });
+
+  it("POS: comisión 0 cuando el total es 0 (bebida gratis de fidelidad)", () => {
+    expect(
+      getSaleCommission({
+        total_price: 0,
+        commission: null,
+        payment_method: "POS",
+        order_type: "Mesa",
+      }),
+    ).toBe(0);
+  });
 });
 
 describe("getSaleNet", () => {
@@ -148,5 +204,28 @@ describe("getSaleNet", () => {
         order_type: "Rappi",
       }),
     ).toBe(64); // 80 − 16
+  });
+
+  it("POS: neto = total − comisión 3.44%", () => {
+    expect(
+      getSaleNet({
+        total_price: 100,
+        commission: null,
+        payment_method: "POS",
+        order_type: "Mesa",
+      }),
+    ).toBe(96.56); // 100 − 3.44
+  });
+
+  it("POS con descuento: neto = (total − desc) − comisión POS", () => {
+    expect(
+      getSaleNet({
+        total_price: 100,
+        discount_amount: 20,
+        commission: null,
+        payment_method: "POS",
+        order_type: "Mesa",
+      }),
+    ).toBe(77.25); // 80 − 2.75
   });
 });
