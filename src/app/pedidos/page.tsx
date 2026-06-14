@@ -68,12 +68,10 @@ function OrderCard({
               size="lg"
             >
               {sale.order_type}
+              {sale.order_type === "Mesa" && sale.table_number
+                ? ` ${sale.table_number}`
+                : ""}
             </Badge>
-            {sale.order_type === "Mesa" && sale.table_number && (
-              <Badge tone="mesa" size="lg">
-                Mesa {sale.table_number}
-              </Badge>
-            )}
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-slate-500">

@@ -93,6 +93,7 @@ export async function registerPaymentWithRewards(
     tipo_leche: p.tipo_leche ?? "",
     loyalty_reward: p.loyalty_reward ?? "",
     discount_amount: resolveLineDiscount(p),
+    status: p.status ?? "Pendiente",
   }));
 
   const { error } = await supabase.rpc("register_late_payment", {

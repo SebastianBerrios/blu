@@ -92,6 +92,7 @@ export default function PaymentModal({
           subtotal: sp.quantity * sp.unit_price,
           temperatura: sp.temperatura,
           tipo_leche: sp.tipo_leche,
+          status: sp.status,
           category_id: product?.category_id ?? null,
           loyalty_reward:
             sp.loyalty_reward === "50_postre" ||
