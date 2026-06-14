@@ -86,6 +86,7 @@ export async function registerPaymentWithRewards(
   });
 
   const productsPayload = saleProducts.map((p) => ({
+    id: p.id ?? null,
     product_id: p.product_id,
     quantity: p.quantity,
     unit_price: p.unit_price,

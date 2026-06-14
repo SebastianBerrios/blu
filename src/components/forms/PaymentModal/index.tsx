@@ -85,6 +85,7 @@ export default function PaymentModal({
       sale.sale_products.map((sp) => {
         const product = products.find((p) => p.id === sp.product_id);
         return {
+          id: sp.id,
           product_id: sp.product_id,
           product_name: sp.product_name,
           quantity: sp.quantity,
