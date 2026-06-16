@@ -9,7 +9,7 @@ const fetchTransactions = async (
 
   let query = supabase
     .from("transactions")
-    .select("*, user_profiles(full_name, email)")
+    .select("*, user_profiles(full_name, email), transaction_categories(name)")
     .order("created_at", { ascending: false });
 
   if (filters.accountId) {
@@ -17,6 +17,9 @@ const fetchTransactions = async (
   }
   if (filters.type) {
     query = query.eq("type", filters.type);
+  }
+  if (filters.categoryId) {
+    query = query.eq("category_id", filters.categoryId);
   }
   if (filters.startDate) {
     query = query.gte("created_at", filters.startDate);
@@ -39,6 +42,8 @@ const fetchTransactions = async (
         ?.full_name ??
       (t.user_profiles as unknown as { email: string } | null)?.email ??
       null,
+    category_name:
+      (t.transaction_categories as unknown as { name: string } | null)?.name ?? null,
   }));
 };
 
@@ -63,6 +68,7 @@ export async function recordTransaction(params: {
   description?: string;
   referenceId?: number;
   referenceType?: string;
+  categoryId?: number;
 }): Promise<number> {
   const supabase = createClient();
   const { data, error } = await supabase.rpc("record_transaction", {
@@ -72,6 +78,7 @@ export async function recordTransaction(params: {
     p_description: params.description ?? null,
     p_reference_id: params.referenceId ?? null,
     p_reference_type: params.referenceType ?? null,
+    p_category_id: params.categoryId ?? null,
   });
   if (error) throw error;
   return data;

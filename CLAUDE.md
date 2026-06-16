@@ -138,11 +138,33 @@ After the security audit (2026-05-04), all tables enforce RLS with this model. C
 - `record_transaction(...)` — sole entry point to create transactions. Use `recordTransaction` from `src/hooks/useTransactions.ts`.
 - `deduct_inventory_for_delivery(p_sale_product_id, ...)` — sole entry point for stock deduction on delivery.
 - `reverse_inventory_for_sale(p_sale_id, ...)` — used when deleting a sale.
+- `apply_purchase_inventory(p_purchase_id, ...)` / `reverse_purchase_inventory(p_purchase_id, ...)` — add/remove stock for purchase items linked to an ingredient (quantity in the ingredient's stock unit). Reversal runs inside `update_purchase_atomic`/`delete_purchase_atomic`.
+- `discard_inventory(p_ingredient_id, p_quantity, p_note, ...)` — write-off (merma); reason `merma`, motivo in `note`.
+- `produce_recipe_batch(p_ingredient_id, p_batches, ...)` / `reverse_production(p_production_id, ...)` — batch production of an intermediate good (see Inventory model below). `_convert_qty(qty, from, to)` is the shared kg/g·l/ml helper.
 - `delete_sale_transactions(p_sale_id)` — callable by any auth user (admin-check removed 2026-05-06 to enable non-admin sale edits via `updateSale`).
 - `delete_purchase_transactions(p_purchase_id)` — callable by any auth user (same change).
 - `approve_time_off_request(p_request_id, p_admin_id, ...)` — **admin-check inside** + `p_admin_id` must equal `auth.uid()`.
 
 When adding new destructive RPCs, follow the same pattern: `SECURITY DEFINER`, `SET search_path = public, pg_temp`, REVOKE EXECUTE FROM PUBLIC/anon, and `IF NOT EXISTS (SELECT 1 FROM user_profiles WHERE id = auth.uid() AND role = 'admin') THEN RAISE EXCEPTION ...`.
+
+## Inventory Model (two-stage, since 2026-06-14)
+
+Stock lives in `ingredients.stock_quantity` (NOT the legacy `quantity` column). All stock changes go through SECURITY DEFINER RPCs and log to `inventory_movements`. **`inventory_movements.reason`** values (no CHECK constraint): `manual`, `entrega` / `reverso_entrega` (sale delivery), `compra` / `reverso_compra` (purchase), `merma` (write-off, motivo in `note`), `produccion` (finished output) / `produccion_consumo` (raw consumed) / `reverso_produccion`.
+
+Two product kinds, to avoid double-counting:
+- **Made-to-order** (e.g. coffee): the sold product's recipe lists raw ingredients; selling/delivering deducts them directly via `deduct_inventory_for_delivery`.
+- **Batch goods** (e.g. brownies): modeled as an **intermediate good** = an `ingredient` with `recipe_id` set (the StockTab shows these with a "Producible" badge and no purchase button). Producing a batch (`produce_recipe_batch`) consumes the recipe's raw ingredients and adds `recipe.quantity × batches` finished units to the intermediate's stock. The sold product's recipe should reference the **finished-good ingredient** (1 unit), so selling deducts the finished unit, not the raw materials again. The `recipes.quantity`/`unit_of_measure` ("Rendimiento") is the batch yield and is required for production. `recipe_ingredients.quantity` and `recipes.quantity` are Postgres `real` — cast `::numeric` when passing to numeric functions.
+
+UI: `/inventario` tabs — Stock (adjust/discard/alerts for all ingredients incl. intermediates), Compras (needs_purchase list), Producción (produce batches + undo), Historial (movements). Services in `src/features/inventario/services/` (`inventoryService`, `productionService`); hook `useProduction`.
+
+### Units of measure (since 2026-06-15)
+- **Single source of truth: `src/utils/helpers/units.ts`** — `UNIT_OPTIONS`, `dimensionOf` (peso/volumen/conteo), `convert(qty,from,to,gramsPerUnit?)`, `areCompatible`, `compatibleUnits`, `normalizeUnit`. Used by `recipeCalculations.calculateIngredientCost` and `productionService.convertQty`. The SQL `_convert_qty(p_qty,p_from,p_to,p_grams_per_unit)` **mirrors** `convert()` — keep them in sync.
+- `convert`: kg↔g, l↔ml; same unit → qty; **incompatible → `null`**. Custom units (`rodaja`, `taza`) only convert to themselves. `unit_of_measure` is free text (datalist combobox in `IngredientForm`/`RecipeYieldSection`, normalized with `normalizeUnit`).
+- **`ingredients.unit_weight_g`** (grams per 1 `und`): the **peso↔unidad bridge**. When set, `und ↔ g ↔ kg` are interconvertible for that ingredient, so the same item can be used **by weight or by count** (e.g. naranja in kg with `unit_weight_g=185`: recipe `2 und` = 370 g, or `350 g` directly; fractions like `0.5 palta` work). Pass the factor to `convert`/`calculateIngredientCost`/`compatibleUnits`/`areCompatible`. Set it in `IngredientForm` ("Peso por unidad (g)").
+- **Recipe lines** (`IngredientSelector`) constrain the unit to `compatibleUnits(ingredient.unit_of_measure, ingredient.unit_weight_g)`: peso→kg/g, volumen→l/ml, conteo/custom→that unit; **with a factor → kg/g/und**. Incompatible lines show a visible "unidad incompatible" warning in `IngredientList` instead of a silent S/0.00.
+- **Juice = produced intermediate** (not a weight conversion): `zumo de naranja`, `jugo de limón` are ingredients in `ml` with a recipe that consumes the fruit (e.g. 1 limón ≈ 10 ml). Drinks consume exact ml; producing the juice deducts the fruit.
+- **Purchases** (`ItemSelector`/`purchase_items.unit`): the line unit is selectable from `compatibleUnits`; `apply_purchase_inventory` converts the bought qty to the ingredient's stock unit via `_convert_qty` + factor (buy naranja in kg or und).
+- `js-quantities` removed (unused; doesn't handle count/portion units). **Package manager: pnpm** (`pnpm-lock.yaml`) — use `pnpm install`, not npm.
 
 ## Database Schema (key tables)
 
@@ -154,7 +176,8 @@ When adding new destructive RPCs, follow the same pattern: `SECURITY DEFINER`, `
 - **accounts** (type: "caja"/"banco", balance) + **transactions** via RPC `record_transaction(p_account_id, p_type, p_amount, p_description, p_reference_id, p_reference_type)`
 - **purchases** + **purchase_items**
 - **audit_logs** — action tracking (userId, action, targetTable, targetId, targetDescription)
-- **inventory_movements** — stock in/out tracking (reason: "manual"/"entrega"/"compra")
+- **inventory_movements** — stock in/out tracking (reason: manual/entrega/reverso_entrega/compra/reverso_compra/merma/produccion/produccion_consumo/reverso_produccion; optional `note`)
+- **productions** — batch production log (ingredient_id, recipe_id, batches, yield_added, reversed_at/by) for traceability + undo
 - **schedule_templates** — recurring weekly schedule (user_id, day_of_week 0=Mon..5=Sat, start_time, end_time)
 - **schedule_overrides** — one-time schedule changes (override_date, is_day_off, optional time range, linked to time_off_request_id)
 - **time_off_requests** — employee time-off requests (status: pendiente/aprobado/rechazado, hours_requested, is_full_day)

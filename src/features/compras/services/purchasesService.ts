@@ -57,6 +57,8 @@ function buildPurchaseItems(purchaseId: number, items: PurchaseItemLine[]) {
     item_name: i.item_name,
     ingredient_id: i.ingredient_id,
     price: i.price,
+    quantity: i.quantity ?? null,
+    unit: i.unit ?? null,
   }));
 }
 
@@ -86,6 +88,15 @@ export async function createPurchase(params: CreatePurchaseParams): Promise<void
     .from("purchase_items")
     .insert(buildPurchaseItems(newPurchase.id, params.items));
   if (itemsError) throw itemsError;
+
+  // Sumar al inventario los items vinculados a un ingrediente con cantidad.
+  // El cambio de stock va por RPC (INSERT directo a inventory_movements bloqueado por RLS).
+  const { error: stockError } = await supabase.rpc("apply_purchase_inventory", {
+    p_purchase_id: newPurchase.id,
+    p_user_id: user.id,
+    p_user_name: params.userName ?? undefined,
+  });
+  if (stockError) throw stockError;
 
   const purchaseNumber = await getPurchaseNumber(newPurchase.id);
 
@@ -206,6 +217,8 @@ export async function updatePurchase(params: UpdatePurchaseParams): Promise<void
     item_name: i.item_name,
     ingredient_id: i.ingredient_id == null ? "" : String(i.ingredient_id),
     price: i.price,
+    quantity: i.quantity == null ? "" : String(i.quantity),
+    unit: i.unit == null ? "" : String(i.unit),
   }));
 
   const { error } = await supabase.rpc("update_purchase_atomic", {

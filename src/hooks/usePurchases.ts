@@ -40,7 +40,9 @@ const fetchPurchases = async (
         id,
         item_name,
         ingredient_id,
-        price
+        price,
+        quantity,
+        unit
       )
     `
     );

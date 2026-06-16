@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Ingredient, PurchaseItemLine } from "@/types";
-import { normalizeText } from "@/utils/helpers";
+import { normalizeText, compatibleUnits } from "@/utils/helpers";
 
 interface ItemSelectorProps {
   ingredients: Ingredient[];
@@ -18,6 +18,8 @@ export default function ItemSelector({
   const [searchText, setSearchText] = useState("");
   const [selectedIngredientId, setSelectedIngredientId] = useState<number | null>(null);
   const [itemPrice, setItemPrice] = useState("");
+  const [itemQuantity, setItemQuantity] = useState("");
+  const [itemUnit, setItemUnit] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,9 +27,19 @@ export default function ItemSelector({
     normalizeText(ing.name).includes(normalizeText(searchText))
   );
 
+  const selectedIngredient = selectedIngredientId
+    ? ingredients.find((i) => i.id === selectedIngredientId) ?? null
+    : null;
+
+  const unitChoices = selectedIngredient
+    ? compatibleUnits(selectedIngredient.unit_of_measure, selectedIngredient.unit_weight_g)
+    : [];
+
   const handleSelectIngredient = (id: number, name: string) => {
+    const ing = ingredients.find((i) => i.id === id);
     setSelectedIngredientId(id);
     setSearchText(name);
+    setItemUnit(ing?.unit_of_measure ?? "");
     setShowDropdown(false);
     setError(null);
   };
@@ -44,15 +56,29 @@ export default function ItemSelector({
       return;
     }
 
+    let quantity: number | null = null;
+    if (itemQuantity.trim() !== "") {
+      const parsedQty = parseFloat(itemQuantity);
+      if (isNaN(parsedQty) || parsedQty <= 0) {
+        setError("Ingresa una cantidad válida");
+        return;
+      }
+      quantity = parsedQty;
+    }
+
     onAdd({
       item_name: trimmed,
       ingredient_id: selectedIngredientId,
       price,
+      quantity,
+      unit: selectedIngredient ? itemUnit || selectedIngredient.unit_of_measure : null,
     });
 
     setSearchText("");
     setSelectedIngredientId(null);
     setItemPrice("");
+    setItemQuantity("");
+    setItemUnit("");
     setError(null);
   };
 
@@ -109,8 +135,39 @@ export default function ItemSelector({
             }}
             disabled={isSubmitting}
             className="w-full pl-9 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
-            placeholder="Precio"
+            placeholder="Precio total"
           />
+        </div>
+        <div className="flex-1 flex gap-2">
+          <input
+            type="number"
+            min="0.001"
+            step="0.001"
+            value={itemQuantity}
+            onChange={(e) => {
+              setItemQuantity(e.target.value);
+              setError(null);
+            }}
+            disabled={isSubmitting}
+            className="flex-1 w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
+            placeholder="Cantidad"
+          />
+          {selectedIngredient && unitChoices.length > 1 ? (
+            <select
+              value={itemUnit}
+              onChange={(e) => setItemUnit(e.target.value)}
+              disabled={isSubmitting}
+              className="w-20 px-2 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
+            >
+              {unitChoices.map((u) => (
+                <option key={u.value} value={u.value}>{u.label}</option>
+              ))}
+            </select>
+          ) : selectedIngredient ? (
+            <span className="flex items-center px-3 text-slate-500 text-sm">
+              {selectedIngredient.unit_of_measure}
+            </span>
+          ) : null}
         </div>
         <button
           type="button"
@@ -121,6 +178,14 @@ export default function ItemSelector({
           Agregar
         </button>
       </div>
+
+      {selectedIngredient && (
+        <p className="text-xs text-slate-500">
+          La cantidad sumará al stock de{" "}
+          <span className="font-medium capitalize">{selectedIngredient.name}</span>{" "}
+          (en {selectedIngredient.unit_of_measure}).
+        </p>
+      )}
 
       {error && (
         <p className="text-sm text-red-600 font-medium">{error}</p>

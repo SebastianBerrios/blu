@@ -1,6 +1,6 @@
 "use client";
 
-import { Package, Truck, ShoppingCart, Clock } from "lucide-react";
+import { Package, Truck, ShoppingCart, Clock, Trash2, Undo2, ChefHat } from "lucide-react";
 import type { Ingredient, InventoryMovement } from "@/types";
 import { formatDateTime } from "@/utils/helpers/dateFormatters";
 
@@ -20,6 +20,36 @@ function ReasonBadge({ reason }: { reason: string }) {
       label: "Compra",
       icon: <ShoppingCart className="w-3 h-3" />,
       className: "bg-green-100 text-green-700",
+    },
+    merma: {
+      label: "Merma",
+      icon: <Trash2 className="w-3 h-3" />,
+      className: "bg-red-100 text-red-700",
+    },
+    produccion: {
+      label: "Producción",
+      icon: <ChefHat className="w-3 h-3" />,
+      className: "bg-emerald-100 text-emerald-700",
+    },
+    produccion_consumo: {
+      label: "Consumo producción",
+      icon: <ChefHat className="w-3 h-3" />,
+      className: "bg-orange-100 text-orange-700",
+    },
+    reverso_produccion: {
+      label: "Reverso producción",
+      icon: <Undo2 className="w-3 h-3" />,
+      className: "bg-amber-100 text-amber-700",
+    },
+    reverso_entrega: {
+      label: "Reverso entrega",
+      icon: <Undo2 className="w-3 h-3" />,
+      className: "bg-amber-100 text-amber-700",
+    },
+    reverso_compra: {
+      label: "Reverso compra",
+      icon: <Undo2 className="w-3 h-3" />,
+      className: "bg-amber-100 text-amber-700",
     },
   };
   const cfg = config[reason] ?? config.manual;
@@ -76,6 +106,9 @@ export default function HistorialTab({ movements, ingredientMap }: HistorialTabP
                     ({isIncrease ? "+" : ""}{delta.toFixed(3).replace(/\.?0+$/, "")} {unit})
                   </span>
                 </div>
+                {mov.note && (
+                  <p className="text-xs text-slate-500 mt-0.5 italic">{mov.note}</p>
+                )}
                 {mov.user_name && (
                   <p className="text-xs text-slate-400 mt-0.5">{mov.user_name}</p>
                 )}

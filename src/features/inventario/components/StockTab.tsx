@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Package, Check, X, ArrowUpDown, ShoppingCart, Search } from "lucide-react";
+import { Package, Check, X, ArrowUpDown, ShoppingCart, Search, Trash2, ChefHat } from "lucide-react";
 import type { Ingredient, IngredientGroup } from "@/types";
 import { normalizeText } from "@/utils/helpers";
 import { groupIngredientsByGroup } from "../utils/groupIngredients";
@@ -49,6 +49,7 @@ interface StockTabProps {
   onEditChange: (val: string) => void;
   onTogglePurchase: (ingredient: Ingredient) => void;
   onChangeGroup: (ingredient: Ingredient, groupId: number | null) => void;
+  onDiscard: (ingredient: Ingredient) => void;
 }
 
 export default function StockTab({
@@ -62,14 +63,14 @@ export default function StockTab({
   onEditChange,
   onTogglePurchase,
   onChangeGroup,
+  onDiscard,
 }: StockTabProps) {
   const [sortOrder, setSortOrder] = useState<"none" | "asc" | "desc">("none");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const visibleIngredients = useMemo(
-    () => ingredients.filter((i) => i.recipe_id === null),
-    [ingredients],
-  );
+  // Incluye insumos y productos intermedios (producibles). Los intermedios se
+  // distinguen con un badge y no muestran el botón de compra (se producen, no se compran).
+  const visibleIngredients = useMemo(() => ingredients, [ingredients]);
 
   const filteredIngredients = useMemo(() => {
     const query = normalizeText(searchQuery);
@@ -112,11 +113,20 @@ export default function StockTab({
   const renderDesktopRow = (ingredient: Ingredient) => {
     const isEditing = editing?.ingredientId === ingredient.id;
     const colorClass = getStockColor(ingredient.stock_quantity, ingredient.unit_of_measure);
+    const isProducible = ingredient.recipe_id !== null;
 
     return (
       <tr key={ingredient.id} className="hover:bg-slate-50 transition-colors">
-        <td className="px-4 py-3 font-medium text-slate-900 capitalize truncate">
-          {ingredient.name}
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-medium text-slate-900 capitalize truncate">{ingredient.name}</span>
+            {isProducible && (
+              <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700">
+                <ChefHat className="w-3 h-3" />
+                Producible
+              </span>
+            )}
+          </div>
         </td>
         <td className="px-4 py-3 text-right">
           {isEditing ? (
@@ -171,22 +181,31 @@ export default function StockTab({
               </>
             ) : (
               <>
-                <button
-                  onClick={() => onTogglePurchase(ingredient)}
-                  className={`p-1.5 rounded-lg transition-colors ${
-                    ingredient.needs_purchase
-                      ? "text-primary-600 bg-primary-50 hover:bg-primary-100"
-                      : "text-slate-400 hover:text-primary-600 hover:bg-primary-50"
-                  }`}
-                  title={ingredient.needs_purchase ? "Quitar de compras" : "Agregar a compras"}
-                >
-                  <ShoppingCart className="w-4 h-4" />
-                </button>
+                {!isProducible && (
+                  <button
+                    onClick={() => onTogglePurchase(ingredient)}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      ingredient.needs_purchase
+                        ? "text-primary-600 bg-primary-50 hover:bg-primary-100"
+                        : "text-slate-400 hover:text-primary-600 hover:bg-primary-50"
+                    }`}
+                    title={ingredient.needs_purchase ? "Quitar de compras" : "Agregar a compras"}
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                  </button>
+                )}
                 <button
                   onClick={() => onStartEdit(ingredient)}
                   className="text-xs text-primary-600 hover:text-primary-800 font-medium px-2 py-1 hover:bg-primary-50 rounded"
                 >
                   Ajustar
+                </button>
+                <button
+                  onClick={() => onDiscard(ingredient)}
+                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Descartar (merma)"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </>
             )}
@@ -199,6 +218,7 @@ export default function StockTab({
   const renderMobileCard = (ingredient: Ingredient) => {
     const isEditing = editing?.ingredientId === ingredient.id;
     const colorClass = getStockColor(ingredient.stock_quantity, ingredient.unit_of_measure);
+    const isProducible = ingredient.recipe_id !== null;
 
     return (
       <div
@@ -207,17 +227,23 @@ export default function StockTab({
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
-            <button
-              onClick={() => onTogglePurchase(ingredient)}
-              className={`shrink-0 p-1 rounded transition-colors ${
-                ingredient.needs_purchase
-                  ? "text-primary-600"
-                  : "text-slate-300"
-              }`}
-              title={ingredient.needs_purchase ? "Quitar de compras" : "Agregar a compras"}
-            >
-              <ShoppingCart className="w-4 h-4" />
-            </button>
+            {isProducible ? (
+              <span className="shrink-0 p-1 text-emerald-600" title="Producto producible">
+                <ChefHat className="w-4 h-4" />
+              </span>
+            ) : (
+              <button
+                onClick={() => onTogglePurchase(ingredient)}
+                className={`shrink-0 p-1 rounded transition-colors ${
+                  ingredient.needs_purchase
+                    ? "text-primary-600"
+                    : "text-slate-300"
+                }`}
+                title={ingredient.needs_purchase ? "Quitar de compras" : "Agregar a compras"}
+              >
+                <ShoppingCart className="w-4 h-4" />
+              </button>
+            )}
             <div className="min-w-0">
               <p className="font-medium text-slate-900 capitalize truncate">{ingredient.name}</p>
               <select
@@ -268,6 +294,13 @@ export default function StockTab({
                 className="text-xs text-primary-600 hover:text-primary-800 font-medium px-2 py-1 hover:bg-primary-50 rounded"
               >
                 Ajustar
+              </button>
+              <button
+                onClick={() => onDiscard(ingredient)}
+                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Descartar (merma)"
+              >
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           )}

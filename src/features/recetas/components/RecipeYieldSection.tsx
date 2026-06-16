@@ -2,7 +2,7 @@
 
 import type { UseFormRegister } from "react-hook-form";
 import type { CreateRecipe } from "@/types";
-import { UNIT_OPTIONS } from "@/features/recetas/constants";
+import { UNIT_OPTIONS, normalizeUnit } from "@/utils/helpers/units";
 
 interface RecipeYieldSectionProps {
   register: UseFormRegister<CreateRecipe>;
@@ -41,20 +41,23 @@ export default function RecipeYieldSection({
           <label className="block text-sm font-medium text-blue-900 mb-1.5">
             Unidad <span className="text-red-600">*</span>
           </label>
-          <select
+          <input
+            type="text"
+            list="recipe-yield-unit-options"
             {...register("unit_of_measure", {
               required: "La unidad de medida es requerida",
+              setValueAs: (v) => normalizeUnit(v ?? ""),
             })}
             disabled={isSubmitting || readOnlyMeta}
+            autoComplete="off"
             className={`w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 ${readOnlyMeta ? "text-gray-500 cursor-not-allowed" : ""}`}
-          >
-            <option value="">Seleccionar</option>
+            placeholder="und, g, ml…"
+          />
+          <datalist id="recipe-yield-unit-options">
             {UNIT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
+              <option key={opt.value} value={opt.value} />
             ))}
-          </select>
+          </datalist>
         </div>
       </div>
       {!readOnlyMeta && (

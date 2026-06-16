@@ -248,6 +248,7 @@ export type Database = {
           recipe_id: number | null
           stock_quantity: number
           unit_of_measure: string
+          unit_weight_g: number | null
         }
         Insert: {
           group_id?: number | null
@@ -259,6 +260,7 @@ export type Database = {
           recipe_id?: number | null
           stock_quantity?: number
           unit_of_measure: string
+          unit_weight_g?: number | null
         }
         Update: {
           group_id?: number | null
@@ -270,6 +272,7 @@ export type Database = {
           recipe_id?: number | null
           stock_quantity?: number
           unit_of_measure?: string
+          unit_weight_g?: number | null
         }
         Relationships: [
           {
@@ -294,6 +297,7 @@ export type Database = {
           id: number
           ingredient_id: number
           new_quantity: number
+          note: string | null
           old_quantity: number
           reason: string
           reference_id: number | null
@@ -305,6 +309,7 @@ export type Database = {
           id?: never
           ingredient_id: number
           new_quantity: number
+          note?: string | null
           old_quantity: number
           reason?: string
           reference_id?: number | null
@@ -316,6 +321,7 @@ export type Database = {
           id?: never
           ingredient_id?: number
           new_quantity?: number
+          note?: string | null
           old_quantity?: number
           reason?: string
           reference_id?: number | null
@@ -332,6 +338,74 @@ export type Database = {
           },
           {
             foreignKeyName: "inventory_movements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      productions: {
+        Row: {
+          batches: number
+          created_at: string
+          id: number
+          ingredient_id: number
+          recipe_id: number
+          reversed_at: string | null
+          reversed_by: string | null
+          user_id: string | null
+          user_name: string | null
+          yield_added: number
+        }
+        Insert: {
+          batches: number
+          created_at?: string
+          id?: never
+          ingredient_id: number
+          recipe_id: number
+          reversed_at?: string | null
+          reversed_by?: string | null
+          user_id?: string | null
+          user_name?: string | null
+          yield_added: number
+        }
+        Update: {
+          batches?: number
+          created_at?: string
+          id?: never
+          ingredient_id?: number
+          recipe_id?: number
+          reversed_at?: string | null
+          reversed_by?: string | null
+          user_id?: string | null
+          user_name?: string | null
+          yield_added?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "productions_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "productions_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "productions_reversed_by_fkey"
+            columns: ["reversed_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "productions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
@@ -403,6 +477,8 @@ export type Database = {
           item_name: string
           price: number
           purchase_id: number
+          quantity: number | null
+          unit: string | null
         }
         Insert: {
           id?: never
@@ -410,6 +486,8 @@ export type Database = {
           item_name: string
           price: number
           purchase_id: number
+          quantity?: number | null
+          unit?: string | null
         }
         Update: {
           id?: never
@@ -417,6 +495,8 @@ export type Database = {
           item_name?: string
           price?: number
           purchase_id?: number
+          quantity?: number | null
+          unit?: string | null
         }
         Relationships: [
           {
@@ -915,10 +995,35 @@ export type Database = {
           },
         ]
       }
+      transaction_categories: {
+        Row: {
+          created_at: string
+          id: number
+          is_active: boolean
+          kind: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          is_active?: boolean
+          kind: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          is_active?: boolean
+          kind?: string
+          name?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           account_id: number
           amount: number
+          category_id: number | null
           created_at: string
           description: string | null
           id: number
@@ -930,6 +1035,7 @@ export type Database = {
         Insert: {
           account_id: number
           amount: number
+          category_id?: number | null
           created_at?: string
           description?: string | null
           id?: never
@@ -941,6 +1047,7 @@ export type Database = {
         Update: {
           account_id?: number
           amount?: number
+          category_id?: number | null
           created_at?: string
           description?: string | null
           id?: never
@@ -955,6 +1062,13 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_categories"
             referencedColumns: ["id"]
           },
           {
@@ -1004,6 +1118,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _convert_qty: {
+        Args: {
+          p_from: string
+          p_grams_per_unit?: number
+          p_qty: number
+          p_to: string
+        }
+        Returns: number
+      }
       adjust_account_balance: {
         Args: {
           p_account_id: number
@@ -1017,6 +1140,14 @@ export type Database = {
         Args: {
           p_ingredient_id: number
           p_new_quantity: number
+          p_user_id?: string
+          p_user_name?: string
+        }
+        Returns: undefined
+      }
+      apply_purchase_inventory: {
+        Args: {
+          p_purchase_id: number
           p_user_id?: string
           p_user_name?: string
         }
@@ -1075,10 +1206,30 @@ export type Database = {
         }
         Returns: undefined
       }
+      discard_inventory: {
+        Args: {
+          p_ingredient_id: number
+          p_note?: string
+          p_quantity: number
+          p_user_id?: string
+          p_user_name?: string
+        }
+        Returns: undefined
+      }
+      produce_recipe_batch: {
+        Args: {
+          p_batches: number
+          p_ingredient_id: number
+          p_user_id?: string
+          p_user_name?: string
+        }
+        Returns: number
+      }
       record_transaction: {
         Args: {
           p_account_id: number
           p_amount: number
+          p_category_id?: number
           p_description?: string
           p_reference_id?: number
           p_reference_type?: string
@@ -1112,6 +1263,22 @@ export type Database = {
       }
       reverse_inventory_for_sale: {
         Args: { p_sale_id: number; p_user_id?: string; p_user_name?: string }
+        Returns: undefined
+      }
+      reverse_production: {
+        Args: {
+          p_production_id: number
+          p_user_id?: string
+          p_user_name?: string
+        }
+        Returns: undefined
+      }
+      reverse_purchase_inventory: {
+        Args: {
+          p_purchase_id: number
+          p_user_id?: string
+          p_user_name?: string
+        }
         Returns: undefined
       }
       transfer_between_accounts: {

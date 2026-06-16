@@ -57,6 +57,8 @@ export default function PurchaseForm({
             item_name: pi.item_name,
             ingredient_id: pi.ingredient_id,
             price: pi.price,
+            quantity: pi.quantity,
+            unit: pi.unit,
           }))
         );
         setHasDelivery(purchase.has_delivery);

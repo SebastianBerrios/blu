@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Package, ShoppingCart, Clock, Settings } from "lucide-react";
+import { Package, ShoppingCart, Clock, Settings, ChefHat } from "lucide-react";
 import { useInventory } from "@/hooks/useInventory";
 import { useAuth } from "@/hooks/useAuth";
 import { adjustInventory, toggleNeedsPurchase, assignIngredientGroup } from "@/features/inventario/services/inventoryService";
@@ -11,7 +11,9 @@ import Spinner from "@/components/ui/Spinner";
 import StockTab from "@/features/inventario/components/StockTab";
 import ComprasTab from "@/features/inventario/components/ComprasTab";
 import HistorialTab from "@/features/inventario/components/HistorialTab";
+import ProduccionTab from "@/features/inventario/components/ProduccionTab";
 import GroupManager from "@/features/inventario/components/GroupManager";
+import DiscardForm from "@/features/inventario/components/DiscardForm";
 import FAB from "@/components/ui/FAB";
 
 interface EditingState {
@@ -19,7 +21,7 @@ interface EditingState {
   value: string;
 }
 
-type TabKey = "stock" | "compras" | "historial";
+type TabKey = "stock" | "compras" | "produccion" | "historial";
 
 export default function InventarioPage() {
   const { ingredients, movements, groups, isLoading, mutateIngredients, mutateMovements, mutateGroups } = useInventory();
@@ -29,6 +31,7 @@ export default function InventarioPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("stock");
   const [groupManagerOpen, setGroupManagerOpen] = useState(false);
+  const [discardTarget, setDiscardTarget] = useState<Ingredient | null>(null);
 
   const purchaseCount = ingredients.filter((i) => i.needs_purchase).length;
 
@@ -91,11 +94,17 @@ export default function InventarioPage() {
     mutateIngredients();
   };
 
+  const handleDiscardSuccess = () => {
+    mutateIngredients();
+    mutateMovements();
+  };
+
   const ingredientMap = new Map(ingredients.map((i) => [i.id, i]));
 
   const tabs: { key: TabKey; label: string; icon: React.ReactNode; badge?: number }[] = [
     { key: "stock", label: "Stock", icon: <Package className="w-4 h-4" /> },
     { key: "compras", label: "Compras", icon: <ShoppingCart className="w-4 h-4" />, badge: purchaseCount },
+    { key: "produccion", label: "Producción", icon: <ChefHat className="w-4 h-4" /> },
     { key: "historial", label: "Historial", icon: <Clock className="w-4 h-4" /> },
   ];
 
@@ -166,12 +175,22 @@ export default function InventarioPage() {
             onEditChange={(val) => setEditing(editing ? { ...editing, value: val } : null)}
             onTogglePurchase={handleTogglePurchase}
             onChangeGroup={handleChangeGroup}
+            onDiscard={setDiscardTarget}
           />
         ) : activeTab === "compras" ? (
           <ComprasTab
             ingredients={ingredients}
             groups={groups}
             onUnmark={handleTogglePurchase}
+          />
+        ) : activeTab === "produccion" ? (
+          <ProduccionTab
+            userId={user?.id ?? null}
+            userName={profile?.full_name ?? null}
+            onInventoryChanged={() => {
+              mutateIngredients();
+              mutateMovements();
+            }}
           />
         ) : (
           <HistorialTab movements={movements} ingredientMap={ingredientMap} />
@@ -195,6 +214,15 @@ export default function InventarioPage() {
           />
         </>
       )}
+
+      <DiscardForm
+        isOpen={discardTarget !== null}
+        onClose={() => setDiscardTarget(null)}
+        onSuccess={handleDiscardSuccess}
+        ingredient={discardTarget}
+        userId={user?.id ?? null}
+        userName={profile?.full_name ?? null}
+      />
     </section>
   );
 }

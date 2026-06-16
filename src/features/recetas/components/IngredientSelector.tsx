@@ -3,9 +3,8 @@
 import { useState, useEffect } from "react";
 import type { Ingredient } from "@/types";
 import type { RecipeIngredientLine } from "../types";
-import { UNIT_OPTIONS } from "../constants";
 import { calculateIngredientCost } from "../services/recipeCalculations";
-import { normalizeText } from "@/utils/helpers";
+import { normalizeText, compatibleUnits, areCompatible } from "@/utils/helpers";
 
 interface IngredientSelectorProps {
   ingredients: Ingredient[];
@@ -59,6 +58,14 @@ export default function IngredientSelector({
     ? ingredients.find((ing) => ing.id === selectedIngredientId)
     : null;
 
+  // La unidad de la línea se limita a las compatibles con el ingrediente:
+  // peso → kg/g, volumen → l/ml, conteo/personalizada → solo esa unidad.
+  // Si el ingrediente tiene peso por unidad, además permite und↔g/kg.
+  const unitChoices = selectedIngredient
+    ? compatibleUnits(selectedIngredient.unit_of_measure, selectedIngredient.unit_weight_g)
+    : [];
+  const unitLocked = !!selectedIngredient && unitChoices.length <= 1;
+
   const handleSelectIngredient = (id: number, name: string) => {
     const ingredient = ingredients.find((ing) => ing.id === id);
     setSelectedIngredientId(id);
@@ -79,12 +86,20 @@ export default function IngredientSelector({
     const ingredient = ingredients.find((ing) => ing.id === selectedIngredientId);
     if (!ingredient) return;
 
+    if (!areCompatible(ingredientUnit, ingredient.unit_of_measure, ingredient.unit_weight_g)) {
+      setError(
+        `La unidad no es compatible: ${ingredient.name} se mide en ${ingredient.unit_of_measure}`,
+      );
+      return;
+    }
+
     const equivalentPrice = calculateIngredientCost(
       parseFloat(ingredientQuantity),
       ingredientUnit,
       ingredient.price,
       ingredient.quantity,
-      ingredient.unit_of_measure
+      ingredient.unit_of_measure,
+      ingredient.unit_weight_g
     );
 
     const line: RecipeIngredientLine = {
@@ -95,6 +110,7 @@ export default function IngredientSelector({
       ingredient_price: ingredient.price,
       ingredient_unit: ingredient.unit_of_measure,
       ingredient_quantity_stock: ingredient.quantity,
+      ingredient_unit_weight_g: ingredient.unit_weight_g,
       equivalent_price: equivalentPrice,
     };
 
@@ -197,16 +213,23 @@ export default function IngredientSelector({
               setIngredientUnit(e.target.value);
               setError(null);
             }}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !selectedIngredient || unitLocked}
             className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
           >
-            <option value="">Seleccionar</option>
-            {UNIT_OPTIONS.map((opt) => (
+            {!selectedIngredient && <option value="">Seleccionar</option>}
+            {unitChoices.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
             ))}
           </select>
+          {selectedIngredient && (
+            <p className="text-xs text-slate-500 mt-1">
+              {unitLocked
+                ? `Se mide en ${selectedIngredient.unit_of_measure}`
+                : `Compatible con ${selectedIngredient.unit_of_measure}`}
+            </p>
+          )}
         </div>
       </div>
 

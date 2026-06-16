@@ -41,11 +41,18 @@ export default function ItemList({
                 <p className="text-sm font-medium text-slate-900 capitalize truncate">
                   {item.item_name}
                 </p>
-                {linkedIngredient && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                    {linkedIngredient.name}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                  {linkedIngredient && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                      {linkedIngredient.name}
+                    </span>
+                  )}
+                  {item.quantity != null && linkedIngredient && (
+                    <span className="text-xs text-slate-500">
+                      +{item.quantity} {item.unit ?? linkedIngredient.unit_of_measure} stock
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-3 ml-3">
                 <span className="text-sm font-semibold text-green-600">
@@ -83,6 +90,9 @@ export default function ItemList({
                 Ingrediente
               </th>
               <th className="px-4 py-2 text-right text-xs font-medium text-slate-700 uppercase">
+                Cantidad
+              </th>
+              <th className="px-4 py-2 text-right text-xs font-medium text-slate-700 uppercase">
                 Precio
               </th>
               <th className="px-4 py-2 text-center text-xs font-medium text-slate-700 uppercase">
@@ -112,6 +122,15 @@ export default function ItemList({
                       <span className="text-slate-400">-</span>
                     )}
                   </td>
+                  <td className="px-4 py-3 text-sm text-slate-600 text-right">
+                    {item.quantity != null && linkedIngredient ? (
+                      <span>
+                        {item.quantity} {item.unit ?? linkedIngredient.unit_of_measure}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">-</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-sm text-slate-900 text-right font-semibold">
                     <span className="text-green-600">
                       S/ {item.price.toFixed(2)}
@@ -133,7 +152,7 @@ export default function ItemList({
             })}
             <tr className="bg-green-50 font-semibold">
               <td
-                colSpan={2}
+                colSpan={3}
                 className="px-4 py-3 text-sm text-right text-green-900"
               >
                 Subtotal ítems:

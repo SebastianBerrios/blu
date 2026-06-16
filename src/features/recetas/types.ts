@@ -8,6 +8,7 @@ export interface RecipeIngredientLine {
   ingredient_price: number;
   ingredient_unit: string;
   ingredient_quantity_stock: number;
+  ingredient_unit_weight_g?: number | null;
   equivalent_price?: number;
 }
 

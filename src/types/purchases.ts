@@ -9,6 +9,8 @@ export interface PurchaseItemWithDetails {
   item_name: string;
   ingredient_id: number | null;
   price: number;
+  quantity: number | null;
+  unit: string | null;
 }
 
 export interface PurchaseWithItems extends Purchase {
@@ -28,6 +30,10 @@ export interface PurchaseItemLine {
   item_name: string;
   ingredient_id: number | null;
   price: number;
+  /** Cantidad comprada (en la unidad `unit`). Suma al inventario tras convertir a la unidad de stock. */
+  quantity?: number | null;
+  /** Unidad en que se ingresó la cantidad (null = unidad de stock del ingrediente). */
+  unit?: string | null;
 }
 
 export interface PurchasesFilters {

@@ -19,7 +19,8 @@ export async function loadRecipeIngredients(
         name,
         price,
         quantity,
-        unit_of_measure
+        unit_of_measure,
+        unit_weight_g
       )
     `
     )
@@ -35,7 +36,8 @@ export async function loadRecipeIngredients(
       item.unit_of_measure,
       item.ingredients.price,
       item.ingredients.quantity,
-      item.ingredients.unit_of_measure
+      item.ingredients.unit_of_measure,
+      item.ingredients.unit_weight_g
     );
 
     return {
@@ -46,6 +48,7 @@ export async function loadRecipeIngredients(
       ingredient_price: item.ingredients.price,
       ingredient_unit: item.ingredients.unit_of_measure,
       ingredient_quantity_stock: item.ingredients.quantity,
+      ingredient_unit_weight_g: item.ingredients.unit_weight_g,
       equivalent_price: equivalentPrice,
     };
   });

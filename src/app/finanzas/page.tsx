@@ -13,10 +13,12 @@ import {
   Bike,
   CreditCard,
   ListFilter,
+  Tags,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useTransactionCategories } from "@/hooks/useTransactionCategories";
 import { toLocalDateKey } from "@/utils/helpers/groupByDate";
 import type { TransactionType } from "@/types";
 import TransferForm from "@/components/forms/TransferForm";
@@ -25,6 +27,8 @@ import ExtraIncomeForm from "@/components/forms/ExtraIncomeForm";
 import InitialBalanceForm from "@/components/forms/InitialBalanceForm";
 import PageHeader from "@/components/ui/PageHeader";
 import DailySummary from "@/features/finanzas/components/DailySummary";
+import CategoryBreakdown from "@/features/finanzas/components/CategoryBreakdown";
+import TransactionCategoryManager from "@/features/finanzas/components/TransactionCategoryManager";
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   ingreso_venta: { label: "Venta", color: "bg-green-100 text-green-700" },
@@ -50,12 +54,15 @@ export default function FinanzasPage() {
     redirect("/");
   }
   const { cajaAccount, bancoAccount, rappiAccount, posAccount, mutate: mutateAccounts } = useAccounts();
+  const { categories } = useTransactionCategories();
   const [accountFilter, setAccountFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState<TransactionType | "">("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [showTransfer, setShowTransfer] = useState(false);
   const [expenseAccountId, setExpenseAccountId] = useState<number | null>(null);
-  const [showIncome, setShowIncome] = useState(false);
+  const [incomeAccountId, setIncomeAccountId] = useState<number | null>(null);
   const [showBalance, setShowBalance] = useState(false);
+  const [showCategories, setShowCategories] = useState(false);
   const [summaryDate, setSummaryDate] = useState(() =>
     toLocalDateKey(new Date().toISOString()),
   );
@@ -74,6 +81,7 @@ export default function FinanzasPage() {
   const { transactions, isLoading, mutate: mutateTransactions } = useTransactions({
     accountId: filteredAccountId,
     type: typeFilter || undefined,
+    categoryId: categoryFilter ? Number(categoryFilter) : undefined,
   });
 
   const handleSuccess = () => {
@@ -94,7 +102,9 @@ export default function FinanzasPage() {
   const rappiBalance = Number(rappiAccount?.balance ?? 0);
   const posBalance = Number(posAccount?.balance ?? 0);
 
-  const hasActiveFilter = accountFilter !== "all" || typeFilter !== "";
+  const hasActiveFilter = accountFilter !== "all" || typeFilter !== "" || categoryFilter !== "";
+  const ingresoCategories = categories.filter((c) => c.kind === "ingreso");
+  const egresoCategories = categories.filter((c) => c.kind === "egreso");
 
   return (
     <section className="h-full flex flex-col bg-slate-50">
@@ -115,7 +125,7 @@ export default function FinanzasPage() {
             Icon={Banknote}
             accent="green"
             onExpense={() => cajaAccount && setExpenseAccountId(cajaAccount.id)}
-            onIncome={() => setShowIncome(true)}
+            onIncome={() => cajaAccount && setIncomeAccountId(cajaAccount.id)}
           />
           <BalanceCard
             label="Cuenta Bancaria"
@@ -123,7 +133,7 @@ export default function FinanzasPage() {
             Icon={Building2}
             accent="blue"
             onExpense={isAdmin && bancoAccount ? () => setExpenseAccountId(bancoAccount.id) : undefined}
-            onIncome={isAdmin ? () => setShowIncome(true) : undefined}
+            onIncome={isAdmin && bancoAccount ? () => setIncomeAccountId(bancoAccount.id) : undefined}
           />
           <BalanceCard
             label="Rappi"
@@ -131,7 +141,7 @@ export default function FinanzasPage() {
             Icon={Bike}
             accent="orange"
             onExpense={isAdmin && rappiAccount ? () => setExpenseAccountId(rappiAccount.id) : undefined}
-            onIncome={isAdmin ? () => setShowIncome(true) : undefined}
+            onIncome={isAdmin && rappiAccount ? () => setIncomeAccountId(rappiAccount.id) : undefined}
           />
           <BalanceCard
             label="POS"
@@ -139,7 +149,7 @@ export default function FinanzasPage() {
             Icon={CreditCard}
             accent="indigo"
             onExpense={isAdmin && posAccount ? () => setExpenseAccountId(posAccount.id) : undefined}
-            onIncome={isAdmin ? () => setShowIncome(true) : undefined}
+            onIncome={isAdmin && posAccount ? () => setIncomeAccountId(posAccount.id) : undefined}
           />
         </div>
 
@@ -152,6 +162,15 @@ export default function FinanzasPage() {
             <ArrowRightLeft className="w-4 h-4" />
             <span className="truncate">Transferir entre cuentas</span>
           </button>
+          {isAdmin && (
+            <button
+              onClick={() => setShowCategories(true)}
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-3 border-2 border-primary-300 text-primary-700 bg-white rounded-lg hover:bg-primary-50 transition-colors font-medium text-sm min-h-[44px] active:scale-[0.97]"
+            >
+              <Tags className="w-4 h-4" />
+              <span className="truncate">Categorías</span>
+            </button>
+          )}
           {isAdmin && (
             <button
               onClick={() => setShowBalance(true)}
@@ -178,6 +197,7 @@ export default function FinanzasPage() {
                 onClick={() => {
                   setAccountFilter("all");
                   setTypeFilter("");
+                  setCategoryFilter("");
                 }}
                 className="text-xs font-medium text-slate-500 hover:text-slate-700 px-2 py-1 rounded hover:bg-slate-100 transition-colors"
               >
@@ -214,7 +234,34 @@ export default function FinanzasPage() {
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
+
+            {(ingresoCategories.length > 0 || egresoCategories.length > 0) && (
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none shadow-sm"
+              >
+                <option value="">Todas las categorías</option>
+                {ingresoCategories.length > 0 && (
+                  <optgroup label="Ingresos">
+                    {ingresoCategories.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+                {egresoCategories.length > 0 && (
+                  <optgroup label="Egresos">
+                    {egresoCategories.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            )}
           </div>
+
+          {/* Category totals */}
+          {!isLoading && <CategoryBreakdown transactions={transactions} />}
 
           {/* Transactions list */}
           {isLoading ? (
@@ -272,6 +319,11 @@ export default function FinanzasPage() {
                               <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${typeInfo.color}`}>
                                 {typeInfo.label}
                               </span>
+                              {t.category_name && (
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600">
+                                  {t.category_name}
+                                </span>
+                              )}
                               <span className="text-[11px] text-slate-400 tabular-nums">
                                 {new Date(t.created_at).toLocaleTimeString("es-PE", {
                                   hour: "2-digit",
@@ -307,8 +359,9 @@ export default function FinanzasPage() {
       {/* Modals */}
       <TransferForm isOpen={showTransfer} onClose={() => setShowTransfer(false)} onSuccess={handleSuccess} />
       <ExpenseForm isOpen={expenseAccountId !== null} onClose={() => setExpenseAccountId(null)} onSuccess={handleSuccess} accountId={expenseAccountId!} />
-      <ExtraIncomeForm isOpen={showIncome} onClose={() => setShowIncome(false)} onSuccess={handleSuccess} />
+      <ExtraIncomeForm isOpen={incomeAccountId !== null} onClose={() => setIncomeAccountId(null)} onSuccess={handleSuccess} accountId={incomeAccountId!} />
       <InitialBalanceForm isOpen={showBalance} onClose={() => setShowBalance(false)} onSuccess={handleSuccess} />
+      <TransactionCategoryManager isOpen={showCategories} onClose={() => setShowCategories(false)} onSuccess={handleSuccess} />
     </section>
   );
 }

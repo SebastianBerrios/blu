@@ -1,34 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
 import { recordTransaction } from "@/hooks/useTransactions";
+import { useTransactionCategories } from "@/hooks/useTransactionCategories";
+import { accountMeta } from "@/features/finanzas";
 import { logAudit } from "@/utils/auditLog";
 
 interface ExtraIncomeFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  accountId: number;
 }
 
 export default function ExtraIncomeForm({
   isOpen,
   onClose,
   onSuccess,
+  accountId,
 }: ExtraIncomeFormProps) {
-  const { isAdmin, user, profile } = useAuth();
-  const { cajaAccount, bancoAccount } = useAccounts();
-  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const { user, profile } = useAuth();
+  const { accounts } = useAccounts();
+  const { ingresoCategories } = useTransactionCategories();
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (isOpen) {
+      setAmount("");
+      setDescription("");
+      setCategoryId("");
+      setSubmitError(null);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  const accountId = selectedAccountId ?? cajaAccount?.id ?? null;
+  const account = accounts.find((a) => a.id === accountId);
+  const meta = accountMeta(account?.type);
 
   const handleSubmit = async () => {
     setSubmitError(null);
@@ -37,22 +52,24 @@ export default function ExtraIncomeForm({
       setSubmitError("Ingresa un monto válido");
       return;
     }
-    if (!description.trim()) {
-      setSubmitError("Ingresa una descripción del ingreso");
+    if (!categoryId) {
+      setSubmitError("Selecciona una categoría");
       return;
     }
-    if (!accountId) {
-      setSubmitError("Selecciona una cuenta");
+    if (!description.trim()) {
+      setSubmitError("Ingresa una descripción del ingreso");
       return;
     }
 
     setIsSubmitting(true);
     try {
+      const category = ingresoCategories.find((c) => c.id === Number(categoryId));
       await recordTransaction({
         accountId,
         type: "ingreso_extra",
         amount: numAmount,
         description: description.trim(),
+        categoryId: Number(categoryId),
       });
 
       logAudit({
@@ -60,8 +77,13 @@ export default function ExtraIncomeForm({
         userName: profile?.full_name ?? null,
         action: "crear_transaccion",
         targetTable: "transactions",
-        targetDescription: `Ingreso extra: ${description.trim()} - S/ ${numAmount.toFixed(2)}`,
-        details: { tipo: "ingreso_extra", monto: numAmount, cuenta: accountId === cajaAccount?.id ? "caja" : "banco" },
+        targetDescription: `Ingreso extra: ${category?.name ?? ""} - ${description.trim()} - S/ ${numAmount.toFixed(2)}`,
+        details: {
+          tipo: "ingreso_extra",
+          monto: numAmount,
+          categoria: category?.name ?? null,
+          cuenta: account?.type ?? null,
+        },
       });
 
       onSuccess();
@@ -98,47 +120,38 @@ export default function ExtraIncomeForm({
         </div>
 
         <div className="p-6 space-y-4">
-          {/* Account selector */}
+          {/* Account indicator (read-only) */}
           <div>
             <label className="block text-sm font-medium text-slate-900 mb-2">
-              Cuenta <span className="text-red-600">*</span>
+              Cuenta
             </label>
-            <div className="flex gap-2">
-              {cajaAccount && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedAccountId(cajaAccount.id)}
-                  disabled={isSubmitting}
-                  className={`flex-1 px-4 py-3 min-h-[44px] rounded-lg border-2 font-medium transition-all ${
-                    accountId === cajaAccount.id
-                      ? "bg-green-100 text-green-700 border-green-300"
-                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                  }`}
-                >
-                  Caja
-                </button>
-              )}
-              {bancoAccount && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isAdmin) setSelectedAccountId(bancoAccount.id);
-                  }}
-                  disabled={isSubmitting || !isAdmin}
-                  title={!isAdmin ? "Solo administradores" : undefined}
-                  className={`flex-1 px-4 py-3 min-h-[44px] rounded-lg border-2 font-medium transition-all ${
-                    accountId === bancoAccount.id
-                      ? "bg-blue-100 text-blue-700 border-blue-300"
-                      : !isAdmin
-                      ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                  }`}
-                >
-                  Banco
-                  {!isAdmin && <span className="block text-xs mt-0.5">Solo admin</span>}
-                </button>
-              )}
+            <div className={`px-4 py-3 rounded-lg border-2 font-medium text-sm ${meta.classes}`}>
+              {meta.label}
             </div>
+          </div>
+
+          {/* Category selector */}
+          <div>
+            <label className="block text-sm font-medium text-slate-900 mb-1.5">
+              Categoría <span className="text-red-600">*</span>
+            </label>
+            {ingresoCategories.length === 0 ? (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                No hay categorías de ingreso. Pídele a un administrador que cree una.
+              </p>
+            ) : (
+              <select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                disabled={isSubmitting}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100 bg-white"
+              >
+                <option value="">Selecciona una categoría</option>
+                {ingresoCategories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>
@@ -192,7 +205,7 @@ export default function ExtraIncomeForm({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || ingresoCategories.length === 0}
               className="flex-1 px-4 py-3 min-h-[44px] bg-green-700 text-white font-medium rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
             >
               {isSubmitting ? "Registrando..." : "Registrar ingreso"}

@@ -11,6 +11,9 @@ export type AuditAction =
   | "cambiar_estado_usuario"
   | "configurar_saldo"
   | "ajustar_inventario"
+  | "descartar_inventario"
+  | "producir_lote"
+  | "revertir_produccion"
   | "editar_ingredientes_receta"
   | "crear_receta_producto"
   | "crear"
@@ -35,13 +38,15 @@ export type AuditTargetTable =
   | "user_profiles"
   | "accounts"
   | "inventory_movements"
+  | "productions"
   | "schedule_templates"
   | "schedule_overrides"
   | "time_off_requests"
   | "extra_hours_log"
   | "employee_tasks"
   | "task_completions"
-  | "ingredient_groups";
+  | "ingredient_groups"
+  | "transaction_categories";
 
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   eliminar: "Eliminación",
@@ -52,6 +57,9 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   cambiar_estado_usuario: "Estado de usuario",
   configurar_saldo: "Configuración de saldo",
   ajustar_inventario: "Ajuste de inventario",
+  descartar_inventario: "Descarte de inventario",
+  producir_lote: "Producción de lote",
+  revertir_produccion: "Reverso de producción",
   editar_ingredientes_receta: "Edición de ingredientes de receta",
   crear_receta_producto: "Creación de receta para producto",
   crear: "Creación",
@@ -77,6 +85,7 @@ export const AUDIT_TABLE_LABELS: Record<AuditTargetTable, string> = {
   user_profiles: "Usuarios",
   accounts: "Cuentas",
   inventory_movements: "Inventario",
+  productions: "Producciones",
   schedule_templates: "Horarios",
   schedule_overrides: "Excepciones de horario",
   time_off_requests: "Solicitudes de permiso",
@@ -84,4 +93,5 @@ export const AUDIT_TABLE_LABELS: Record<AuditTargetTable, string> = {
   employee_tasks: "Tareas de empleados",
   task_completions: "Completaciones de tareas",
   ingredient_groups: "Grupos de ingredientes",
+  transaction_categories: "Categorías de transacciones",
 };

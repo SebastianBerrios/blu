@@ -1,7 +1,15 @@
 "use client";
 
-import { Trash2, SquarePen } from "lucide-react";
+import { Trash2, SquarePen, AlertTriangle } from "lucide-react";
 import type { RecipeIngredientLine } from "../types";
+import { areCompatible } from "@/utils/helpers";
+
+function isIncompatible(item: RecipeIngredientLine): boolean {
+  return (
+    !!item.ingredient_unit &&
+    !areCompatible(item.unit_of_measure, item.ingredient_unit, item.ingredient_unit_weight_g)
+  );
+}
 
 interface IngredientListProps {
   ingredients: RecipeIngredientLine[];
@@ -46,10 +54,17 @@ export default function IngredientList({
               </p>
             </div>
             <div className="flex items-center gap-3 ml-3">
-              {!hidePrice && (
-                <span className="text-sm font-semibold text-green-600">
-                  S/ {item.equivalent_price?.toFixed(2) || "0.00"}
+              {isIncompatible(item) ? (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600" title={`Se mide en ${item.ingredient_unit}`}>
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  unidad incompatible
                 </span>
+              ) : (
+                !hidePrice && (
+                  <span className="text-sm font-semibold text-green-600">
+                    S/ {item.equivalent_price?.toFixed(2) || "0.00"}
+                  </span>
+                )
               )}
               {!viewOnly && (
                 <>
@@ -128,10 +143,17 @@ export default function IngredientList({
                   {item.unit_of_measure}
                 </td>
                 {!hidePrice && (
-                  <td className="px-4 py-3 text-sm text-slate-900 text-right font-semibold">
-                    <span className="text-green-600">
-                      S/ {item.equivalent_price?.toFixed(2) || "0.00"}
-                    </span>
+                  <td className="px-4 py-3 text-sm text-right font-semibold">
+                    {isIncompatible(item) ? (
+                      <span className="inline-flex items-center gap-1 text-xs text-red-600" title={`Se mide en ${item.ingredient_unit}`}>
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        unidad incompatible
+                      </span>
+                    ) : (
+                      <span className="text-green-600">
+                        S/ {item.equivalent_price?.toFixed(2) || "0.00"}
+                      </span>
+                    )}
                   </td>
                 )}
                 {!viewOnly && (

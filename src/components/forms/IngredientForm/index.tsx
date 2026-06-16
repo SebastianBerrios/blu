@@ -7,6 +7,7 @@ import {
   createIngredient,
   updateIngredient,
 } from "@/features/ingredientes";
+import { UNIT_OPTIONS, normalizeUnit } from "@/utils/helpers/units";
 import type { CreateIngredient, Ingredient, IngredientGroup } from "@/types";
 
 interface IngredientFormProps {
@@ -15,6 +16,8 @@ interface IngredientFormProps {
   onSuccess: () => void;
   ingredient?: Ingredient;
   groups?: IngredientGroup[];
+  /** Unidades ya usadas en otros ingredientes, para sugerir/reutilizar (ej. "rodaja"). */
+  existingUnits?: string[];
 }
 
 export default function IngredientForm({
@@ -23,12 +26,17 @@ export default function IngredientForm({
   onSuccess,
   ingredient,
   groups,
+  existingUnits = [],
 }: IngredientFormProps) {
   const isEditMode = !!ingredient;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const { register, handleSubmit, reset } = useForm<CreateIngredient>();
+
+  const unitSuggestions = Array.from(
+    new Set([...UNIT_OPTIONS.map((u) => u.value), ...existingUnits.map(normalizeUnit)]),
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -39,6 +47,7 @@ export default function IngredientForm({
           unit_of_measure: ingredient.unit_of_measure,
           price: ingredient.price,
           group_id: ingredient.group_id ?? undefined,
+          unit_weight_g: ingredient.unit_weight_g ?? undefined,
         });
       } else {
         reset({
@@ -47,6 +56,7 @@ export default function IngredientForm({
           unit_of_measure: "",
           price: 0,
           group_id: undefined,
+          unit_weight_g: undefined,
         });
       }
     }
@@ -147,22 +157,29 @@ export default function IngredientForm({
               <label className="block text-sm font-medium text-slate-900 mb-1.5">
                 Unidad <span className="text-red-600">*</span>
               </label>
-              <select
+              <input
+                type="text"
+                list="ingredient-unit-options"
                 {...register("unit_of_measure", {
-                  required: "Selecciona una unidad",
+                  required: "Ingresa una unidad",
+                  setValueAs: (v) => normalizeUnit(v ?? ""),
                 })}
                 disabled={isSubmitting}
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
-              >
-                <option value="">Seleccionar</option>
-                <option value="kg">kg</option>
-                <option value="g">g</option>
-                <option value="l">l</option>
-                <option value="ml">ml</option>
-                <option value="und">und</option>
-              </select>
+                placeholder="kg, g, l, ml, und…"
+                autoComplete="off"
+              />
+              <datalist id="ingredient-unit-options">
+                {unitSuggestions.map((u) => (
+                  <option key={u} value={u} />
+                ))}
+              </datalist>
             </div>
           </div>
+          <p className="text-xs text-slate-500 -mt-2">
+            Mídelo en la unidad en que lo usas en recetas. Puedes usar una propia
+            (ej. <strong>rodaja</strong>, <strong>taza</strong>); al comprar ingresas esa misma unidad.
+          </p>
 
           {/* Precio */}
           <div>
@@ -180,6 +197,28 @@ export default function IngredientForm({
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
               placeholder="50.00"
             />
+          </div>
+
+          {/* Peso por unidad (opcional) */}
+          <div>
+            <label className="block text-sm font-medium text-slate-900 mb-1.5">
+              Peso por unidad (g) <span className="text-slate-500 text-xs">(opcional)</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              {...register("unit_weight_g", {
+                min: { value: 0, message: "No puede ser negativo" },
+              })}
+              disabled={isSubmitting}
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
+              placeholder="Ej: 185 (1 naranja = 185 g)"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Si lo llenas, podrás usar este ingrediente por unidad <strong>o</strong> por gramos en
+              las recetas (ej. <strong>0.5</strong> palta, <strong>4</strong> fresas), y comprarlo por kg o por unidad.
+            </p>
           </div>
 
           {/* Grupo (opcional) */}

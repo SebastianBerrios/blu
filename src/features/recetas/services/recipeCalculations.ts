@@ -1,4 +1,5 @@
 import type { RecipeIngredientLine } from "../types";
+import { convert } from "@/utils/helpers/units";
 
 // Pure helpers — unit conversions and cost calculations.
 
@@ -24,30 +25,22 @@ export function calculateIngredientCost(
   recipeUnit: string,
   ingredientPrice: number,
   ingredientQuantity: number,
-  ingredientUnit: string
+  ingredientUnit: string,
+  ingredientUnitWeightG?: number | null
 ): number {
-  const isWeight =
-    ["kg", "g"].includes(recipeUnit) && ["kg", "g"].includes(ingredientUnit);
-  const isVolume =
-    ["l", "ml"].includes(recipeUnit) && ["l", "ml"].includes(ingredientUnit);
+  if (!ingredientQuantity) return 0;
 
-  if (isWeight) {
-    const recipeInGrams = convertToBaseUnit(recipeQuantity, recipeUnit, "weight");
-    const stockInGrams = convertToBaseUnit(ingredientQuantity, ingredientUnit, "weight");
-    return (recipeInGrams / stockInGrams) * ingredientPrice;
-  }
+  // Llevar la cantidad de la receta a la unidad del ingrediente. Soporta kg/g,
+  // l/ml, conteo/personalizadas, y el bridge und↔g/kg vía peso por unidad.
+  const recipeInIngredientUnit = convert(
+    recipeQuantity,
+    recipeUnit,
+    ingredientUnit,
+    ingredientUnitWeightG,
+  );
+  if (recipeInIngredientUnit === null) return 0; // unidades incompatibles
 
-  if (isVolume) {
-    const recipeInMl = convertToBaseUnit(recipeQuantity, recipeUnit, "volume");
-    const stockInMl = convertToBaseUnit(ingredientQuantity, ingredientUnit, "volume");
-    return (recipeInMl / stockInMl) * ingredientPrice;
-  }
-
-  if (recipeUnit === "und" && ingredientUnit === "und") {
-    return (recipeQuantity / ingredientQuantity) * ingredientPrice;
-  }
-
-  return 0;
+  return (recipeInIngredientUnit / ingredientQuantity) * ingredientPrice;
 }
 
 export function calculateTotalCost(ingredients: RecipeIngredientLine[]): number {
@@ -57,7 +50,8 @@ export function calculateTotalCost(ingredients: RecipeIngredientLine[]): number 
       item.unit_of_measure,
       item.ingredient_price,
       item.ingredient_quantity_stock,
-      item.ingredient_unit
+      item.ingredient_unit,
+      item.ingredient_unit_weight_g
     );
     return sum + cost;
   }, 0);

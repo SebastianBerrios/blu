@@ -8,15 +8,23 @@ interface IngredientWrite {
   unit_of_measure: string;
   price: number;
   group_id: number | null;
+  unit_weight_g: number | null;
 }
 
 export function buildIngredientPayload(data: CreateIngredient): IngredientWrite {
+  const rawWeight = data.unit_weight_g;
+  const unitWeight =
+    rawWeight == null || String(rawWeight).trim() === "" || isNaN(Number(rawWeight))
+      ? null
+      : Number(rawWeight);
+
   return {
     name: data.name.toLowerCase(),
     quantity: Number(data.quantity),
     unit_of_measure: data.unit_of_measure,
     price: Number(data.price),
     group_id: data.group_id ? Number(data.group_id) : null,
+    unit_weight_g: unitWeight,
   };
 }
 

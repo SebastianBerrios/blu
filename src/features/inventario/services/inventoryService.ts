@@ -30,6 +30,36 @@ export async function adjustInventory(
   });
 }
 
+export async function discardInventory(
+  ingredient: Ingredient,
+  quantity: number,
+  note: string | null,
+  userId: string | null,
+  userName: string | null,
+): Promise<void> {
+  const supabase = createClient();
+
+  // Descarte (merma) atómico vía RPC: resta stock e inserta el movimiento
+  // (reason='merma', con el motivo en note) en una sola transacción.
+  const { error } = await supabase.rpc("discard_inventory", {
+    p_ingredient_id: ingredient.id,
+    p_quantity: quantity,
+    p_note: note ?? undefined,
+    p_user_id: userId ?? undefined,
+    p_user_name: userName ?? undefined,
+  });
+  if (error) throw error;
+
+  logAudit({
+    userId,
+    userName,
+    action: "descartar_inventario",
+    targetTable: "inventory_movements",
+    targetId: ingredient.id,
+    targetDescription: `Merma ${ingredient.name}: -${quantity} ${ingredient.unit_of_measure}${note ? ` (${note})` : ""}`,
+  });
+}
+
 export async function toggleNeedsPurchase(
   ingredientId: number,
   value: boolean,

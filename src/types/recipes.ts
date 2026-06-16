@@ -28,5 +28,6 @@ export interface RecipeIngredientWithRelation {
     price: number;
     quantity: number;
     unit_of_measure: string;
+    unit_weight_g: number | null;
   };
 }

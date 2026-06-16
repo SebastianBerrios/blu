@@ -124,6 +124,9 @@ export default function Ingredients() {
         onSuccess={handleSuccess}
         ingredient={selectedIngredient}
         groups={groups}
+        existingUnits={Array.from(
+          new Set((ingredients ?? []).map((i) => i.unit_of_measure).filter(Boolean)),
+        )}
       />
     </>
   );
