@@ -78,8 +78,8 @@ export default function Categories() {
           )}
           <DataTable<Category>
             title="Lista de Categorías"
-            columns={isAdmin ? ["N°", "Categorías", "Tipo", "Margen", "Acciones"] : ["N°", "Categorías", "Tipo", "Margen"]}
-            dataKeys={["id", "name", "tipo", "target_margin"]}
+            columns={isAdmin ? ["N°", "Categorías", "Tipo", "Margen", "Acciones"] : ["N°", "Categorías", "Tipo"]}
+            dataKeys={isAdmin ? ["id", "name", "tipo", "target_margin"] : ["id", "name", "tipo"]}
             data={categories || []}
             isLoading={isLoading}
             onEdit={isAdmin ? handleEdit : undefined}
@@ -99,7 +99,7 @@ export default function Categories() {
                         {item.tipo === "postre" ? "Postre" : "Bebida"}
                       </span>
                     )}
-                    {item.target_margin != null && (
+                    {isAdmin && item.target_margin != null && (
                       <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700">
                         Margen {item.target_margin}%
                       </span>

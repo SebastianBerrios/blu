@@ -104,8 +104,12 @@ export default function InventarioPage() {
   const tabs: { key: TabKey; label: string; icon: React.ReactNode; badge?: number }[] = [
     { key: "stock", label: "Stock", icon: <Package className="w-4 h-4" /> },
     { key: "compras", label: "Compras", icon: <ShoppingCart className="w-4 h-4" />, badge: purchaseCount },
-    { key: "produccion", label: "Producción", icon: <ChefHat className="w-4 h-4" /> },
-    { key: "historial", label: "Historial", icon: <Clock className="w-4 h-4" /> },
+    ...(isAdmin
+      ? [
+          { key: "produccion" as TabKey, label: "Producción", icon: <ChefHat className="w-4 h-4" /> },
+          { key: "historial" as TabKey, label: "Historial", icon: <Clock className="w-4 h-4" /> },
+        ]
+      : []),
   ];
 
   return (
@@ -173,6 +177,7 @@ export default function InventarioPage() {
           </div>
         ) : activeTab === "stock" ? (
           <StockTab
+            isAdmin={isAdmin}
             ingredients={ingredients}
             groups={groups}
             editing={editing}

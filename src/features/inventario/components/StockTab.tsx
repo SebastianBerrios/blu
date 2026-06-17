@@ -8,12 +8,12 @@ import { groupIngredientsByGroup } from "../utils/groupIngredients";
 
 const LOW_STOCK_THRESHOLD = 0.1;
 
-const StockColGroup = () => (
+const StockColGroup = ({ showGroup }: { showGroup: boolean }) => (
   <colgroup>
     <col />
     <col style={{ width: "140px" }} />
     <col style={{ width: "100px" }} />
-    <col style={{ width: "200px" }} />
+    {showGroup && <col style={{ width: "200px" }} />}
     <col style={{ width: "140px" }} />
   </colgroup>
 );
@@ -39,6 +39,7 @@ interface EditingState {
 }
 
 interface StockTabProps {
+  isAdmin: boolean;
   ingredients: Ingredient[];
   groups: IngredientGroup[];
   editing: EditingState | null;
@@ -53,6 +54,7 @@ interface StockTabProps {
 }
 
 export default function StockTab({
+  isAdmin,
   ingredients,
   groups,
   editing,
@@ -146,18 +148,20 @@ export default function StockTab({
           )}
         </td>
         <td className="px-4 py-3 text-slate-500">{ingredient.unit_of_measure}</td>
-        <td className="px-4 py-3">
-          <select
-            value={ingredient.group_id ?? ""}
-            onChange={(e) => onChangeGroup(ingredient, e.target.value ? Number(e.target.value) : null)}
-            className="text-sm text-slate-600 bg-transparent border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 rounded"
-          >
-            <option value="">Sin grupo</option>
-            {groups.sort((a, b) => a.name.localeCompare(b.name, "es")).map((g) => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
-          </select>
-        </td>
+        {isAdmin && (
+          <td className="px-4 py-3">
+            <select
+              value={ingredient.group_id ?? ""}
+              onChange={(e) => onChangeGroup(ingredient, e.target.value ? Number(e.target.value) : null)}
+              className="text-sm text-slate-600 bg-transparent border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 rounded"
+            >
+              <option value="">Sin grupo</option>
+              {groups.sort((a, b) => a.name.localeCompare(b.name, "es")).map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </td>
+        )}
         <td className="px-4 py-3 text-right">
           <div className="flex items-center justify-end gap-1">
             {isEditing ? (
@@ -194,19 +198,23 @@ export default function StockTab({
                     <ShoppingCart className="w-4 h-4" />
                   </button>
                 )}
-                <button
-                  onClick={() => onStartEdit(ingredient)}
-                  className="text-xs text-primary-600 hover:text-primary-800 font-medium px-2 py-1 hover:bg-primary-50 rounded"
-                >
-                  Ajustar
-                </button>
-                <button
-                  onClick={() => onDiscard(ingredient)}
-                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Descartar (merma)"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {isAdmin && (
+                  <>
+                    <button
+                      onClick={() => onStartEdit(ingredient)}
+                      className="text-xs text-primary-600 hover:text-primary-800 font-medium px-2 py-1 hover:bg-primary-50 rounded"
+                    >
+                      Ajustar
+                    </button>
+                    <button
+                      onClick={() => onDiscard(ingredient)}
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Descartar (merma)"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -246,16 +254,18 @@ export default function StockTab({
             )}
             <div className="min-w-0">
               <p className="font-medium text-slate-900 capitalize truncate">{ingredient.name}</p>
-              <select
-                value={ingredient.group_id ?? ""}
-                onChange={(e) => onChangeGroup(ingredient, e.target.value ? Number(e.target.value) : null)}
-                className="text-xs text-slate-500 bg-transparent border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 rounded p-0"
-              >
-                <option value="">Sin grupo</option>
-                {groups.sort((a, b) => a.name.localeCompare(b.name, "es")).map((g) => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
+              {isAdmin && (
+                <select
+                  value={ingredient.group_id ?? ""}
+                  onChange={(e) => onChangeGroup(ingredient, e.target.value ? Number(e.target.value) : null)}
+                  className="text-xs text-slate-500 bg-transparent border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 rounded p-0"
+                >
+                  <option value="">Sin grupo</option>
+                  {groups.sort((a, b) => a.name.localeCompare(b.name, "es")).map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
           {isEditing ? (
@@ -289,19 +299,23 @@ export default function StockTab({
               <span className={`inline-block px-2 py-0.5 rounded border text-sm font-semibold ${colorClass}`}>
                 {ingredient.stock_quantity} {ingredient.unit_of_measure}
               </span>
-              <button
-                onClick={() => onStartEdit(ingredient)}
-                className="text-xs text-primary-600 hover:text-primary-800 font-medium px-2 py-1 hover:bg-primary-50 rounded"
-              >
-                Ajustar
-              </button>
-              <button
-                onClick={() => onDiscard(ingredient)}
-                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Descartar (merma)"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {isAdmin && (
+                <>
+                  <button
+                    onClick={() => onStartEdit(ingredient)}
+                    className="text-xs text-primary-600 hover:text-primary-800 font-medium px-2 py-1 hover:bg-primary-50 rounded"
+                  >
+                    Ajustar
+                  </button>
+                  <button
+                    onClick={() => onDiscard(ingredient)}
+                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Descartar (merma)"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -343,7 +357,7 @@ export default function StockTab({
           <Search className="w-10 h-10 mb-2" />
           <p className="text-sm">No se encontraron ingredientes</p>
         </div>
-      ) : hasGroups ? (
+      ) : isAdmin && hasGroups ? (
         <>
           {/* Desktop grouped */}
           <div className="hidden md:block space-y-4">
@@ -355,13 +369,13 @@ export default function StockTab({
                   </h3>
                 </div>
                 <table className="w-full text-sm table-fixed">
-                  <StockColGroup />
+                  <StockColGroup showGroup={isAdmin} />
                   <thead className="bg-slate-50/50 border-b border-slate-100">
                     <tr>
                       <th className="text-left px-4 py-2 font-medium text-slate-500 text-xs">Ingrediente</th>
                       <th className="text-right px-4 py-2 font-medium text-slate-500 text-xs">Cantidad</th>
                       <th className="text-left px-4 py-2 font-medium text-slate-500 text-xs">Unidad</th>
-                      <th className="text-left px-4 py-2 font-medium text-slate-500 text-xs">Grupo</th>
+                      {isAdmin && <th className="text-left px-4 py-2 font-medium text-slate-500 text-xs">Grupo</th>}
                       <th className="text-right px-4 py-2 font-medium text-slate-500 text-xs">Acciones</th>
                     </tr>
                   </thead>
@@ -392,13 +406,13 @@ export default function StockTab({
           {/* Desktop flat table */}
           <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
             <table className="w-full text-sm table-fixed">
-              <StockColGroup />
+              <StockColGroup showGroup={isAdmin} />
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium text-slate-600">Ingrediente</th>
                   <th className="text-right px-4 py-3 font-medium text-slate-600">Cantidad</th>
                   <th className="text-left px-4 py-3 font-medium text-slate-600">Unidad</th>
-                  <th className="text-left px-4 py-3 font-medium text-slate-600">Grupo</th>
+                  {isAdmin && <th className="text-left px-4 py-3 font-medium text-slate-600">Grupo</th>}
                   <th className="text-right px-4 py-3 font-medium text-slate-600">Acciones</th>
                 </tr>
               </thead>
