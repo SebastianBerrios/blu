@@ -16,6 +16,8 @@ export type AuditAction =
   | "revertir_produccion"
   | "editar_ingredientes_receta"
   | "crear_receta_producto"
+  | "convertir_receta_producible"
+  | "quitar_receta_producible"
   | "crear"
   | "actualizar"
   | "aprobar_permiso"
@@ -62,6 +64,8 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   revertir_produccion: "Reverso de producción",
   editar_ingredientes_receta: "Edición de ingredientes de receta",
   crear_receta_producto: "Creación de receta para producto",
+  convertir_receta_producible: "Receta marcada como producible",
+  quitar_receta_producible: "Receta dejó de ser producible",
   crear: "Creación",
   actualizar: "Actualización",
   aprobar_permiso: "Aprobación de permiso",

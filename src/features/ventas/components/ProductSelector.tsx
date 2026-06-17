@@ -106,6 +106,7 @@ export default function ProductSelector({
       product_name: product.name,
       quantity,
       unit_price: unitPrice,
+      unit_cost: product.manufacturing_cost ?? 0,
       subtotal: quantity * unitPrice,
       temperatura: temp,
       tipo_leche: milk,

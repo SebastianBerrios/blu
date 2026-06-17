@@ -89,16 +89,19 @@ export type Database = {
         Row: {
           id: number
           name: string
+          target_margin: number | null
           tipo: string | null
         }
         Insert: {
           id?: never
           name: string
+          target_margin?: number | null
           tipo?: string | null
         }
         Update: {
           id?: never
           name?: string
+          target_margin?: number | null
           tipo?: string | null
         }
         Relationships: []
@@ -341,6 +344,42 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_components: {
+        Row: {
+          bundle_product_id: number
+          component_product_id: number
+          id: number
+          quantity: number
+        }
+        Insert: {
+          bundle_product_id: number
+          component_product_id: number
+          id?: never
+          quantity?: number
+        }
+        Update: {
+          bundle_product_id?: number
+          component_product_id?: number
+          id?: never
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_components_bundle_product_id_fkey"
+            columns: ["bundle_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_components_component_product_id_fkey"
+            columns: ["component_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -643,6 +682,7 @@ export type Database = {
           status: string
           temperatura: string | null
           tipo_leche: string | null
+          unit_cost: number
           unit_price: number
         }
         Insert: {
@@ -655,6 +695,7 @@ export type Database = {
           status?: string
           temperatura?: string | null
           tipo_leche?: string | null
+          unit_cost?: number
           unit_price?: number
         }
         Update: {
@@ -667,6 +708,7 @@ export type Database = {
           status?: string
           temperatura?: string | null
           tipo_leche?: string | null
+          unit_cost?: number
           unit_price?: number
         }
         Relationships: [

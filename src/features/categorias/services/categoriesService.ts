@@ -5,15 +5,18 @@ import type { CreateCategory } from "@/types";
 interface CategoryWrite {
   name: string;
   tipo: "postre" | "bebida" | null;
+  target_margin: number | null;
 }
 
 export function buildCategoryPayload(data: CreateCategory): CategoryWrite {
   const rawTipo = data.tipo as unknown as string | null;
   const tipo: "postre" | "bebida" | null =
     rawTipo === "postre" || rawTipo === "bebida" ? rawTipo : null;
+  const margin = Number(data.target_margin);
   return {
     name: data.name.toLowerCase(),
     tipo,
+    target_margin: Number.isFinite(margin) && margin > 0 ? margin : null,
   };
 }
 

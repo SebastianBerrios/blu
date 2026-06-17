@@ -4,27 +4,28 @@ import { useState, useEffect } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { X, ChefHat, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import type { CreateProduct, Product } from "@/types";
+import type { CreateProduct, Product, ProductComponentLine } from "@/types";
 import { useCategories } from "@/hooks/useCategories";
 import { useRecipes } from "@/hooks/useRecipes";
+import { useProducts } from "@/hooks/useProducts";
 import {
   buildProductPayload,
   createProduct,
   updateProduct,
 } from "@/features/productos/services/productsService";
+import {
+  loadProductComponents,
+  saveProductComponents,
+} from "@/features/productos/services/bundleService";
 import ProductBasicInfoSection from "@/features/productos/components/ProductBasicInfoSection";
 import RecipeSelector from "@/features/productos/components/RecipeSelector";
-import PricingSection, {
-  type TargetPercentageOption,
-} from "@/features/productos/components/PricingSection";
+import BundleSelector from "@/features/productos/components/BundleSelector";
+import PricingSection from "@/features/productos/components/PricingSection";
 
-const TARGET_PERCENTAGE_OPTIONS: TargetPercentageOption[] = [
-  { title: "Bebidas", value: 25 },
-  { title: "Postres", value: 30 },
-  { title: "Para picar", value: 30 },
-  { title: "Tortas & Cakes", value: 32 },
-  { title: "Brunch & Sandwichs", value: 35 },
-];
+type CostMode = "receta" | "combo";
+
+// Margen por defecto cuando la categoría no tiene `target_margin` configurado.
+const DEFAULT_TARGET_MARGIN = 30;
 
 interface ProductFormProps {
   isOpen: boolean;
@@ -49,17 +50,13 @@ export default function ProductForm({
   const [recipeBatchCost, setRecipeBatchCost] = useState<number>(0);
   const [recipeYield, setRecipeYield] = useState<number>(1);
 
-  // Pricing margin selection
-  const [selectedOptionTitle, setSelectedOptionTitle] = useState<string>(
-    TARGET_PERCENTAGE_OPTIONS[0].title
-  );
-
-  const currentTargetPercentage =
-    TARGET_PERCENTAGE_OPTIONS.find((opt) => opt.title === selectedOptionTitle)
-      ?.value || 0;
+  // Modo de costo: receta base vs combo (paquete de productos)
+  const [costMode, setCostMode] = useState<CostMode>("receta");
+  const [components, setComponents] = useState<ProductComponentLine[]>([]);
 
   const { categories } = useCategories();
   const { recipes } = useRecipes();
+  const { products } = useProducts();
 
   const { register, handleSubmit, reset, setValue, watch } =
     useForm<CreateProduct>({
@@ -70,6 +67,12 @@ export default function ProductForm({
 
   const manufacturingCost = Number(watch("manufacturing_cost") || 0);
   const priceValue = Number(watch("price") || 0);
+
+  // El margen objetivo se deriva de la categoría seleccionada (config en BD).
+  const selectedCategoryId = Number(watch("categoryId") || 0);
+  const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+  const currentTargetPercentage =
+    selectedCategory?.target_margin ?? DEFAULT_TARGET_MARGIN;
 
   const baseCost = manufacturingCost;
   const wasteCost = Number((baseCost * 0.05).toFixed(2));
@@ -131,9 +134,27 @@ export default function ProductForm({
         setRecipeBatchCost(0);
         setRecipeYield(1);
       }
-      setSelectedOptionTitle(TARGET_PERCENTAGE_OPTIONS[0].title);
+      // El modo combo se resuelve al cargar los componentes (efecto de abajo).
+      setCostMode("receta");
+      setComponents([]);
     }
   }, [isOpen, product, recipes, reset]);
+
+  // Carga los componentes del combo (si los tiene) al abrir en modo edición.
+  useEffect(() => {
+    if (!isOpen || !product?.id) return;
+    let cancelled = false;
+    loadProductComponents(product.id)
+      .then((lines) => {
+        if (cancelled || lines.length === 0) return;
+        setComponents(lines);
+        setCostMode("combo");
+      })
+      .catch((err) => console.error("Error al cargar componentes:", err));
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, product?.id]);
 
   if (!isOpen) return null;
 
@@ -169,14 +190,28 @@ export default function ProductForm({
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const payload = buildProductPayload(data, suggestedPrice, selectedRecipeId);
+      const isCombo = costMode === "combo";
+      if (isCombo && components.length === 0) {
+        throw new Error("Agrega al menos un producto al combo");
+      }
+      // En combo no hay receta; el costo es la suma de los componentes.
+      const recipeIdToSave = isCombo ? null : selectedRecipeId;
+      const payload = buildProductPayload(data, suggestedPrice, recipeIdToSave);
+
+      let productId: number;
       if (isEditMode) {
         await updateProduct(product.id, payload);
+        productId = product.id;
         toast.success("Producto actualizado");
       } else {
-        await createProduct(payload);
+        productId = await createProduct(payload);
         toast.success("Producto guardado");
       }
+
+      // Sincroniza la composición del combo: guarda los componentes en modo combo,
+      // o limpia cualquier resto si el producto pasó a modo receta.
+      await saveProductComponents(productId, isCombo ? components : []);
+
       onSuccess();
       onClose();
     } catch (error) {
@@ -251,26 +286,61 @@ export default function ProductForm({
               Estructura de Costo
             </h3>
 
-            <RecipeSelector
-              recipes={recipes}
-              selectedRecipeId={selectedRecipeId}
-              initialSearchText={initialSearchText}
-              recipeBatchCost={recipeBatchCost}
-              recipeYield={recipeYield}
-              manufacturingCost={manufacturingCost}
-              register={register}
-              setValue={setValue}
-              isSubmitting={isSubmitting}
-              onSelectRecipe={handleSelectRecipe}
-              onClearRecipe={handleClearRecipe}
-            />
+            {/* Selector de modo: receta base vs combo (paquete de productos) */}
+            <div className="flex gap-2 mb-3">
+              {(
+                [
+                  { mode: "receta" as const, label: "Receta base" },
+                  { mode: "combo" as const, label: "Combo (paquete)" },
+                ]
+              ).map(({ mode, label }) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setCostMode(mode)}
+                  disabled={isSubmitting}
+                  className={`flex-1 px-3 py-2 min-h-[40px] rounded-lg text-sm font-medium border transition-all ${
+                    costMode === mode
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-blue-700 border-blue-200 hover:bg-blue-50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {costMode === "receta" ? (
+              <RecipeSelector
+                recipes={recipes}
+                selectedRecipeId={selectedRecipeId}
+                initialSearchText={initialSearchText}
+                recipeBatchCost={recipeBatchCost}
+                recipeYield={recipeYield}
+                manufacturingCost={manufacturingCost}
+                register={register}
+                setValue={setValue}
+                isSubmitting={isSubmitting}
+                onSelectRecipe={handleSelectRecipe}
+                onClearRecipe={handleClearRecipe}
+              />
+            ) : (
+              <BundleSelector
+                products={products}
+                currentProductId={product?.id}
+                currentCategoryId={selectedCategoryId || undefined}
+                components={components}
+                onChange={setComponents}
+                setValue={setValue}
+                isSubmitting={isSubmitting}
+              />
+            )}
           </div>
 
           <PricingSection
             register={register}
-            targetOptions={TARGET_PERCENTAGE_OPTIONS}
-            selectedOptionTitle={selectedOptionTitle}
-            onSelectOption={setSelectedOptionTitle}
+            targetMargin={currentTargetPercentage}
+            categoryName={selectedCategory?.name ?? null}
             totalCost={totalCost}
             suggestedPrice={suggestedPrice}
             profit={profit}

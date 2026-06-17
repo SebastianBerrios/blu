@@ -13,6 +13,7 @@ import {
   createRecipe,
   updateRecipe,
   updateRecipeIngredientsOnly,
+  fetchRecipeProducible,
 } from "@/features/recetas";
 import IngredientSelector from "@/features/recetas/components/IngredientSelector";
 import IngredientList from "@/features/recetas/components/IngredientList";
@@ -96,11 +97,20 @@ export default function RecipeForm({
         setRecipeIngredients([]);
         originalIngredientsRef.current = [];
       }
-      setAddAsIngredient(effectiveReadOnlyMeta || hidePrice ? false : true);
+      setAddAsIngredient(!isEditMode && !effectiveReadOnlyMeta && !hidePrice);
       setEditingIngredient(null);
       setSubmitError(null);
     }
-  }, [isOpen, recipe, reset, effectiveReadOnlyMeta, hidePrice]);
+  }, [isOpen, recipe, reset, effectiveReadOnlyMeta, hidePrice, isEditMode]);
+
+  // En edición, inicializar el toggle según si la receta ya es producible
+  useEffect(() => {
+    if (isOpen && isEditMode && recipe) {
+      fetchRecipeProducible(recipe.id)
+        .then((p) => setAddAsIngredient(!!p))
+        .catch(() => {});
+    }
+  }, [isOpen, isEditMode, recipe]);
 
   if (!isOpen) return null;
 
@@ -311,8 +321,8 @@ export default function RecipeForm({
             />
           )}
 
-          {/* Add as ingredient toggle */}
-          {!isEditMode && !readOnlyMeta && isAdmin && (
+          {/* Add as ingredient toggle (crear, o convertir una receta standalone en edición) */}
+          {isAdmin && !effectiveReadOnlyMeta && (!isEditMode || (!productId && !hidePrice)) && (
             <AddAsIngredientToggle
               addAsIngredient={addAsIngredient}
               onToggle={() => setAddAsIngredient((prev) => !prev)}

@@ -2,6 +2,16 @@ import type { Tables } from "./database";
 
 export type Product = Tables<"products">;
 
+export type ProductComponent = Tables<"product_components">;
+
+// Línea de componente de un combo en el form (con datos del producto para mostrar/sumar).
+export interface ProductComponentLine {
+  component_product_id: number;
+  component_name: string;
+  quantity: number;
+  unit_cost: number;
+}
+
 export interface CreateProduct {
   name: string;
   categoryId: number;

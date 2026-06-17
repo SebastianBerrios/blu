@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect } from "react";
 import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
 import { toLocalDateKey, groupByDate } from "@/utils/helpers/groupByDate";
@@ -136,6 +139,32 @@ export const useSales = ({
       dedupingInterval: 2000,
     }
   );
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel("sales-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "sales" },
+        () => {
+          mutate();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "sale_products" },
+        () => {
+          mutate();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [mutate]);
 
   return { sales: data ?? [], error, isLoading, mutate };
 };

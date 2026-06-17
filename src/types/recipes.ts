@@ -2,6 +2,12 @@ import type { Tables } from "./database";
 
 export type Recipe = Tables<"recipes">;
 
+/** Recipe + flag derivado: true si tiene un ingrediente vinculado (recipe_id),
+ *  lo que la convierte en "producible" (fabricable por lotes en Inventario → Producción). */
+export interface RecipeWithProducible extends Recipe {
+  is_producible: boolean;
+}
+
 export interface CreateRecipe {
   name: string;
   description: string;

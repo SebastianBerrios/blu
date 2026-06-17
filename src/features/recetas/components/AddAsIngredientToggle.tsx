@@ -15,11 +15,13 @@ export default function AddAsIngredientToggle({
     <div className="border border-purple-200 rounded-lg p-4 bg-purple-50 flex items-start justify-between gap-4">
       <div>
         <label className="block text-sm font-medium text-purple-900 mb-1.5">
-          ¿Agregar esta receta como ingrediente?
+          ¿Es un producible? (se fabrica por lotes)
         </label>
         <p className="text-xs text-purple-700">
-          Si está activado, la receta se registrará en la lista de
-          ingredientes para usarla en otras preparaciones.
+          Si está activado, esta receta aparecerá en{" "}
+          <span className="font-semibold">Inventario → Producción</span> para
+          fabricar lotes, y podrá usarse como ingrediente en otras
+          preparaciones.
         </p>
       </div>
       <button

@@ -10,6 +10,8 @@ export interface SaleProductLine {
   product_name: string;
   quantity: number;
   unit_price: number;
+  // Costo de fabricación congelado al momento de la venta (snapshot para estadísticas).
+  unit_cost?: number;
   subtotal: number;
   temperatura: string | null;
   tipo_leche: string | null;

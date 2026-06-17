@@ -37,11 +37,13 @@ export default function CategoryForm({
             category.tipo === "postre" || category.tipo === "bebida"
               ? category.tipo
               : null,
+          target_margin: category.target_margin ?? null,
         });
       } else {
         reset({
           name: "",
           tipo: null,
+          target_margin: 30,
         });
       }
     }
@@ -139,6 +141,38 @@ export default function CategoryForm({
               <option value="postre">Postre</option>
               <option value="bebida">Bebida</option>
             </select>
+          </div>
+
+          {/* Margen objetivo */}
+          <div>
+            <label className="block text-sm font-medium text-slate-900 mb-1.5">
+              Margen objetivo{" "}
+              <span className="text-slate-500 text-xs">
+                (% del precio que es costo — ej. 25 = costo 25% del precio)
+              </span>
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                step="1"
+                min="1"
+                max="99"
+                {...register("target_margin", {
+                  valueAsNumber: true,
+                  min: { value: 1, message: "Mínimo 1%" },
+                  max: { value: 99, message: "Máximo 99%" },
+                })}
+                disabled={isSubmitting}
+                className="w-full px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
+                placeholder="30"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">
+                %
+              </span>
+            </div>
+            <p className="mt-1.5 text-xs text-slate-500">
+              Define el precio sugerido de los productos de esta categoría. Menor % = mayor margen de ganancia.
+            </p>
           </div>
 
           {submitError && (

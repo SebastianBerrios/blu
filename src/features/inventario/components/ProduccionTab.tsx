@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChefHat, Undo2, Search } from "lucide-react";
+import Link from "next/link";
+import { ChefHat, Undo2, Search, Info } from "lucide-react";
 import { useProduction } from "@/hooks/useProduction";
 import { reverseProduction } from "../services/productionService";
 import { normalizeText } from "@/utils/helpers";
@@ -79,6 +80,19 @@ export default function ProduccionTab({
         </div>
       )}
 
+      {/* Explicación del flujo */}
+      <div className="flex items-start gap-2.5 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+        <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+        <p className="text-xs text-emerald-800 leading-relaxed">
+          Aquí solo <span className="font-semibold">fabricas</span> lotes (descuenta insumos y suma stock).
+          Para crear o editar un producible ve a{" "}
+          <Link href="/recipes" className="font-semibold underline hover:text-emerald-900">
+            Recetas
+          </Link>{" "}
+          y activa «Agregar como ingrediente».
+        </p>
+      </div>
+
       {/* Productos producibles */}
       <div>
         <div className="relative mb-3">
@@ -93,10 +107,19 @@ export default function ProduccionTab({
         </div>
 
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-40 text-slate-400">
+          <div className="flex flex-col items-center justify-center h-48 text-slate-400">
             <ChefHat className="w-10 h-10 mb-2" />
             <p className="text-sm">No hay productos producibles</p>
-            <p className="text-xs">Marca un ingrediente con receta para poder producirlo</p>
+            <p className="text-xs mb-3 text-center max-w-xs">
+              Crea uno en Recetas activando «Agregar como ingrediente» al guardar la receta.
+            </p>
+            <Link
+              href="/recipes"
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
+            >
+              <ChefHat className="w-4 h-4" />
+              Ir a Recetas
+            </Link>
           </div>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2">

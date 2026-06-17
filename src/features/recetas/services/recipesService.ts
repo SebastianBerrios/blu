@@ -69,8 +69,22 @@ export async function updateRecipeIngredientsOnly(
   });
 }
 
+/** Lee el ingrediente vinculado a una receta (si la receta es "producible"). */
+export async function fetchRecipeProducible(
+  recipeId: number,
+): Promise<{ ingredientId: number; stockQuantity: number } | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("ingredients")
+    .select("id, stock_quantity")
+    .eq("recipe_id", recipeId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? { ingredientId: data.id, stockQuantity: data.stock_quantity ?? 0 } : null;
+}
+
 export async function updateRecipe(params: RecipeSubmitParams): Promise<void> {
-  const { formData, ingredients, recipe } = params;
+  const { formData, ingredients, recipe, addAsIngredient, userId, userName } = params;
   if (!recipe) throw new Error("Recipe is required for update");
 
   const supabase = createClient();
@@ -106,6 +120,58 @@ export async function updateRecipe(params: RecipeSubmitParams): Promise<void> {
     .from("recipe_ingredients")
     .insert(buildIngredientsToInsert(recipe.id, ingredients));
   if (ingredientsError) throw ingredientsError;
+
+  // Sincronizar estado "producible" (solo cuando addAsIngredient es explícito)
+  if (addAsIngredient !== undefined) {
+    const linked = await fetchRecipeProducible(recipe.id);
+
+    if (addAsIngredient && !linked) {
+      // Convertir en producible: crear el ingrediente vinculado
+      const { error: insertError } = await supabase.from("ingredients").insert({
+        name: formData.name.toLowerCase(),
+        quantity: Number(formData.quantity),
+        stock_quantity: 0,
+        unit_of_measure: formData.unit_of_measure,
+        price: Number(formData.manufacturing_cost),
+        recipe_id: recipe.id,
+      });
+      if (insertError) throw insertError;
+
+      logAudit({
+        userId,
+        userName,
+        action: "convertir_receta_producible",
+        targetTable: "recipes",
+        targetId: recipe.id,
+        targetDescription: `Receta: ${formData.name} marcada como producible`,
+      });
+    } else if (!addAsIngredient && linked) {
+      // Quitar producible: solo si no tiene stock
+      if (linked.stockQuantity > 0) {
+        throw new Error(
+          "No se puede quitar el producible: el ingrediente vinculado tiene stock. Descártalo primero en Inventario.",
+        );
+      }
+      const { error: deleteError } = await supabase
+        .from("ingredients")
+        .delete()
+        .eq("id", linked.ingredientId);
+      if (deleteError) {
+        throw new Error(
+          "No se puede quitar el producible: el ingrediente vinculado está en uso (otras recetas, ventas o movimientos).",
+        );
+      }
+
+      logAudit({
+        userId,
+        userName,
+        action: "quitar_receta_producible",
+        targetTable: "recipes",
+        targetId: recipe.id,
+        targetDescription: `Receta: ${formData.name} dejó de ser producible`,
+      });
+    }
+  }
 }
 
 export async function createRecipe(params: RecipeSubmitParams): Promise<void> {

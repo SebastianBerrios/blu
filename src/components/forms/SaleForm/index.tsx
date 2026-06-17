@@ -77,6 +77,7 @@ export default function SaleForm({
             product_name: sp.product_name,
             quantity: sp.quantity,
             unit_price: sp.unit_price,
+            unit_cost: product?.manufacturing_cost ?? 0,
             subtotal: sp.quantity * sp.unit_price,
             temperatura: sp.temperatura,
             tipo_leche: sp.tipo_leche,

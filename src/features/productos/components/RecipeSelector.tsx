@@ -138,37 +138,50 @@ export default function RecipeSelector({
         )}
       </div>
 
-      {/* Lógica de Rendimiento (Si hay receta seleccionada) */}
+      {/* Costo derivado de la receta (Si hay receta seleccionada) */}
       {selectedRecipeId ? (
-        <div className="bg-white border border-blue-200 rounded-lg p-3 shadow-sm">
-          <div className="flex items-center justify-between text-sm mb-2">
-            <span className="text-blue-800">Costo total de receta:</span>
-            <span className="font-semibold text-blue-900">
-              S/ {recipeBatchCost.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex items-end gap-3">
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-blue-700 mb-1">
-                Porciones que rinde
-              </label>
-              <div className="w-full px-3 py-1.5 border border-blue-300 rounded bg-blue-100 text-center font-semibold text-blue-900">
-                {recipeYield}
+        recipeYield > 1 ? (
+          // Receta que rinde varias porciones: mostrar el desglose costo ÷ rendimiento.
+          <div className="bg-white border border-blue-200 rounded-lg p-3 shadow-sm">
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span className="text-blue-800">Costo total de receta:</span>
+              <span className="font-semibold text-blue-900">
+                S/ {recipeBatchCost.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-blue-700 mb-1">
+                  Porciones que rinde
+                </label>
+                <div className="w-full px-3 py-1.5 border border-blue-300 rounded bg-blue-100 text-center font-semibold text-blue-900">
+                  {recipeYield}
+                </div>
+              </div>
+              <div className="pb-2 text-blue-300">
+                <ArrowRight className="w-4 h-4" />
+              </div>
+              <div className="flex-1 text-right">
+                <span className="block text-xs font-medium text-blue-700 mb-1">
+                  Costo Unitario
+                </span>
+                <span className="block text-lg font-bold text-blue-900">
+                  S/ {manufacturingCost.toFixed(2)}
+                </span>
               </div>
             </div>
-            <div className="pb-2 text-blue-300">
-              <ArrowRight className="w-4 h-4" />
-            </div>
-            <div className="flex-1 text-right">
-              <span className="block text-xs font-medium text-blue-700 mb-1">
-                Costo Unitario
-              </span>
-              <span className="block text-lg font-bold text-blue-900">
-                S/ {manufacturingCost.toFixed(2)}
-              </span>
-            </div>
           </div>
-        </div>
+        ) : (
+          // Receta por porción (rinde 1): el costo de la receta es el costo unitario.
+          <div className="bg-white border border-blue-200 rounded-lg p-3 shadow-sm flex items-center justify-between">
+            <span className="text-sm font-medium text-blue-700">
+              Costo de fabricación
+            </span>
+            <span className="text-lg font-bold text-blue-900">
+              S/ {manufacturingCost.toFixed(2)}
+            </span>
+          </div>
+        )
       ) : (
         /* Entrada Manual (Si no hay receta) */
         <div>

@@ -30,8 +30,9 @@ interface SaleRow {
   sale_products: Array<{
     quantity: number;
     unit_price: number;
+    unit_cost: number | null;
     discount_amount: number | null;
-    products: { name: string; manufacturing_cost: number | null } | null;
+    products: { name: string } | null;
   }>;
 }
 
@@ -64,7 +65,7 @@ interface StatsData {
 }
 
 const SELECT_CLAUSE =
-  "id, sale_date, total_price, discount_amount, commission, order_type, payment_method, cash_amount, plin_amount, sale_products(quantity, unit_price, discount_amount, products(name, manufacturing_cost))";
+  "id, sale_date, total_price, discount_amount, commission, order_type, payment_method, cash_amount, plin_amount, sale_products(quantity, unit_price, unit_cost, discount_amount, products(name))";
 
 async function fetchSales(start: string, end: string): Promise<SaleRow[]> {
   const supabase = createClient();
@@ -99,7 +100,8 @@ function aggregateBase(sales: SaleRow[]): BaseAggregates {
     for (const sp of s.sale_products) {
       const qty = Number(sp.quantity) || 0;
       productsSold += qty;
-      const cost = Number(sp.products?.manufacturing_cost ?? 0) || 0;
+      // Costo congelado al momento de la venta (snapshot), no el costo actual del producto.
+      const cost = Number(sp.unit_cost ?? 0) || 0;
       grossCost += qty * cost;
     }
   }

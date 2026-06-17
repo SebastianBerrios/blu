@@ -37,10 +37,15 @@ export function buildProductPayload(
   };
 }
 
-export async function createProduct(payload: ProductWrite): Promise<void> {
+export async function createProduct(payload: ProductWrite): Promise<number> {
   const supabase = createClient();
-  const { error } = await supabase.from("products").insert(payload);
+  const { data, error } = await supabase
+    .from("products")
+    .insert(payload)
+    .select("id")
+    .single();
   if (error) throw error;
+  return data.id;
 }
 
 export async function updateProduct(id: number, payload: ProductWrite): Promise<void> {

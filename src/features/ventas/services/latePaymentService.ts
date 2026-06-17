@@ -90,6 +90,7 @@ export async function registerPaymentWithRewards(
     product_id: p.product_id,
     quantity: p.quantity,
     unit_price: p.unit_price,
+    unit_cost: p.unit_cost ?? 0,
     temperatura: p.temperatura ?? "",
     tipo_leche: p.tipo_leche ?? "",
     loyalty_reward: p.loyalty_reward ?? "",

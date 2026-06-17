@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { BookOpen, SquarePen, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { BookOpen, ChefHat, SquarePen, Trash2 } from "lucide-react";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useAuth } from "@/hooks/useAuth";
 import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
-import type { Recipe } from "@/types";
+import type { Recipe, RecipeWithProducible } from "@/types";
+
+interface RecipeRow extends RecipeWithProducible {
+  tipo: string;
+}
 import RecipeForm from "@/components/forms/RecipeForm";
 import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
@@ -23,6 +27,15 @@ export default function Recipes() {
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | undefined>();
+
+  const rows = useMemo<RecipeRow[]>(
+    () =>
+      recipes.map((recipe) => ({
+        ...recipe,
+        tipo: recipe.is_producible ? "Producible" : "Receta",
+      })),
+    [recipes]
+  );
 
   const handleCreate = () => {
     setSelectedRecipe(undefined);
@@ -77,18 +90,26 @@ export default function Recipes() {
               </p>
             </div>
           )}
-          <DataTable<Recipe>
+          <DataTable<RecipeRow>
             title="Lista de Recetas"
-            columns={["N°", "Nombre", "Descripción", "Cantidad", "Unidad de Medida", "Costo de Fabricación", "Acciones"]}
-            dataKeys={["id", "name", "description", "quantity", "unit_of_measure", "manufacturing_cost"]}
-            data={recipes || []}
+            columns={["N°", "Nombre", "Descripción", "Cantidad", "Unidad de Medida", "Costo de Fabricación", "Tipo", "Acciones"]}
+            dataKeys={["id", "name", "description", "quantity", "unit_of_measure", "manufacturing_cost", "tipo"]}
+            data={rows}
             isLoading={isLoading}
             onEdit={handleEdit}
             onDelete={handleDelete}
             renderCard={(item, onEditFn, onDeleteFn) => (
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900 capitalize truncate">{item.name}</p>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <p className="text-sm font-medium text-slate-900 capitalize truncate">{item.name}</p>
+                    {item.is_producible && (
+                      <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700">
+                        <ChefHat className="w-3 h-3" />
+                        Producible
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-3 mt-0.5">
                     <span className="text-xs text-slate-500">{item.quantity} {item.unit_of_measure}</span>
                     <span className="text-sm font-semibold text-primary-700">S/ {item.manufacturing_cost}</span>

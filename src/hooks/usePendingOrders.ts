@@ -137,6 +137,17 @@ export const usePendingOrders = () => {
           mutate();
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "sales",
+        },
+        () => {
+          mutate();
+        }
+      )
       .subscribe();
 
     return () => {

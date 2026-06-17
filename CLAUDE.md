@@ -100,7 +100,7 @@ Return `{ data: T[], error, isLoading, mutate }` — data defaults to `[]` via `
 Hooks with filters use composite SWR keys: `["transactions", filters]`.
 
 **Notable hook exceptions**:
-- `usePendingOrders` — subscribes to **Supabase Realtime** (`postgres_changes` on `sale_products`) for live updates. Only hook using Realtime.
+- `usePendingOrders` and `useSales` — both subscribe to **Supabase Realtime** (`postgres_changes` on `sales` and `sale_products`) for live updates without manual refresh. Both `sales` and `sale_products` are in the `supabase_realtime` publication.
 - `useInventory` — returns two separate mutate functions: `mutateIngredients` and `mutateMovements`.
 - `useSalesStats` — uses `dedupingInterval: 5000` (not 2000).
 - `useSchedule`, `useMonthSchedule`, `useTimeOffRequests`, `useExtraHours` — role-aware hooks that use `[isAdmin, user?.id]` in SWR key, returning `null` key while auth is loading.

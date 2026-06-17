@@ -5,16 +5,10 @@ import type { UseFormRegister } from "react-hook-form";
 import type { CreateProduct } from "@/types";
 import { RAPPI_SUGGESTED_PRICE_MULTIPLIER } from "@/features/ventas/constants";
 
-export interface TargetPercentageOption {
-  title: string;
-  value: number;
-}
-
 interface PricingSectionProps {
   register: UseFormRegister<CreateProduct>;
-  targetOptions: TargetPercentageOption[];
-  selectedOptionTitle: string;
-  onSelectOption: (title: string) => void;
+  targetMargin: number;
+  categoryName: string | null;
   totalCost: number;
   suggestedPrice: number;
   profit: number;
@@ -25,9 +19,8 @@ interface PricingSectionProps {
 
 export default function PricingSection({
   register,
-  targetOptions,
-  selectedOptionTitle,
-  onSelectOption,
+  targetMargin,
+  categoryName,
   totalCost,
   suggestedPrice,
   profit,
@@ -35,42 +28,26 @@ export default function PricingSection({
   priceValue,
   onApplySuggestedRappiPrice,
 }: PricingSectionProps) {
-  const currentTargetPercentage =
-    targetOptions.find((opt) => opt.title === selectedOptionTitle)?.value || 0;
   const suggestedRappiPrice = Number((priceValue * RAPPI_SUGGESTED_PRICE_MULTIPLIER).toFixed(2));
 
   return (
     <div className="grid grid-cols-1 gap-4">
-      {/* Selector de Margen */}
+      {/* Margen objetivo (derivado de la categoría) */}
       <div className="border border-purple-200 rounded-lg p-4 bg-purple-50">
-        <div className="flex justify-between items-center mb-3">
+        <div className="flex justify-between items-center">
           <h3 className="text-sm font-semibold text-purple-900 flex items-center gap-2">
             <Receipt className="w-4 h-4" />
             Margen Objetivo
           </h3>
           <span className="text-xs font-bold text-purple-700 bg-white px-2 py-1 rounded border border-purple-100">
-            {currentTargetPercentage}% sobre costo
+            {targetMargin}% del precio
           </span>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {targetOptions.map((option) => {
-            const isActive = selectedOptionTitle === option.title;
-            return (
-              <button
-                key={option.title}
-                type="button"
-                onClick={() => onSelectOption(option.title)}
-                className={`px-3 py-2.5 min-h-[44px] rounded-md text-xs font-medium transition-all border ${
-                  isActive
-                    ? "bg-purple-600 text-white border-purple-600 shadow-sm"
-                    : "bg-white text-purple-700 border-purple-200 hover:border-purple-300 hover:bg-purple-100"
-                }`}
-              >
-                {option.title}
-              </button>
-            );
-          })}
-        </div>
+        <p className="mt-2 text-xs text-purple-700">
+          {categoryName
+            ? `Definido por la categoría "${categoryName}". Edítalo en Categorías.`
+            : "Selecciona una categoría para fijar el margen objetivo."}
+        </p>
       </div>
 
       {/* Análisis Financiero */}
