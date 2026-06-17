@@ -12,6 +12,7 @@ export interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: ConfirmVariant;
+  isConfirming?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -23,18 +24,20 @@ export default function ConfirmDialog({
   confirmLabel = "Confirmar",
   cancelLabel = "Cancelar",
   variant = "primary",
+  isConfirming = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
   useEffect(() => {
     if (!isOpen) return;
     const handleKey = (e: KeyboardEvent) => {
+      if (isConfirming) return;
       if (e.key === "Escape") onCancel();
       if (e.key === "Enter") onConfirm();
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [isOpen, onCancel, onConfirm]);
+  }, [isOpen, isConfirming, onCancel, onConfirm]);
 
   if (!isOpen) return null;
 
@@ -43,7 +46,7 @@ export default function ConfirmDialog({
   return (
     <div
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-      onClick={onCancel}
+      onClick={isConfirming ? undefined : onCancel}
     >
       <div
         className="bg-white rounded-xl shadow-2xl w-full max-w-md"
@@ -66,7 +69,8 @@ export default function ConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="p-1 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0"
+            disabled={isConfirming}
+            className="p-1 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Cerrar"
           >
             <X className="w-5 h-5 text-slate-700" />
@@ -84,7 +88,8 @@ export default function ConfirmDialog({
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 px-4 py-3 min-h-[44px] border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
+              disabled={isConfirming}
+              className="flex-1 px-4 py-3 min-h-[44px] border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {cancelLabel}
             </button>
@@ -92,13 +97,17 @@ export default function ConfirmDialog({
           <button
             type="button"
             onClick={onConfirm}
+            disabled={isConfirming}
             autoFocus
-            className={`flex-1 px-4 py-3 min-h-[44px] text-white font-medium rounded-lg transition-colors ${
+            className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[44px] text-white font-medium rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed ${
               isDanger
                 ? "bg-red-600 hover:bg-red-700"
                 : "bg-primary-900 hover:bg-primary-700"
             }`}
           >
+            {isConfirming && (
+              <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            )}
             {confirmLabel}
           </button>
         </div>

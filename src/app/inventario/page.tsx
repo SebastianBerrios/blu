@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { adjustInventory, toggleNeedsPurchase, assignIngredientGroup } from "@/features/inventario/services/inventoryService";
 import type { Ingredient } from "@/types";
 import PageHeader from "@/components/ui/PageHeader";
-import Spinner from "@/components/ui/Spinner";
+import Skeleton from "@/components/ui/Skeleton";
 import StockTab from "@/features/inventario/components/StockTab";
 import ComprasTab from "@/features/inventario/components/ComprasTab";
 import HistorialTab from "@/features/inventario/components/HistorialTab";
@@ -160,8 +160,16 @@ export default function InventarioPage() {
         )}
 
         {isLoading ? (
-          <div className="flex items-center justify-center h-48">
-            <Spinner />
+          <div className="bg-white rounded-lg border border-slate-200 shadow-sm divide-y divide-slate-100">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between gap-3 px-4 py-3.5">
+                <Skeleton className="h-4 w-44" />
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-8 w-8 rounded-lg" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : activeTab === "stock" ? (
           <StockTab

@@ -26,6 +26,7 @@ import ExpenseForm from "@/components/forms/ExpenseForm";
 import ExtraIncomeForm from "@/components/forms/ExtraIncomeForm";
 import InitialBalanceForm from "@/components/forms/InitialBalanceForm";
 import PageHeader from "@/components/ui/PageHeader";
+import Skeleton from "@/components/ui/Skeleton";
 import DailySummary from "@/features/finanzas/components/DailySummary";
 import CategoryBreakdown from "@/features/finanzas/components/CategoryBreakdown";
 import TransactionCategoryManager from "@/features/finanzas/components/TransactionCategoryManager";
@@ -265,7 +266,23 @@ export default function FinanzasPage() {
 
           {/* Transactions list */}
           {isLoading ? (
-            <div className="text-center py-12 text-slate-500">Cargando transacciones...</div>
+            <div className="space-y-4 md:space-y-6">
+              <div>
+                <Skeleton className="h-4 w-48 mb-2" />
+                <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden shadow-sm">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex items-stretch gap-3 px-3 md:px-4 py-3">
+                      <span className="shrink-0 w-1 rounded-full bg-slate-200" aria-hidden />
+                      <div className="flex-1 min-w-0 space-y-1.5">
+                        <Skeleton className="h-3.5 w-24" />
+                        <Skeleton className="h-3.5 w-40" />
+                      </div>
+                      <Skeleton className="h-4 w-20 self-center" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           ) : transactions.length === 0 ? (
             <div className="text-center py-12 text-slate-400 bg-white rounded-xl border border-dashed border-slate-200">
               {hasActiveFilter

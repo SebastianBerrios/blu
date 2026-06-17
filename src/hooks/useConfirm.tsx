@@ -17,6 +17,13 @@ export interface ConfirmOptions {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: ConfirmVariant;
+  /**
+   * Acción async opcional. Si se provee, el diálogo permanece abierto con el
+   * botón "Confirmar" en estado de carga mientras corre; al terminar cierra y
+   * `confirm()` resuelve `true`. Si lanza, el diálogo se cierra y `confirm()`
+   * re-lanza el error para que el `try/catch` del caller lo maneje.
+   */
+  onConfirm?: () => Promise<void>;
 }
 
 type ConfirmFn = (options: ConfirmOptions) => Promise<boolean>;
@@ -34,20 +41,48 @@ const DEFAULT_STATE: DialogState = {
 
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<DialogState>(DEFAULT_STATE);
+  const [isConfirming, setIsConfirming] = useState(false);
   const resolverRef = useRef<((value: boolean) => void) | null>(null);
+  const rejecterRef = useRef<((reason: unknown) => void) | null>(null);
 
   const confirm = useCallback<ConfirmFn>((options) => {
-    return new Promise<boolean>((resolve) => {
+    return new Promise<boolean>((resolve, reject) => {
       resolverRef.current = resolve;
+      rejecterRef.current = reject;
       setState({ ...options, isOpen: true });
     });
   }, []);
 
-  const handleResolve = useCallback((value: boolean) => {
-    resolverRef.current?.(value);
+  const close = useCallback(() => {
     resolverRef.current = null;
+    rejecterRef.current = null;
+    setIsConfirming(false);
     setState((prev) => ({ ...prev, isOpen: false }));
   }, []);
+
+  const handleCancel = useCallback(() => {
+    if (isConfirming) return;
+    resolverRef.current?.(false);
+    close();
+  }, [isConfirming, close]);
+
+  const handleConfirm = useCallback(async () => {
+    const action = state.onConfirm;
+    if (!action) {
+      resolverRef.current?.(true);
+      close();
+      return;
+    }
+    setIsConfirming(true);
+    try {
+      await action();
+      resolverRef.current?.(true);
+      close();
+    } catch (err) {
+      rejecterRef.current?.(err);
+      close();
+    }
+  }, [state.onConfirm, close]);
 
   return (
     <ConfirmContext.Provider value={confirm}>
@@ -59,8 +94,9 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
         confirmLabel={state.confirmLabel}
         cancelLabel={state.cancelLabel}
         variant={state.variant}
-        onConfirm={() => handleResolve(true)}
-        onCancel={() => handleResolve(false)}
+        isConfirming={isConfirming}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
       />
     </ConfirmContext.Provider>
   );

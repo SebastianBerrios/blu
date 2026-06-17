@@ -12,7 +12,7 @@ import type { PurchaseWithItems } from "@/types";
 import PurchaseForm from "@/components/forms/PurchaseForm";
 import PurchasesGroupedList from "@/features/compras/components/PurchasesGroupedList";
 import Button from "@/components/ui/Button";
-import Spinner from "@/components/ui/Spinner";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 import PageHeader from "@/components/ui/PageHeader";
 import FAB from "@/components/ui/FAB";
 import EmptyState from "@/components/ui/EmptyState";
@@ -48,15 +48,16 @@ export default function Compras() {
   };
 
   const handleDelete = async (purchase: PurchaseWithItems) => {
-    const ok = await confirm({
-      title: "¿Eliminar compra?",
-      description: "Esta acción no se puede deshacer.",
-      confirmLabel: "Eliminar",
-      variant: "danger",
-    });
-    if (!ok) return;
     try {
-      await deletePurchase(purchase.id, user?.id ?? null, profile?.full_name ?? null);
+      const ok = await confirm({
+        title: "¿Eliminar compra?",
+        description: "Esta acción no se puede deshacer.",
+        confirmLabel: "Eliminar",
+        variant: "danger",
+        onConfirm: () =>
+          deletePurchase(purchase.id, user?.id ?? null, profile?.full_name ?? null),
+      });
+      if (!ok) return;
       mutate();
       toast.success("Compra eliminada");
     } catch (err) {
@@ -147,7 +148,18 @@ export default function Compras() {
             </div>
           )}
 
-          {isLoading && <Spinner text="Cargando compras..." size="md" />}
+          {isLoading && (
+            <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 bg-slate-50">
+                <h3 className="text-base md:text-lg font-semibold text-slate-900">Historial de Compras</h3>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            </div>
+          )}
 
           {!isLoading && purchases.length === 0 && (
             <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">

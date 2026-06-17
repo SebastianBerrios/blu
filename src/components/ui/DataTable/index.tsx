@@ -12,7 +12,7 @@ import {
   Search,
   Inbox,
 } from "lucide-react";
-import Spinner from "@/components/ui/Spinner";
+import Skeleton, { SkeletonCard } from "@/components/ui/Skeleton";
 import EmptyState from "@/components/ui/EmptyState";
 import { normalizeText } from "@/utils/helpers";
 
@@ -172,10 +172,42 @@ export default function DataTable<T extends { id: number; name: string }>({
         </div>
       </div>
 
-      {/* Loading State */}
+      {/* Loading State — skeletons que reservan altura (sin salto) */}
+      {isLoading && renderCard && (
+        <div className="md:hidden divide-y divide-slate-100">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      )}
+
       {isLoading && (
-        <div className="py-12">
-          <Spinner text="Cargando datos..." size="md" />
+        <div className={`overflow-x-auto ${renderCard ? "hidden md:block" : ""}`}>
+          <table className="w-full">
+            <thead className="bg-slate-50">
+              <tr>
+                {columns.map((column) => (
+                  <th
+                    key={column}
+                    className="px-6 py-3 text-xs font-medium text-slate-600 uppercase tracking-wider text-center"
+                  >
+                    {column}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-slate-100">
+              {Array.from({ length: 6 }).map((_, rowIdx) => (
+                <tr key={rowIdx}>
+                  {columns.map((column) => (
+                    <td key={column} className="px-6 py-4">
+                      <Skeleton className="h-4 w-full max-w-[120px] mx-auto" />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

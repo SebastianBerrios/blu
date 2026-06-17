@@ -31,6 +31,8 @@ const ACTION_COLORS: Record<AuditAction, string> = {
   revertir_produccion: "bg-amber-100 text-amber-700",
   editar_ingredientes_receta: "bg-indigo-100 text-indigo-700",
   crear_receta_producto: "bg-emerald-100 text-emerald-700",
+  convertir_receta_producible: "bg-emerald-100 text-emerald-700",
+  quitar_receta_producible: "bg-amber-100 text-amber-700",
   crear: "bg-cyan-100 text-cyan-700",
   actualizar: "bg-blue-100 text-blue-700",
   aprobar_permiso: "bg-green-100 text-green-700",

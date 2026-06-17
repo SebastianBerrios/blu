@@ -2,10 +2,12 @@
 
 import { useState, useMemo } from "react";
 import { ShoppingBasket, SquarePen, Trash2, BookOpen, Eye } from "lucide-react";
+import { toast } from "sonner";
 import { useProducts } from "@/hooks/useProducts";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
+import { useConfirm } from "@/hooks/useConfirm";
 import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import type { Product, Recipe } from "@/types";
 import ProductForm from "@/components/forms/ProductForm";
@@ -22,6 +24,7 @@ export default function Products() {
   const { recipes, mutate: mutateRecipes } = useRecipes();
   const { categories } = useCategories();
   const { isAdmin, user, profile } = useAuth();
+  const confirm = useConfirm();
 
   const RESTRICTED_CATEGORY_NAMES = useMemo(() => new Set([
     "cookies", "brownies", "muffins", "tartaletas",
@@ -64,15 +67,28 @@ export default function Products() {
   };
 
   const handleDelete = async (product: Product) => {
-    await deleteWithAudit({
-      table: "products",
-      id: product.id,
-      userId: user?.id ?? null,
-      userName: profile?.full_name ?? null,
-      auditTable: "products",
-      description: `Producto: ${product.name}`,
-    });
-    mutate();
+    try {
+      const ok = await confirm({
+        title: "¿Eliminar producto?",
+        description: `Se eliminará "${product.name}". Esta acción no se puede deshacer.`,
+        confirmLabel: "Eliminar",
+        variant: "danger",
+        onConfirm: () =>
+          deleteWithAudit({
+            table: "products",
+            id: product.id,
+            userId: user?.id ?? null,
+            userName: profile?.full_name ?? null,
+            auditTable: "products",
+            description: `Producto: ${product.name}`,
+          }),
+      });
+      if (!ok) return;
+      mutate();
+      toast.success("Producto eliminado");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al eliminar el producto");
+    }
   };
 
   const handleEditRecipe = (product: Product) => {

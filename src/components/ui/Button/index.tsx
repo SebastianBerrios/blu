@@ -5,6 +5,7 @@ interface ButtonProps {
   variant?: "primary" | "secondary" | "ghost" | "danger";
   size?: "sm" | "md" | "lg";
   icon?: boolean;
+  loading?: boolean;
   onClick?: () => void;
   type?: "button" | "submit";
   disabled?: boolean;
@@ -16,6 +17,7 @@ export default function Button({
   variant = "primary",
   size = "md",
   icon,
+  loading = false,
   onClick,
   type = "button",
   disabled,
@@ -45,10 +47,14 @@ export default function Button({
     <button
       type={type}
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || loading}
       className={`${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
     >
-      {icon && <Plus className="w-4 h-4" />}
+      {loading ? (
+        <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+      ) : (
+        icon && <Plus className="w-4 h-4" />
+      )}
       {children}
     </button>
   );

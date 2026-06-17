@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ClipboardList, CheckCircle, CheckCheck } from "lucide-react";
 import { usePendingOrders } from "@/hooks/usePendingOrders";
 import type { PendingOrderSale } from "@/hooks/usePendingOrders";
-import Spinner from "@/components/ui/Spinner";
+import Skeleton from "@/components/ui/Skeleton";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import Badge, { ORDER_TYPE_TONE } from "@/components/ui/Badge";
@@ -210,8 +210,29 @@ export default function PedidosPendientes() {
         )}
 
         {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <Spinner />
+          <div className="grid gap-4 max-w-3xl mx-auto">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+              >
+                <div className="px-4 md:px-5 py-3 md:py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                  <Skeleton className="h-5 w-28" />
+                  <Skeleton className="h-5 w-20" />
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {Array.from({ length: 3 }).map((_, j) => (
+                    <div key={j} className="px-4 md:px-5 py-3 flex items-center justify-between gap-3">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-7 w-20 rounded-full" />
+                    </div>
+                  ))}
+                </div>
+                <div className="px-4 md:px-5 py-3 border-t border-slate-200 bg-slate-50/30">
+                  <Skeleton className="h-11 w-full rounded-lg" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : !hasAnyOrders ? (
           <EmptyState

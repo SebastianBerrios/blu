@@ -17,6 +17,7 @@ import {
 import { useSalesStats } from "@/hooks/useSalesStats";
 import type { DateRangePreset } from "@/types";
 import PageHeader from "@/components/ui/PageHeader";
+import { SkeletonKpi, SkeletonChart } from "@/components/ui/Skeleton";
 import {
   KPIGrid,
   StatsChartsGrid,
@@ -144,7 +145,17 @@ export default function EstadisticasPage() {
         />
 
         {isLoading ? (
-          <div className="text-center py-12 text-slate-500">Cargando estadísticas...</div>
+          <div className="space-y-4 md:space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <SkeletonKpi key={i} />
+              ))}
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <SkeletonChart />
+              <SkeletonChart />
+            </div>
+          </div>
         ) : (
           <>
             <div ref={marginRef}>

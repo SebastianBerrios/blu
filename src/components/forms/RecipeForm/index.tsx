@@ -15,6 +15,7 @@ import {
   updateRecipeIngredientsOnly,
   fetchRecipeProducible,
 } from "@/features/recetas";
+import Skeleton from "@/components/ui/Skeleton";
 import IngredientSelector from "@/features/recetas/components/IngredientSelector";
 import IngredientList from "@/features/recetas/components/IngredientList";
 import RecipeMetadataSection from "@/features/recetas/components/RecipeMetadataSection";
@@ -47,6 +48,7 @@ export default function RecipeForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredientLine[]>([]);
+  const [loadingIngredients, setLoadingIngredients] = useState(false);
   const [addAsIngredient, setAddAsIngredient] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState<RecipeIngredientLine | null>(null);
 
@@ -66,10 +68,13 @@ export default function RecipeForm({
   // Load recipe ingredients on edit
   useEffect(() => {
     if (isEditMode && recipe) {
-      loadRecipeIngredients(recipe.id).then((loaded) => {
-        setRecipeIngredients(loaded);
-        originalIngredientsRef.current = loaded;
-      });
+      setLoadingIngredients(true);
+      loadRecipeIngredients(recipe.id)
+        .then((loaded) => {
+          setRecipeIngredients(loaded);
+          originalIngredientsRef.current = loaded;
+        })
+        .finally(() => setLoadingIngredients(false));
     }
   }, [isEditMode, recipe]);
 
@@ -261,15 +266,29 @@ export default function RecipeForm({
               />
             )}
 
-            <IngredientList
-              ingredients={recipeIngredients}
-              onEdit={setEditingIngredient}
-              onRemove={handleRemoveIngredient}
-              hidePrice={hidePrice}
-              totalCost={totalCost}
-              isSubmitting={isSubmitting}
-              viewOnly={viewOnly}
-            />
+            {loadingIngredients && recipeIngredients.length === 0 ? (
+              <div className="space-y-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between gap-3 px-3 py-2.5 bg-white border border-slate-200 rounded-lg"
+                  >
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <IngredientList
+                ingredients={recipeIngredients}
+                onEdit={setEditingIngredient}
+                onRemove={handleRemoveIngredient}
+                hidePrice={hidePrice}
+                totalCost={totalCost}
+                isSubmitting={isSubmitting}
+                viewOnly={viewOnly}
+              />
+            )}
 
             {viewOnly && recipeIngredients.length === 0 && (
               <p className="text-sm text-slate-500 italic">

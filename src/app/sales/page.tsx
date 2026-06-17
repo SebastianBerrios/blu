@@ -14,7 +14,7 @@ import SaleForm from "@/components/forms/SaleForm";
 import PaymentModal from "@/components/forms/PaymentModal";
 import SalesGroupedList from "@/features/ventas/components/SalesGroupedList";
 import Button from "@/components/ui/Button";
-import Spinner from "@/components/ui/Spinner";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 import PageHeader from "@/components/ui/PageHeader";
 import FAB from "@/components/ui/FAB";
 import EmptyState from "@/components/ui/EmptyState";
@@ -51,15 +51,16 @@ export default function Sales() {
   };
 
   const handleDelete = async (sale: SaleWithProducts) => {
-    const ok = await confirm({
-      title: "¿Eliminar venta?",
-      description: "Esta acción no se puede deshacer.",
-      confirmLabel: "Eliminar",
-      variant: "danger",
-    });
-    if (!ok) return;
     try {
-      await deleteSale(sale.id, user?.id ?? null, profile?.full_name ?? null);
+      const ok = await confirm({
+        title: "¿Eliminar venta?",
+        description: "Esta acción no se puede deshacer.",
+        confirmLabel: "Eliminar",
+        variant: "danger",
+        onConfirm: () =>
+          deleteSale(sale.id, user?.id ?? null, profile?.full_name ?? null),
+      });
+      if (!ok) return;
       mutate();
       toast.success("Venta eliminada");
     } catch (err) {
@@ -159,7 +160,20 @@ export default function Sales() {
             </div>
           )}
 
-          {isLoading && <Spinner text="Cargando ventas..." size="md" />}
+          {isLoading && (
+            <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 bg-slate-50">
+                <h3 className="text-base md:text-lg font-semibold text-slate-900">
+                  Historial de Ventas
+                </h3>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            </div>
+          )}
 
           {!isLoading && sales.length === 0 && (
             <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
