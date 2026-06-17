@@ -14,12 +14,13 @@ export function canEditFinancialRecord(opts: {
 }
 
 // Ventas: cualquier auth user puede editar/pagar las del día (TZ Lima).
-// Admin sin restricción de fecha. Eliminar sigue siendo admin-only (canDeleteFinancialRecord).
+// Admin (o el permiso sales.edit_any_date) sin restricción de fecha.
 export function canEditSale(opts: {
   isAdmin: boolean;
   recordDateISO: string | null | undefined;
+  canEditAnyDate?: boolean;
 }): boolean {
-  if (opts.isAdmin) return true;
+  if (opts.isAdmin || opts.canEditAnyDate) return true;
   if (!opts.recordDateISO) return false;
   return limaDateKey(opts.recordDateISO) === limaDateKey();
 }

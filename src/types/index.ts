@@ -17,3 +17,4 @@ export * from "./inventoryMovements";
 export * from "./productions";
 export * from "./schedule";
 export * from "./activity";
+export * from "./permissions";

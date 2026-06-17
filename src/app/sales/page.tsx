@@ -7,6 +7,7 @@ import { useSales, groupSalesByDate } from "@/hooks/useSales";
 import { useProducts } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useConfirm } from "@/hooks/useConfirm";
 import { deleteSale } from "@/features/ventas";
 import type { SaleWithProducts } from "@/types";
@@ -21,13 +22,17 @@ import EmptyState from "@/components/ui/EmptyState";
 
 export default function Sales() {
   const { isAdmin, user, profile } = useAuth();
+  const { can } = usePermissions();
+  const canEditAnyDate = can("sales.edit_any_date");
+  const canDeleteSales = can("sales.delete");
+  const canSeeAllDates = isAdmin || canEditAnyDate;
   const confirm = useConfirm();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const { sales, error, isLoading, mutate } = useSales({
-    todayOnly: !isAdmin,
-    startDate: isAdmin ? startDate || undefined : undefined,
-    endDate: isAdmin ? endDate || undefined : undefined,
+    todayOnly: !canSeeAllDates,
+    startDate: canSeeAllDates ? startDate || undefined : undefined,
+    endDate: canSeeAllDates ? endDate || undefined : undefined,
   });
   const { products } = useProducts();
   const { categories } = useCategories();
@@ -107,7 +112,7 @@ export default function Sales() {
       <section className="h-full flex flex-col bg-slate-50">
         <PageHeader
           title="Ventas"
-          subtitle={isAdmin ? "Registra y consulta tus ventas" : "Ventas del día"}
+          subtitle={canSeeAllDates ? "Registra y consulta tus ventas" : "Ventas del día"}
           icon={<TrendingUp className="w-6 h-6 text-primary-700" />}
           action={
             <Button variant="primary" icon={true} onClick={handleCreate}>
@@ -117,7 +122,7 @@ export default function Sales() {
         />
 
         <div className="flex-1 px-4 py-4 md:px-6 md:py-6 overflow-auto">
-          {isAdmin && (
+          {canSeeAllDates && (
             <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-4 mb-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-slate-900">Filtrar por fecha</h3>
@@ -209,6 +214,8 @@ export default function Sales() {
                 expandedSaleId={expandedSaleId}
                 collapsedDates={collapsedDates}
                 isAdmin={isAdmin}
+                canEditAnyDate={canEditAnyDate}
+                canDeleteSales={canDeleteSales}
                 currentUserId={user?.id ?? null}
                 onToggleExpand={toggleExpand}
                 onToggleDateGroup={toggleDateGroup}

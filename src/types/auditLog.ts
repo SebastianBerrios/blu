@@ -9,6 +9,7 @@ export type AuditAction =
   | "cambiar_estado_pedido"
   | "cambiar_rol"
   | "cambiar_estado_usuario"
+  | "cambiar_permiso"
   | "configurar_saldo"
   | "ajustar_inventario"
   | "descartar_inventario"
@@ -48,7 +49,8 @@ export type AuditTargetTable =
   | "employee_tasks"
   | "task_completions"
   | "ingredient_groups"
-  | "transaction_categories";
+  | "transaction_categories"
+  | "role_permissions";
 
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   eliminar: "Eliminación",
@@ -57,6 +59,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   cambiar_estado_pedido: "Estado de pedido",
   cambiar_rol: "Cambio de rol",
   cambiar_estado_usuario: "Estado de usuario",
+  cambiar_permiso: "Cambio de permiso",
   configurar_saldo: "Configuración de saldo",
   ajustar_inventario: "Ajuste de inventario",
   descartar_inventario: "Descarte de inventario",
@@ -98,4 +101,5 @@ export const AUDIT_TABLE_LABELS: Record<AuditTargetTable, string> = {
   task_completions: "Completaciones de tareas",
   ingredient_groups: "Grupos de ingredientes",
   transaction_categories: "Categorías de transacciones",
+  role_permissions: "Permisos por rol",
 };

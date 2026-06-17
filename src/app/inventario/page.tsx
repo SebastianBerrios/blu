@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Package, ShoppingCart, Clock, Settings, ChefHat } from "lucide-react";
 import { useInventory } from "@/hooks/useInventory";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { adjustInventory, toggleNeedsPurchase, assignIngredientGroup } from "@/features/inventario/services/inventoryService";
 import type { Ingredient } from "@/types";
 import PageHeader from "@/components/ui/PageHeader";
@@ -26,6 +27,11 @@ type TabKey = "stock" | "compras" | "produccion" | "historial";
 export default function InventarioPage() {
   const { ingredients, movements, groups, isLoading, mutateIngredients, mutateMovements, mutateGroups } = useInventory();
   const { user, profile, isAdmin } = useAuth();
+  const { can } = usePermissions();
+  const canAdjust = isAdmin || can("inventory.adjust_stock");
+  const canDiscard = isAdmin || can("inventory.discard");
+  const canProduce = isAdmin || can("inventory.produce");
+  const canViewHistory = isAdmin || can("inventory.view_history");
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -104,11 +110,11 @@ export default function InventarioPage() {
   const tabs: { key: TabKey; label: string; icon: React.ReactNode; badge?: number }[] = [
     { key: "stock", label: "Stock", icon: <Package className="w-4 h-4" /> },
     { key: "compras", label: "Compras", icon: <ShoppingCart className="w-4 h-4" />, badge: purchaseCount },
-    ...(isAdmin
-      ? [
-          { key: "produccion" as TabKey, label: "Producción", icon: <ChefHat className="w-4 h-4" /> },
-          { key: "historial" as TabKey, label: "Historial", icon: <Clock className="w-4 h-4" /> },
-        ]
+    ...(canProduce
+      ? [{ key: "produccion" as TabKey, label: "Producción", icon: <ChefHat className="w-4 h-4" /> }]
+      : []),
+    ...(canViewHistory
+      ? [{ key: "historial" as TabKey, label: "Historial", icon: <Clock className="w-4 h-4" /> }]
       : []),
   ];
 
@@ -178,6 +184,8 @@ export default function InventarioPage() {
         ) : activeTab === "stock" ? (
           <StockTab
             isAdmin={isAdmin}
+            canAdjust={canAdjust}
+            canDiscard={canDiscard}
             ingredients={ingredients}
             groups={groups}
             editing={editing}

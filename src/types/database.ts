@@ -671,6 +671,30 @@ export type Database = {
         }
         Relationships: []
       }
+      role_permissions: {
+        Row: {
+          enabled: boolean
+          permission: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          permission: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          permission?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       sale_products: {
         Row: {
           discount_amount: number
@@ -1257,6 +1281,10 @@ export type Database = {
           p_user_name?: string
         }
         Returns: undefined
+      }
+      has_permission: {
+        Args: { p_permission: string; p_user_id?: string }
+        Returns: boolean
       }
       produce_recipe_batch: {
         Args: {

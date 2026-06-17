@@ -24,6 +24,7 @@ const ACTION_COLORS: Record<AuditAction, string> = {
   cambiar_estado_pedido: "bg-blue-100 text-blue-700",
   cambiar_rol: "bg-purple-100 text-purple-700",
   cambiar_estado_usuario: "bg-amber-100 text-amber-700",
+  cambiar_permiso: "bg-purple-100 text-purple-700",
   configurar_saldo: "bg-orange-100 text-orange-700",
   ajustar_inventario: "bg-teal-100 text-teal-700",
   descartar_inventario: "bg-red-100 text-red-700",

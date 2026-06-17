@@ -40,6 +40,8 @@ interface EditingState {
 
 interface StockTabProps {
   isAdmin: boolean;
+  canAdjust: boolean;
+  canDiscard: boolean;
   ingredients: Ingredient[];
   groups: IngredientGroup[];
   editing: EditingState | null;
@@ -55,6 +57,8 @@ interface StockTabProps {
 
 export default function StockTab({
   isAdmin,
+  canAdjust,
+  canDiscard,
   ingredients,
   groups,
   editing,
@@ -198,22 +202,22 @@ export default function StockTab({
                     <ShoppingCart className="w-4 h-4" />
                   </button>
                 )}
-                {isAdmin && (
-                  <>
-                    <button
-                      onClick={() => onStartEdit(ingredient)}
-                      className="text-xs text-primary-600 hover:text-primary-800 font-medium px-2 py-1 hover:bg-primary-50 rounded"
-                    >
-                      Ajustar
-                    </button>
-                    <button
-                      onClick={() => onDiscard(ingredient)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Descartar (merma)"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </>
+                {canAdjust && (
+                  <button
+                    onClick={() => onStartEdit(ingredient)}
+                    className="text-xs text-primary-600 hover:text-primary-800 font-medium px-2 py-1 hover:bg-primary-50 rounded"
+                  >
+                    Ajustar
+                  </button>
+                )}
+                {canDiscard && (
+                  <button
+                    onClick={() => onDiscard(ingredient)}
+                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Descartar (merma)"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 )}
               </>
             )}
@@ -299,22 +303,22 @@ export default function StockTab({
               <span className={`inline-block px-2 py-0.5 rounded border text-sm font-semibold ${colorClass}`}>
                 {ingredient.stock_quantity} {ingredient.unit_of_measure}
               </span>
-              {isAdmin && (
-                <>
-                  <button
-                    onClick={() => onStartEdit(ingredient)}
-                    className="text-xs text-primary-600 hover:text-primary-800 font-medium px-2 py-1 hover:bg-primary-50 rounded"
-                  >
-                    Ajustar
-                  </button>
-                  <button
-                    onClick={() => onDiscard(ingredient)}
-                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Descartar (merma)"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </>
+              {canAdjust && (
+                <button
+                  onClick={() => onStartEdit(ingredient)}
+                  className="text-xs text-primary-600 hover:text-primary-800 font-medium px-2 py-1 hover:bg-primary-50 rounded"
+                >
+                  Ajustar
+                </button>
+              )}
+              {canDiscard && (
+                <button
+                  onClick={() => onDiscard(ingredient)}
+                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Descartar (merma)"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               )}
             </div>
           )}

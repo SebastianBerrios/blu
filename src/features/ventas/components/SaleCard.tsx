@@ -11,6 +11,8 @@ interface SaleCardProps {
   sale: SaleWithProducts;
   isExpanded: boolean;
   isAdmin: boolean;
+  canEditAnyDate?: boolean;
+  canDeleteSales?: boolean;
   currentUserId: string | null;
   onToggle: (id: number) => void;
   onEdit: (sale: SaleWithProducts) => void;
@@ -22,6 +24,8 @@ export default function SaleCard({
   sale,
   isExpanded,
   isAdmin,
+  canEditAnyDate = false,
+  canDeleteSales = false,
   onToggle,
   onEdit,
   onDelete,
@@ -41,7 +45,9 @@ export default function SaleCard({
   const canEdit = canEditSale({
     isAdmin,
     recordDateISO: sale.sale_date,
+    canEditAnyDate,
   });
+  const canDelete = isAdmin || canDeleteSales;
   const editorName =
     sale.last_editor_name && sale.last_edited_by !== sale.user_id
       ? sale.last_editor_name
@@ -154,7 +160,7 @@ export default function SaleCard({
                 <SquarePen className="w-5 h-5" />
               </button>
             )}
-            {isAdmin && (
+            {canDelete && (
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(sale); }}
                 className="p-3 text-red-700 hover:bg-red-100 rounded-lg transition-colors"
@@ -267,7 +273,7 @@ export default function SaleCard({
           )}
 
           {/* Mobile action buttons */}
-          {(canEdit || isAdmin) && (
+          {(canEdit || canDelete) && (
             <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200 md:hidden">
               {!sale.payment_method && canEdit && (
                 <button
@@ -286,7 +292,7 @@ export default function SaleCard({
                   <SquarePen className="w-5 h-5" />
                 </button>
               )}
-              {isAdmin && (
+              {canDelete && (
                 <button
                   onClick={() => onDelete(sale)}
                   className="p-3 text-red-700 bg-red-50 rounded-lg"
