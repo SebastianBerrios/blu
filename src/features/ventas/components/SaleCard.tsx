@@ -3,7 +3,12 @@
 import { ChevronDown, ChevronUp, SquarePen, Trash2, Banknote } from "lucide-react";
 import type { OrderType, PaymentMethod, SaleWithProducts } from "@/types";
 import { formatTime } from "@/utils/helpers/dateFormatters";
-import { getSaleCommission, getSaleNet } from "@/features/ventas/utils/saleAmounts";
+import {
+  getSaleCommission,
+  getSaleNet,
+  getCommissionLabel,
+  getCommissionShortPct,
+} from "@/features/ventas/utils/saleAmounts";
 import { canEditSale } from "@/utils/permissions/financialRecord";
 import Badge, { ORDER_TYPE_TONE, PAYMENT_TONE } from "@/components/ui/Badge";
 
@@ -40,7 +45,7 @@ export default function SaleCard({
   const grossNote = showBreakdown
     ? `S/ ${sale.total_price.toFixed(2)} bruto` +
       (hasDiscount ? ` · −S/ ${discountAmount.toFixed(2)} desc.` : "") +
-      (hasCommission ? " · −20% comisión" : "")
+      (hasCommission ? ` · −${getCommissionShortPct(sale)} comisión` : "")
     : "";
   const canEdit = canEditSale({
     isAdmin,
@@ -261,7 +266,7 @@ export default function SaleCard({
               )}
               {hasCommission && (
                 <div className="flex justify-between text-red-700">
-                  <span>Comisión Rappi 20%:</span>
+                  <span>{getCommissionLabel(sale)}:</span>
                   <span className="tabular-nums">−S/ {commissionAmount.toFixed(2)}</span>
                 </div>
               )}

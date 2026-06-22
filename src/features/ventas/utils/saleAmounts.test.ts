@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { getSaleCommission, getSaleNet } from "./saleAmounts";
+import {
+  getSaleCommission,
+  getSaleNet,
+  getCommissionKind,
+  getCommissionLabel,
+  getCommissionShortPct,
+} from "./saleAmounts";
 
 describe("getSaleCommission", () => {
   it("returns the stored commission when present and > 0", () => {
@@ -134,6 +140,36 @@ describe("getSaleCommission", () => {
         order_type: "Mesa",
       }),
     ).toBe(0);
+  });
+});
+
+describe("getCommissionKind / label / shortPct", () => {
+  const rappi = { total_price: 100, commission: null, payment_method: "Rappi", order_type: "Rappi" };
+  const pos = { total_price: 100, commission: null, payment_method: "POS", order_type: "Mesa" };
+  const efectivo = { total_price: 100, commission: null, payment_method: "Efectivo", order_type: "Mesa" };
+
+  it("clasifica Rappi, POS y sin comisión", () => {
+    expect(getCommissionKind(rappi)).toBe("rappi");
+    expect(getCommissionKind(pos)).toBe("pos");
+    expect(getCommissionKind(efectivo)).toBe(null);
+  });
+
+  it("Rappi tiene precedencia sobre POS en la clasificación", () => {
+    expect(
+      getCommissionKind({ total_price: 100, commission: null, payment_method: "POS", order_type: "Rappi" }),
+    ).toBe("rappi");
+  });
+
+  it("getCommissionLabel produce la etiqueta correcta", () => {
+    expect(getCommissionLabel(rappi)).toBe("Comisión Rappi 20%");
+    expect(getCommissionLabel(pos)).toBe("Comisión POS 3.44%");
+    expect(getCommissionLabel(efectivo)).toBe("");
+  });
+
+  it("getCommissionShortPct produce el porcentaje corto", () => {
+    expect(getCommissionShortPct(rappi)).toBe("20%");
+    expect(getCommissionShortPct(pos)).toBe("3.44%");
+    expect(getCommissionShortPct(efectivo)).toBe("");
   });
 });
 
