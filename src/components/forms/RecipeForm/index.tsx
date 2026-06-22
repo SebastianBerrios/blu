@@ -309,6 +309,7 @@ export default function RecipeForm({
                 </span>
                 <input
                   type="number"
+                  inputMode="decimal"
                   step="0.01"
                   {...register("manufacturing_cost")}
                   disabled

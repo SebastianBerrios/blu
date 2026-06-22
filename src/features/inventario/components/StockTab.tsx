@@ -138,6 +138,7 @@ export default function StockTab({
           {isEditing ? (
             <input
               type="number"
+              inputMode="decimal"
               step="0.01"
               min="0"
               value={editing.value}
@@ -276,6 +277,7 @@ export default function StockTab({
             <div className="flex items-center gap-2">
               <input
                 type="number"
+                inputMode="decimal"
                 step="0.01"
                 min="0"
                 value={editing.value}

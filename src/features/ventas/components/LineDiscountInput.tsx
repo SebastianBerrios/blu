@@ -37,6 +37,7 @@ export default function LineDiscountInput({
       </button>
       <input
         type="number"
+        inputMode="decimal"
         min="0"
         step={mode === "monto" ? "0.01" : "1"}
         value={value === undefined ? "" : String(value)}

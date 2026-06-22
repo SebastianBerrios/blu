@@ -149,6 +149,7 @@ export default function ExtraHoursForm({
             </label>
             <input
               type="number"
+              inputMode="decimal"
               step="0.5"
               min="0.5"
               value={hours}

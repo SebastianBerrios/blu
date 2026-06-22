@@ -142,6 +142,7 @@ export default function IngredientForm({
               </label>
               <input
                 type="number"
+                inputMode="decimal"
                 step="0.01"
                 {...register("quantity", {
                   required: "La cantidad es requerida",
@@ -188,6 +189,7 @@ export default function IngredientForm({
             </label>
             <input
               type="number"
+              inputMode="decimal"
               step="0.01"
               {...register("price", {
                 required: "El precio es requerido",
@@ -206,6 +208,7 @@ export default function IngredientForm({
             </label>
             <input
               type="number"
+              inputMode="decimal"
               step="0.01"
               min="0"
               {...register("unit_weight_g", {

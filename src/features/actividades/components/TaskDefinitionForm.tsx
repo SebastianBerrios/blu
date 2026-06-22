@@ -217,6 +217,7 @@ export default function TaskDefinitionForm({
             </label>
             <input
               type="number"
+              inputMode="numeric"
               value={sortOrder}
               onChange={(e) => setSortOrder(Number(e.target.value))}
               disabled={isSubmitting}

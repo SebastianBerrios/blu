@@ -117,6 +117,7 @@ export default function ProduceForm({
             </label>
             <input
               type="number"
+              inputMode="decimal"
               min="0.01"
               step="1"
               value={batches}

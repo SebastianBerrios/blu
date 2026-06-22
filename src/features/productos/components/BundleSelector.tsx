@@ -145,6 +145,7 @@ export default function BundleSelector({
               </span>
               <input
                 type="number"
+                inputMode="numeric"
                 min="1"
                 step="1"
                 value={c.quantity}

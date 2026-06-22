@@ -126,6 +126,7 @@ export default function ItemSelector({
           </span>
           <input
             type="number"
+            inputMode="decimal"
             min="0.01"
             step="0.01"
             value={itemPrice}
@@ -141,6 +142,7 @@ export default function ItemSelector({
         <div className="flex-1 flex gap-2">
           <input
             type="number"
+            inputMode="decimal"
             min="0.001"
             step="0.001"
             value={itemQuantity}

@@ -59,6 +59,7 @@ export default function DiscountSection({
           </div>
           <input
             type="number"
+            inputMode="decimal"
             min="0"
             step={totalDiscountMode === "monto" ? "0.01" : "1"}
             value={totalDiscountValue}

@@ -190,6 +190,7 @@ export default function RecipeSelector({
           </label>
           <input
             type="number"
+            inputMode="decimal"
             step="0.01"
             {...register("manufacturing_cost", {
               min: 0,

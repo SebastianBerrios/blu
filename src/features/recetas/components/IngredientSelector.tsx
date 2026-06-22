@@ -191,6 +191,7 @@ export default function IngredientSelector({
           </label>
           <input
             type="number"
+            inputMode="decimal"
             step="0.01"
             value={ingredientQuantity}
             onChange={(e) => {

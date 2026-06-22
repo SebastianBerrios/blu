@@ -247,6 +247,7 @@ export default function ProductSelector({
           <div className="flex-1">
             <input
               type="number"
+              inputMode="numeric"
               min="1"
               step="1"
               value={productQuantity}

@@ -269,6 +269,7 @@ export default function SaleForm({
           </label>
           <input
             type="number"
+            inputMode="numeric"
             min="1"
             value={tableNumber}
             onChange={(e) => setTableNumber(e.target.value)}
@@ -283,9 +284,12 @@ export default function SaleForm({
           DNI del cliente <span className="text-slate-500 text-xs">(opcional)</span>
         </label>
         <input
-          type="number"
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]{8}"
+          maxLength={8}
           value={customerDni}
-          onChange={(e) => setCustomerDni(e.target.value)}
+          onChange={(e) => setCustomerDni(e.target.value.replace(/\D/g, ""))}
           disabled={isSubmitting}
           className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
           placeholder="Ej: 12345678"

@@ -182,6 +182,7 @@ export default function TimeOffRequestForm({
             </label>
             <input
               type="number"
+              inputMode="decimal"
               step="0.5"
               min="0.5"
               value={hoursRequested}

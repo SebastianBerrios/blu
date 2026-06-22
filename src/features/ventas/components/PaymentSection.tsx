@@ -163,6 +163,7 @@ export default function PaymentSection({
                   </span>
                   <input
                     type="number"
+                    inputMode="decimal"
                     min="0"
                     step="0.01"
                     value={cashAmount}
@@ -189,6 +190,7 @@ export default function PaymentSection({
                   </span>
                   <input
                     type="number"
+                    inputMode="decimal"
                     min="0"
                     step="0.01"
                     value={plinAmount}
@@ -276,6 +278,7 @@ export default function PaymentSection({
                 </span>
                 <input
                   type="number"
+                  inputMode="decimal"
                   min="0"
                   step="0.01"
                   value={cashReceived}

@@ -103,6 +103,7 @@ export default function DiscardForm({
             <div className="relative">
               <input
                 type="number"
+                inputMode="decimal"
                 min="0.001"
                 step="0.001"
                 value={quantity}

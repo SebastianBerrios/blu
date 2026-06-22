@@ -330,6 +330,7 @@ export default function PaymentModal({
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">S/</span>
                   <input
                     type="number"
+                    inputMode="decimal"
                     min="0"
                     step="0.01"
                     value={cashAmount}
@@ -348,6 +349,7 @@ export default function PaymentModal({
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">S/</span>
                   <input
                     type="number"
+                    inputMode="decimal"
                     min="0"
                     step="0.01"
                     value={plinAmount}
@@ -423,6 +425,7 @@ export default function PaymentModal({
                 </span>
                 <input
                   type="number"
+                  inputMode="decimal"
                   min="0"
                   step="0.01"
                   value={cashReceived}

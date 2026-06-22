@@ -93,6 +93,7 @@ export default function PricingSection({
             </label>
             <input
               type="number"
+              inputMode="decimal"
               step="0.01"
               {...register("price", {
                 required: "Requerido",
@@ -154,6 +155,7 @@ export default function PricingSection({
             </label>
             <input
               type="number"
+              inputMode="decimal"
               step="0.01"
               min="0"
               {...register("rappi_price")}
