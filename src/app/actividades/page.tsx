@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useActivities } from "@/hooks/useActivities";
+import { toLocalDateKey } from "@/utils/helpers/groupByDate";
 import type { EmployeeTaskWithUser, TodayTask } from "@/types";
 import { createTask, updateTask, deleteTask, toggleTaskCompletion } from "@/features/actividades";
 import PageHeader from "@/components/ui/PageHeader";
@@ -18,9 +19,10 @@ import HistoryTab from "@/features/actividades/components/HistoryTab";
 
 type TabId = "hoy" | "gestion" | "historial";
 
+// Use toLocalDateKey (browser-local TZ) instead of a raw Date constructor to
+// avoid the latent TZ bug where UTC midnight could return yesterday's date.
 function getTodayStr(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return toLocalDateKey(new Date().toISOString());
 }
 
 export default function ActividadesPage() {

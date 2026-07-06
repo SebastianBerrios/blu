@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChefHat, Undo2, Search, Info } from "lucide-react";
 import { useProduction } from "@/hooks/useProduction";
 import { reverseProduction } from "../services/productionService";
+import { fmt } from "../utils/format";
 import { normalizeText } from "@/utils/helpers";
 import { formatDateTime } from "@/utils/helpers/dateFormatters";
 import type { Producible } from "@/types";
@@ -14,10 +15,6 @@ interface ProduccionTabProps {
   userId: string | null;
   userName: string | null;
   onInventoryChanged: () => void;
-}
-
-function fmt(n: number): string {
-  return Number(n.toFixed(3)).toString();
 }
 
 function stockTextColor(qty: number, unit: string): string {

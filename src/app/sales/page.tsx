@@ -216,7 +216,6 @@ export default function Sales() {
                 isAdmin={isAdmin}
                 canEditAnyDate={canEditAnyDate}
                 canDeleteSales={canDeleteSales}
-                currentUserId={user?.id ?? null}
                 onToggleExpand={toggleExpand}
                 onToggleDateGroup={toggleDateGroup}
                 onEdit={handleEdit}

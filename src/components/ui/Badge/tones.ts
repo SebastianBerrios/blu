@@ -21,7 +21,13 @@ export type Tone =
   | "paymentPending"
   | "prepPending"
   | "delivered"
-  | "neutral";
+  | "neutral"
+  // Product attribute tones (temperatura, tipo_leche, loyalty_reward)
+  | "tempCaliente"
+  | "tempFrio"
+  | "milkType"
+  | "loyaltyDiscount"
+  | "loyaltyFree";
 
 export const BADGE_STYLES: Record<
   Tone,
@@ -82,6 +88,32 @@ export const BADGE_STYLES: Record<
     bg: "bg-gray-100",
     text: "text-gray-700",
     border: "border-gray-300",
+  },
+  // Product attribute tones
+  tempCaliente: {
+    bg: "bg-amber-100",
+    text: "text-amber-700",
+    border: "border-amber-300",
+  },
+  tempFrio: {
+    bg: "bg-amber-100",
+    text: "text-amber-700",
+    border: "border-amber-300",
+  },
+  milkType: {
+    bg: "bg-blue-100",
+    text: "text-blue-700",
+    border: "border-blue-300",
+  },
+  loyaltyDiscount: {
+    bg: "bg-green-100",
+    text: "text-green-700",
+    border: "border-green-300",
+  },
+  loyaltyFree: {
+    bg: "bg-green-100",
+    text: "text-green-700",
+    border: "border-green-300",
   },
 };
 

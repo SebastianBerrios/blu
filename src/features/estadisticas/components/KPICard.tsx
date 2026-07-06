@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { KPIValue } from "@/types";
+import { KPI_ACCENT_STYLES, type KPIAccent } from "@/utils/constants/accentPalette";
 import Sparkline from "./Sparkline";
 
 interface KPICardProps {
@@ -12,65 +13,11 @@ interface KPICardProps {
   currentLabel: string;
   previousLabel?: string;
   sparkline?: number[];
-  accent: "green" | "blue" | "purple" | "amber" | "primary" | "emerald";
+  accent: KPIAccent;
   onClick?: () => void;
   invertDelta?: boolean;
   formatPrevious?: (v: number) => string;
 }
-
-const ACCENT_STYLES: Record<
-  Required<KPICardProps>["accent"],
-  { bg: string; border: string; text: string; icon: string; spark: string; sparkFill: string }
-> = {
-  green: {
-    bg: "bg-green-50",
-    border: "border-green-200",
-    text: "text-green-800",
-    icon: "text-green-600",
-    spark: "#16a34a",
-    sparkFill: "rgba(22,163,74,0.15)",
-  },
-  blue: {
-    bg: "bg-blue-50",
-    border: "border-blue-200",
-    text: "text-blue-800",
-    icon: "text-blue-600",
-    spark: "#2563eb",
-    sparkFill: "rgba(37,99,235,0.15)",
-  },
-  purple: {
-    bg: "bg-purple-50",
-    border: "border-purple-200",
-    text: "text-purple-800",
-    icon: "text-purple-600",
-    spark: "#7c3aed",
-    sparkFill: "rgba(124,58,237,0.15)",
-  },
-  amber: {
-    bg: "bg-amber-50",
-    border: "border-amber-200",
-    text: "text-amber-800",
-    icon: "text-amber-600",
-    spark: "#d97706",
-    sparkFill: "rgba(217,119,6,0.15)",
-  },
-  primary: {
-    bg: "bg-primary-50",
-    border: "border-primary-200",
-    text: "text-primary-800",
-    icon: "text-primary-600",
-    spark: "#0369a1",
-    sparkFill: "rgba(3,105,161,0.15)",
-  },
-  emerald: {
-    bg: "bg-emerald-50",
-    border: "border-emerald-200",
-    text: "text-emerald-800",
-    icon: "text-emerald-600",
-    spark: "#059669",
-    sparkFill: "rgba(5,150,105,0.15)",
-  },
-};
 
 export default function KPICard({
   icon,
@@ -85,7 +32,7 @@ export default function KPICard({
   invertDelta = false,
   formatPrevious,
 }: KPICardProps) {
-  const palette = ACCENT_STYLES[accent];
+  const palette = KPI_ACCENT_STYLES[accent];
   const delta = kpi.deltaPct;
   const isPositive = delta !== null && delta > 0;
   const isNegative = delta !== null && delta < 0;

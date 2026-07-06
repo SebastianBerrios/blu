@@ -1,12 +1,9 @@
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
 import type { Product } from "@/types";
 import type { DiscountMode, SaleProductLine } from "../types";
 import { RAPPI_SUGGESTED_PRICE_MULTIPLIER } from "../constants";
-import { resolveLineDiscount, round2 } from "../utils/discount";
-import LineDiscountInput from "./LineDiscountInput";
-import Badge from "@/components/ui/Badge";
 import { normalizeText } from "@/utils/helpers";
+import SaleProductRow from "./SaleProductRow";
 
 interface ProductSelectorProps {
   products: Product[];
@@ -280,91 +277,18 @@ export default function ProductSelector({
 
           {/* Mobile card list */}
           <div className="space-y-2 md:hidden">
-            {saleProducts.map((item, idx) => {
-              const locked = item.status === "Entregado";
-              const showDiscount = !!onSetLineDiscount && !locked;
-              const lineDiscount = resolveLineDiscount(item);
-              const lineNet = round2(item.subtotal - lineDiscount);
-              return (
-              <div
+            {saleProducts.map((item, idx) => (
+              <SaleProductRow
                 key={item.id ?? `${item.product_id}-${item.temperatura}-${item.tipo_leche}-${item.loyalty_reward ?? "none"}-${idx}`}
-                className={`p-3 rounded-lg ${locked ? "bg-emerald-50/40" : "bg-slate-50"}`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-900 capitalize truncate">
-                      {item.product_name}
-                    </p>
-                    {(item.temperatura || item.tipo_leche || item.loyalty_reward || locked) && (
-                      <div className="flex gap-1 mt-0.5 flex-wrap">
-                        {item.temperatura && (
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
-                            {item.temperatura}
-                          </span>
-                        )}
-                        {item.tipo_leche && (
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">
-                            {item.tipo_leche}
-                          </span>
-                        )}
-                        {item.loyalty_reward && (
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
-                            {item.loyalty_reward === "50_postre" ? "50% desc." : "Gratis"}
-                          </span>
-                        )}
-                        {locked && (
-                          <Badge tone="delivered" size="sm">
-                            Entregado
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                    <p className="text-xs text-slate-500">
-                      {item.quantity} × S/ {item.unit_price.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 ml-3">
-                    {lineDiscount > 0 ? (
-                      <span className="flex flex-col items-end leading-tight">
-                        <span className="text-[10px] text-slate-400 line-through">
-                          S/ {item.subtotal.toFixed(2)}
-                        </span>
-                        <span className="text-sm font-semibold text-green-600">
-                          S/ {lineNet.toFixed(2)}
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="text-sm font-semibold text-green-600">
-                        S/ {item.subtotal.toFixed(2)}
-                      </span>
-                    )}
-                    {(!locked || canRemoveDelivered) && (
-                      <button
-                        type="button"
-                        onClick={() => onRemoveProduct(idx)}
-                        disabled={isSubmitting}
-                        className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {showDiscount && (
-                  <div className="mt-2 flex justify-end">
-                    <LineDiscountInput
-                      mode={item.discount_mode ?? "monto"}
-                      value={item.discount_value}
-                      onChange={(mode, value) =>
-                        onSetLineDiscount!(idx, mode, value)
-                      }
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                )}
-              </div>
-              );
-            })}
+                item={item}
+                idx={idx}
+                isSubmitting={isSubmitting}
+                canRemoveDelivered={canRemoveDelivered}
+                onRemoveProduct={onRemoveProduct}
+                onSetLineDiscount={onSetLineDiscount}
+                tableLayout={false}
+              />
+            ))}
             {/* Mobile total */}
             <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg font-semibold">
               <span className="text-sm text-green-900">Total:</span>
@@ -397,93 +321,18 @@ export default function ProductSelector({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {saleProducts.map((item, idx) => {
-                  const locked = item.status === "Entregado";
-                  const showDiscount = !!onSetLineDiscount && !locked;
-                  const lineDiscount = resolveLineDiscount(item);
-                  const lineNet = round2(item.subtotal - lineDiscount);
-                  return (
-                  <tr
+                {saleProducts.map((item, idx) => (
+                  <SaleProductRow
                     key={item.id ?? `${item.product_id}-${item.temperatura}-${item.tipo_leche}-${item.loyalty_reward ?? "none"}-${idx}`}
-                    className={`transition-colors ${locked ? "bg-emerald-50/30" : "hover:bg-slate-50"}`}
-                  >
-                    <td className="px-4 py-3 text-sm text-slate-900 capitalize">
-                      {item.product_name}
-                      {(item.temperatura || item.tipo_leche || item.loyalty_reward || locked) && (
-                        <div className="flex gap-1 mt-0.5 flex-wrap">
-                          {item.temperatura && (
-                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
-                              {item.temperatura}
-                            </span>
-                          )}
-                          {item.tipo_leche && (
-                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">
-                              {item.tipo_leche}
-                            </span>
-                          )}
-                          {item.loyalty_reward && (
-                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
-                              {item.loyalty_reward === "50_postre" ? "50% desc." : "Gratis"}
-                            </span>
-                          )}
-                          {locked && (
-                            <Badge tone="delivered" size="sm">
-                              Entregado
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                      {showDiscount && (
-                        <div className="mt-1.5">
-                          <LineDiscountInput
-                            mode={item.discount_mode ?? "monto"}
-                            value={item.discount_value}
-                            onChange={(mode, value) =>
-                              onSetLineDiscount!(idx, mode, value)
-                            }
-                            disabled={isSubmitting}
-                          />
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-900 text-center">
-                      {item.quantity}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-900 text-right">
-                      S/ {item.unit_price.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-900 text-right font-semibold">
-                      {lineDiscount > 0 ? (
-                        <span className="flex flex-col items-end leading-tight">
-                          <span className="text-[10px] text-slate-400 line-through">
-                            S/ {item.subtotal.toFixed(2)}
-                          </span>
-                          <span className="text-green-600">
-                            S/ {lineNet.toFixed(2)}
-                          </span>
-                        </span>
-                      ) : (
-                        <span className="text-green-600">
-                          S/ {item.subtotal.toFixed(2)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {(!locked || canRemoveDelivered) && (
-                        <button
-                          type="button"
-                          onClick={() => onRemoveProduct(idx)}
-                          disabled={isSubmitting}
-                          className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                          title="Eliminar producto"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                  );
-                })}
+                    item={item}
+                    idx={idx}
+                    isSubmitting={isSubmitting}
+                    canRemoveDelivered={canRemoveDelivered}
+                    onRemoveProduct={onRemoveProduct}
+                    onSetLineDiscount={onSetLineDiscount}
+                    tableLayout={true}
+                  />
+                ))}
                 <tr className="bg-green-50 font-semibold">
                   <td
                     colSpan={3}

@@ -6,6 +6,7 @@ import {
   fetchConsumption,
   produceRecipeBatch,
 } from "../services/productionService";
+import { fmt } from "../utils/format";
 import type { Producible, ProductionConsumptionLine } from "@/types";
 
 interface ProduceFormProps {
@@ -15,10 +16,6 @@ interface ProduceFormProps {
   producible: Producible | null;
   userId: string | null;
   userName: string | null;
-}
-
-function fmt(n: number): string {
-  return Number(n.toFixed(3)).toString();
 }
 
 export default function ProduceForm({

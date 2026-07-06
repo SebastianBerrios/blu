@@ -18,7 +18,6 @@ interface SaleCardProps {
   isAdmin: boolean;
   canEditAnyDate?: boolean;
   canDeleteSales?: boolean;
-  currentUserId: string | null;
   onToggle: (id: number) => void;
   onEdit: (sale: SaleWithProducts) => void;
   onDelete: (sale: SaleWithProducts) => void;
@@ -223,19 +222,19 @@ export default function SaleCard({
                     {(sp.temperatura || sp.tipo_leche || sp.loyalty_reward || sp.discount_amount > 0) && (
                       <div className="flex gap-1.5 mt-0.5 flex-wrap">
                         {sp.temperatura && (
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
+                          <Badge tone={sp.temperatura === "caliente" ? "tempCaliente" : "tempFrio"} size="sm">
                             {sp.temperatura}
-                          </span>
+                          </Badge>
                         )}
                         {sp.tipo_leche && (
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">
+                          <Badge tone="milkType" size="sm">
                             {sp.tipo_leche}
-                          </span>
+                          </Badge>
                         )}
                         {sp.loyalty_reward && (
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
+                          <Badge tone={sp.loyalty_reward === "50_postre" ? "loyaltyDiscount" : "loyaltyFree"} size="sm">
                             {sp.loyalty_reward === "50_postre" ? "50% desc." : "Gratis"}
-                          </span>
+                          </Badge>
                         )}
                         {sp.discount_amount > 0 && (
                           <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700">

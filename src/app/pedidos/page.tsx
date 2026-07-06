@@ -122,14 +122,14 @@ function OrderCard({
                 {(product.temperatura || product.tipo_leche) && (
                   <div className="flex gap-1.5 mt-1">
                     {product.temperatura && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
+                      <Badge tone={product.temperatura === "caliente" ? "tempCaliente" : "tempFrio"} size="sm">
                         {product.temperatura}
-                      </span>
+                      </Badge>
                     )}
                     {product.tipo_leche && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">
+                      <Badge tone="milkType" size="sm">
                         {product.tipo_leche}
-                      </span>
+                      </Badge>
                     )}
                   </div>
                 )}

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { ShoppingBasket, SquarePen, Trash2, BookOpen, Eye } from "lucide-react";
+import Badge from "@/components/ui/Badge";
 import { toast } from "sonner";
 import { useProducts } from "@/hooks/useProducts";
 import { useRecipes } from "@/hooks/useRecipes";
@@ -9,6 +10,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
+import { normalizeText } from "@/utils/helpers";
 import type { Product, Recipe } from "@/types";
 import ProductForm from "@/components/forms/ProductForm";
 import RecipeForm from "@/components/forms/RecipeForm";
@@ -26,15 +28,16 @@ export default function Products() {
   const { isAdmin, user, profile } = useAuth();
   const confirm = useConfirm();
 
+  // Normalized constant — accent-insensitive match (e.g. "Tartaletas" == "tartaletas").
   const RESTRICTED_CATEGORY_NAMES = useMemo(() => new Set([
     "cookies", "brownies", "muffins", "tartaletas",
     "cuchareables", "alfajores", "tortas y cakes",
-  ]), []);
+  ].map(normalizeText)), []);
 
   const restrictedCategoryIds = useMemo(() => {
     return new Set(
       categories
-        .filter((c) => RESTRICTED_CATEGORY_NAMES.has(c.name.toLowerCase()))
+        .filter((c) => RESTRICTED_CATEGORY_NAMES.has(normalizeText(c.name)))
         .map((c) => c.id)
     );
   }, [categories, RESTRICTED_CATEGORY_NAMES]);
@@ -251,14 +254,14 @@ export default function Products() {
                   {(item.temperatura || item.tipo_leche) && (
                     <div className="flex items-center gap-1.5 mt-1">
                       {item.temperatura && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
+                        <Badge tone={item.temperatura === "caliente" ? "tempCaliente" : item.temperatura === "frío" ? "tempFrio" : "neutral"} size="sm">
                           {item.temperatura === "ambos" ? "frío o caliente" : item.temperatura}
-                        </span>
+                        </Badge>
                       )}
                       {item.tipo_leche && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                        <Badge tone="milkType" size="sm">
                           leche: {item.tipo_leche}
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   )}

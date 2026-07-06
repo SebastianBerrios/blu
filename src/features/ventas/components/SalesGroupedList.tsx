@@ -12,7 +12,6 @@ interface SalesGroupedListProps {
   isAdmin: boolean;
   canEditAnyDate?: boolean;
   canDeleteSales?: boolean;
-  currentUserId: string | null;
   onToggleExpand: (id: number) => void;
   onToggleDateGroup: (date: string) => void;
   onEdit: (sale: SaleWithProducts) => void;
@@ -27,7 +26,6 @@ export default function SalesGroupedList({
   isAdmin,
   canEditAnyDate = false,
   canDeleteSales = false,
-  currentUserId,
   onToggleExpand,
   onToggleDateGroup,
   onEdit,
@@ -69,7 +67,6 @@ export default function SalesGroupedList({
                   isAdmin={isAdmin}
                   canEditAnyDate={canEditAnyDate}
                   canDeleteSales={canDeleteSales}
-                  currentUserId={currentUserId}
                   onToggle={onToggleExpand}
                   onEdit={onEdit}
                   onDelete={onDelete}

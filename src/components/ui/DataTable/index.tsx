@@ -292,12 +292,13 @@ export default function DataTable<T extends { id: number; name: string }>({
                             onClick={() => onEdit(item)}
                             className="p-3 text-primary-700 hover:bg-primary-100 rounded-lg transition-colors"
                             title="Editar"
+                            aria-label={`Editar ${item.name}`}
                           >
                             <SquarePen className="w-5 h-5" />
                           </button>
                         )}
                         {onEdit && canEdit && !canEdit(item) && (
-                          <span className="p-3 text-slate-300" title="Restringido">
+                          <span className="p-3 text-slate-300" title="Restringido" aria-label="Edición restringida">
                             <Lock className="w-5 h-5" />
                           </span>
                         )}
@@ -307,6 +308,7 @@ export default function DataTable<T extends { id: number; name: string }>({
                             onClick={() => onDelete(item)}
                             className="p-3 text-red-700 hover:bg-red-100 rounded-lg transition-colors"
                             title="Eliminar"
+                            aria-label={`Eliminar ${item.name}`}
                           >
                             <Trash2 className="w-5 h-5" />
                           </button>
