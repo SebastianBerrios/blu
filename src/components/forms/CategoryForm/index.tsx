@@ -90,7 +90,7 @@ export default function CategoryForm({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl">
           <h2 className="text-xl font-semibold text-slate-900">
-            {isEditMode ? "Editar Categoria" : "Agregar Categoria"}
+            {isEditMode ? "Editar Categoría" : "Agregar Categoría"}
           </h2>
           <button
             type="button"
@@ -107,7 +107,7 @@ export default function CategoryForm({
           {/* Nombre */}
           <div>
             <label className="block text-sm font-medium text-slate-900 mb-1.5">
-              Nombre de la categoria <span className="text-red-600">*</span>
+              Nombre de la categoría <span className="text-red-600">*</span>
             </label>
             <input
               type="text"
@@ -117,7 +117,7 @@ export default function CategoryForm({
               })}
               disabled={isSubmitting}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100 capitalize"
-              placeholder="Ej: Cafes"
+              placeholder="Ej: Cafés"
             />
           </div>
 
@@ -167,7 +167,7 @@ export default function CategoryForm({
                 className="w-full px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
                 placeholder="30"
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">
                 %
               </span>
             </div>

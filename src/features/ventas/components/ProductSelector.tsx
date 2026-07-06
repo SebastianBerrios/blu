@@ -392,7 +392,7 @@ export default function ProductSelector({
                     Subtotal
                   </th>
                   <th className="px-4 py-2 text-center text-xs font-medium text-slate-700 uppercase">
-                    Accion
+                    Acción
                   </th>
                 </tr>
               </thead>

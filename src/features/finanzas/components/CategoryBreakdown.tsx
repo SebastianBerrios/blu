@@ -88,7 +88,7 @@ function BucketList({ title, buckets, Icon, accent, sign }: BucketListProps) {
         </span>
       </div>
       {buckets.length === 0 ? (
-        <p className="text-xs text-slate-400 py-1">Sin movimientos</p>
+        <p className="text-xs text-slate-500 py-1">Sin movimientos</p>
       ) : (
         <ul className="space-y-1">
           {buckets.map((b) => (

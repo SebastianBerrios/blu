@@ -96,12 +96,12 @@ export default function KPICard({
   const badDirection = invertDelta ? isPositive : isNegative;
 
   const deltaTextColor = isFlat
-    ? "text-slate-400"
+    ? "text-slate-500"
     : goodDirection
     ? "text-emerald-600"
     : badDirection
     ? "text-red-600"
-    : "text-slate-400";
+    : "text-slate-500";
 
   const deltaText =
     delta === null || delta === 0
@@ -161,7 +161,7 @@ export default function KPICard({
 
       {/* Compared period label */}
       {previousLabel && (
-        <p className="mt-1.5 text-[10px] text-slate-400 capitalize">vs {previousLabel}</p>
+        <p className="mt-1.5 text-[10px] text-slate-500 capitalize">vs {previousLabel}</p>
       )}
     </Wrapper>
   );

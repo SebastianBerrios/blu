@@ -143,9 +143,9 @@ export default function ProduceForm({
           <div>
             <h3 className="text-sm font-medium text-slate-900 mb-2">Se consumirá</h3>
             {loadingConsumption ? (
-              <p className="text-sm text-slate-400">Calculando…</p>
+              <p className="text-sm text-slate-500">Calculando…</p>
             ) : consumption.length === 0 ? (
-              <p className="text-sm text-slate-400">La receta no tiene ingredientes registrados.</p>
+              <p className="text-sm text-slate-500">La receta no tiene ingredientes registrados.</p>
             ) : (
               <ul className="space-y-1.5">
                 {consumption.map((c) => {
@@ -159,7 +159,7 @@ export default function ProduceForm({
                       <span className="capitalize text-slate-700 truncate">{c.ingredient_name}</span>
                       <span className={`shrink-0 ml-2 font-medium ${insufficient ? "text-red-600" : "text-slate-600"}`}>
                         −{fmt(needed)} {c.ingredient_unit}
-                        <span className="text-xs text-slate-400 ml-1">
+                        <span className="text-xs text-slate-500 ml-1">
                           (stock {fmt(c.stock_quantity)})
                         </span>
                       </span>

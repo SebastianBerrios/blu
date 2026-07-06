@@ -54,7 +54,7 @@ export default function TodayTab({ employees, isLoading }: TodayTabProps) {
                 </span>
                 <span
                   className={`text-xs font-medium tabular-nums ${
-                    isComplete ? "text-green-600" : "text-slate-400"
+                    isComplete ? "text-green-600" : "text-slate-500"
                   }`}
                 >
                   {pct}%

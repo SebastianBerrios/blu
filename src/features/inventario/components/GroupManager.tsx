@@ -80,7 +80,7 @@ export default function GroupManager({
 
           <div className="flex-1 overflow-auto p-4">
             {groups.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-8">
+              <p className="text-sm text-slate-500 text-center py-8">
                 No hay grupos creados
               </p>
             ) : (

@@ -129,7 +129,7 @@ export default function ManagementTab({
           })}
           {hasFilters && (
             <>
-              <span className="text-xs text-slate-400 ml-1">
+              <span className="text-xs text-slate-500 ml-1">
                 {filteredTasks.length} de {tasks.length}
               </span>
               <button

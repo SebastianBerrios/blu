@@ -87,7 +87,7 @@ export default function Categories() {
             renderCard={(item, onEditFn, onDeleteFn) => (
               <div className="flex items-center justify-between px-4 py-3">
                 <div>
-                  <span className="text-xs text-slate-400">#{item.id}</span>
+                  <span className="text-xs text-slate-500">#{item.id}</span>
                   <p className="text-sm font-medium text-slate-900 capitalize">{item.name}</p>
                   <div className="flex items-center gap-1.5 mt-1">
                     {item.tipo && (

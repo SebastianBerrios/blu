@@ -79,7 +79,7 @@ export default function AdminBalanceView({
                 </span>
                 <span className="text-sm text-slate-500">horas</span>
               </div>
-              <div className="flex gap-3 mt-1 text-xs text-slate-400">
+              <div className="flex gap-3 mt-1 text-xs text-slate-500">
                 <span>+{u.total_credits}h ganadas</span>
                 <span>-{u.total_debits}h usadas</span>
               </div>

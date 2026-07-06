@@ -115,7 +115,7 @@ export default function Recipes() {
                     <span className="text-sm font-semibold text-primary-700">S/ {item.manufacturing_cost}</span>
                   </div>
                   {item.description && (
-                    <p className="text-xs text-slate-400 mt-0.5 truncate">{item.description}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">{item.description}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">

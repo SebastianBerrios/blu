@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useId } from "react";
 import {
   SquarePen,
   Trash2,
@@ -43,6 +43,7 @@ export default function DataTable<T extends { id: number; name: string }>({
   renderExtraActions,
   renderCard,
 }: DataTableProps<T>) {
+  const searchInputId = useId();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<keyof T | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
@@ -103,8 +104,11 @@ export default function DataTable<T extends { id: number; name: string }>({
             <div className="relative flex-1 md:flex-none">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
+                id={searchInputId}
+                name="search"
                 type="text"
                 placeholder="Buscar..."
+                aria-label="Buscar"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full md:w-auto pl-9 pr-4 py-3 md:py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white placeholder-slate-400"
@@ -150,7 +154,7 @@ export default function DataTable<T extends { id: number; name: string }>({
                         }`}
                       >
                         <span>{column}</span>
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-slate-500">
                           {isActive && sortDirection === "asc"
                             ? "A-Z ↑"
                             : isActive && sortDirection === "desc"

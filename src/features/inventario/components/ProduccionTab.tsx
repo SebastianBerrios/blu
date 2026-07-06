@@ -69,7 +69,7 @@ export default function ProduccionTab({
   };
 
   if (isLoading) {
-    return <p className="text-sm text-slate-400">Cargando…</p>;
+    return <p className="text-sm text-slate-500">Cargando…</p>;
   }
 
   return (
@@ -167,7 +167,7 @@ export default function ProduccionTab({
                       {fmt(prod.batches)} lote(s) · +{fmt(prod.yield_added)} {prod.ingredient_unit}
                     </span>
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-500">
                     {formatDateTime(prod.created_at)}
                     {prod.user_name ? ` · ${prod.user_name}` : ""}
                     {prod.reversed_at ? " · revertida" : ""}

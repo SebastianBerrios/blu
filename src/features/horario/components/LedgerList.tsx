@@ -11,7 +11,7 @@ interface LedgerListProps {
 export default function LedgerList({ entries }: LedgerListProps) {
   if (entries.length === 0) {
     return (
-      <div className="p-6 text-center text-slate-400 text-sm">
+      <div className="p-6 text-center text-slate-500 text-sm">
         Sin movimientos
       </div>
     );
@@ -25,7 +25,7 @@ export default function LedgerList({ entries }: LedgerListProps) {
             <p className="text-sm text-slate-700 truncate">
               {entry.description}
             </p>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               {new Date(entry.created_at).toLocaleDateString("es-PE", {
                 day: "numeric",
                 month: "short",

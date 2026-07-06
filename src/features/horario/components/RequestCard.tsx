@@ -24,7 +24,7 @@ export default function RequestCard({
             <p className="text-sm font-semibold text-slate-900 mb-1">
               {request.user_name}
               {request.user_role && (
-                <span className="text-xs text-slate-400 font-normal ml-1">
+                <span className="text-xs text-slate-500 font-normal ml-1">
                   ({request.user_role})
                 </span>
               )}
@@ -36,7 +36,7 @@ export default function RequestCard({
               ? " — Día completo"
               : ` — ${request.start_time?.slice(0, 5)} a ${request.end_time?.slice(0, 5)}`}
           </p>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             {request.hours_requested}h solicitadas
           </p>
           {request.reason && (

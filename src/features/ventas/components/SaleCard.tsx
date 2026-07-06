@@ -102,11 +102,11 @@ export default function SaleCard({
           </div>
           {sale.creator_name && (
             <div className="mt-0.5">
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-slate-500">
                 por {sale.creator_name}
               </span>
               {editorName && sale.last_edited_at && (
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-slate-500">
                   {" · editado por "}
                   {editorName} ({formatTime(sale.last_edited_at)})
                 </span>
@@ -123,7 +123,7 @@ export default function SaleCard({
                 S/ {netAmount.toFixed(2)}
               </span>
               {showBreakdown && (
-                <span className="text-[10px] text-slate-400">
+                <span className="text-[10px] text-slate-500">
                   {grossNote}
                 </span>
               )}
@@ -141,7 +141,7 @@ export default function SaleCard({
               S/ {netAmount.toFixed(2)}
             </span>
             {showBreakdown && (
-              <span className="text-[10px] text-slate-400 leading-tight">
+              <span className="text-[10px] text-slate-500 leading-tight">
                 {grossNote}
               </span>
             )}
@@ -320,12 +320,12 @@ export default function SaleCard({
                   </span>
                 )}
                 {sale.payment_date && (
-                  <span className="text-slate-400 text-xs">
+                  <span className="text-slate-500 text-xs">
                     {formatTime(sale.payment_date)}
                   </span>
                 )}
                 {registrarName && (
-                  <span className="text-slate-400 text-xs">
+                  <span className="text-slate-500 text-xs">
                     · cobrado por {registrarName}
                   </span>
                 )}

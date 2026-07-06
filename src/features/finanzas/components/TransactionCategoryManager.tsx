@@ -155,7 +155,7 @@ function KindSection({
 
       <div className="space-y-1.5">
         {categories.length === 0 ? (
-          <p className="text-sm text-slate-400 py-2">Sin categorías todavía</p>
+          <p className="text-sm text-slate-500 py-2">Sin categorías todavía</p>
         ) : (
           categories.map((c) => (
             <CategoryRow key={c.id} category={c} busy={busy} onRename={onRename} onToggle={onToggle} />

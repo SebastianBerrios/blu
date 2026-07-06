@@ -265,7 +265,7 @@ export default function SaleForm({
       {orderType === "Mesa" && (
         <div>
           <label className="block text-sm font-medium text-slate-900 mb-1.5">
-            Numero de mesa <span className="text-red-600">*</span>
+            Número de mesa <span className="text-red-600">*</span>
           </label>
           <input
             type="number"

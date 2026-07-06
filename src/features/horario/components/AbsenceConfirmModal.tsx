@@ -224,7 +224,7 @@ export default function AbsenceConfirmModal({
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Motivo <span className="text-slate-400 font-normal">(opcional)</span>
+              Motivo <span className="text-slate-500 font-normal">(opcional)</span>
             </label>
             <input
               type="text"

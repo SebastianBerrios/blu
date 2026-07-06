@@ -118,7 +118,7 @@ export default function DailySummary({ date, onDateChange }: DailySummaryProps) 
       </div>
 
       {isLoading || !summary ? (
-        <div className="text-center py-6 text-slate-400 text-sm">
+        <div className="text-center py-6 text-slate-500 text-sm">
           Cargando resumen...
         </div>
       ) : (

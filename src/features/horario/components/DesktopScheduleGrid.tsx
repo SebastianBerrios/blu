@@ -97,7 +97,7 @@ export default function DesktopScheduleGrid({
                           }`}
                         >
                           <div>{day}</div>
-                          <div className="text-xs text-slate-400 font-normal">
+                          <div className="text-xs text-slate-500 font-normal">
                             {new Date(
                               weekDates[i] + "T00:00:00"
                             ).getDate()}
@@ -110,7 +110,7 @@ export default function DesktopScheduleGrid({
                 <tbody>
                   {/* Morning block */}
                   <tr>
-                    <td className="px-3 py-2 text-xs text-slate-400 align-top">
+                    <td className="px-3 py-2 text-xs text-slate-500 align-top">
                       Mañana
                     </td>
                     {weekDates.map((date) => {
@@ -142,7 +142,7 @@ export default function DesktopScheduleGrid({
                   </tr>
                   {/* Afternoon block */}
                   <tr className="border-t border-slate-100">
-                    <td className="px-3 py-2 text-xs text-slate-400 align-top">
+                    <td className="px-3 py-2 text-xs text-slate-500 align-top">
                       Tarde
                     </td>
                     {weekDates.map((date) => {

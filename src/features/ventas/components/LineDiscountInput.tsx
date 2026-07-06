@@ -23,7 +23,7 @@ export default function LineDiscountInput({
 
   return (
     <div className="flex items-center gap-1">
-      <span className="text-[10px] uppercase tracking-wide text-slate-400">
+      <span className="text-[10px] uppercase tracking-wide text-slate-500">
         Desc.
       </span>
       <button

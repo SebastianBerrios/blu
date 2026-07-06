@@ -55,7 +55,7 @@ export default function MobileMonthView({
         {/* Day headers */}
         <div className="grid grid-cols-7 mb-1">
           {MINI_DAY_LABELS.map((label) => (
-            <div key={label} className="text-center text-[10px] font-semibold text-slate-400 py-1">
+            <div key={label} className="text-center text-[10px] font-semibold text-slate-500 py-1">
               {label}
             </div>
           ))}
@@ -108,7 +108,7 @@ export default function MobileMonthView({
                       );
                     })}
                     {slotCount > 3 && (
-                      <span className={`text-[7px] leading-none ${isSelected ? "text-white/70" : "text-slate-400"}`}>
+                      <span className={`text-[7px] leading-none ${isSelected ? "text-white/70" : "text-slate-500"}`}>
                         …
                       </span>
                     )}

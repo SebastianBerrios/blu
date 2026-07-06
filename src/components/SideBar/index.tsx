@@ -34,7 +34,7 @@ type NavItem = {
 };
 
 const allNavItems: NavItem[] = [
-  { id: 1, nav: "/categories", name: "Categorias", icon: FolderOpen },
+  { id: 1, nav: "/categories", name: "Categorías", icon: FolderOpen },
   { id: 2, nav: "/products", name: "Productos", icon: ShoppingBasket },
   { id: 3, nav: "/ingredients", name: "Ingredientes", icon: ChefHat, adminOnly: true },
   { id: 4, nav: "/recipes", name: "Recetas", icon: BookOpen, adminOnly: true },
@@ -45,7 +45,7 @@ const allNavItems: NavItem[] = [
   { id: 13, nav: "/horario", name: "Horario", icon: CalendarDays },
   { id: 14, nav: "/actividades", name: "Actividades", icon: ClipboardCheck },
   { id: 9, nav: "/finanzas", name: "Finanzas", icon: Wallet, adminOnly: true },
-  { id: 10, nav: "/estadisticas", name: "Estadisticas", icon: BarChart3, adminOnly: true },
+  { id: 10, nav: "/estadisticas", name: "Estadísticas", icon: BarChart3, adminOnly: true },
   { id: 11, nav: "/auditoria", name: "Auditoría", icon: ScrollText, adminOnly: true },
   { id: 7, nav: "/users", name: "Usuarios", icon: Users, adminOnly: true },
 ];

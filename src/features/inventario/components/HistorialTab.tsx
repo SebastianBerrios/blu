@@ -110,11 +110,11 @@ export default function HistorialTab({ movements, ingredientMap }: HistorialTabP
                   <p className="text-xs text-slate-500 mt-0.5 italic">{mov.note}</p>
                 )}
                 {mov.user_name && (
-                  <p className="text-xs text-slate-400 mt-0.5">{mov.user_name}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{mov.user_name}</p>
                 )}
               </div>
               <div className="shrink-0 text-right">
-                <p className="text-xs text-slate-400">{formatDateTime(mov.created_at)}</p>
+                <p className="text-xs text-slate-500">{formatDateTime(mov.created_at)}</p>
               </div>
             </div>
           </div>

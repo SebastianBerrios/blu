@@ -103,7 +103,7 @@ export default function PermissionsTab() {
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50/50">
               <th className="text-left px-4 md:px-6 py-3 font-medium text-slate-600">Permiso</th>
-              <th className="px-4 py-3 font-medium text-slate-400 text-center w-28">Administrador</th>
+              <th className="px-4 py-3 font-medium text-slate-500 text-center w-28">Administrador</th>
               {CONFIGURABLE_ROLES.map((role) => (
                 <th key={role} className="px-4 py-3 font-medium text-slate-600 text-center w-28">
                   {ROLE_LABEL[role]}
@@ -131,7 +131,7 @@ export default function PermissionsTab() {
                         <p className="text-xs text-slate-500">{def.description}</p>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className="text-xs font-medium text-slate-400">Siempre</span>
+                        <span className="text-xs font-medium text-slate-500">Siempre</span>
                       </td>
                       {CONFIGURABLE_ROLES.map((role) => {
                         const cellKey = `${role}:${def.key}`;

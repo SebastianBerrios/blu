@@ -255,7 +255,7 @@ export default function PedidosPendientes() {
               <>
                 <div className="flex items-center gap-3 mt-2">
                   <div className="flex-1 h-px bg-slate-300" />
-                  <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Entregados ({completedOrders.length})
                   </span>
                   <div className="flex-1 h-px bg-slate-300" />

@@ -284,7 +284,7 @@ export default function FinanzasPage() {
               </div>
             </div>
           ) : transactions.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 bg-white rounded-xl border border-dashed border-slate-200">
+            <div className="text-center py-12 text-slate-500 bg-white rounded-xl border border-dashed border-slate-200">
               {hasActiveFilter
                 ? "No hay transacciones que coincidan con los filtros"
                 : "No hay transacciones registradas"}
@@ -341,7 +341,7 @@ export default function FinanzasPage() {
                                   {t.category_name}
                                 </span>
                               )}
-                              <span className="text-[11px] text-slate-400 tabular-nums">
+                              <span className="text-[11px] text-slate-500 tabular-nums">
                                 {new Date(t.created_at).toLocaleTimeString("es-PE", {
                                   hour: "2-digit",
                                   minute: "2-digit",
@@ -352,7 +352,7 @@ export default function FinanzasPage() {
                               <p className="text-sm text-slate-700 truncate">{t.description}</p>
                             )}
                             {t.user_name && (
-                              <p className="text-[11px] text-slate-400 mt-0.5">por {t.user_name}</p>
+                              <p className="text-[11px] text-slate-500 mt-0.5">por {t.user_name}</p>
                             )}
                           </div>
                           <span
