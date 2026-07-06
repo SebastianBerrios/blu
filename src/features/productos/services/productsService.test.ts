@@ -68,7 +68,7 @@ describe("buildProductPayload", () => {
 
   it("manufacturing_cost default 0 cuando es null/undefined", () => {
     const payload = buildProductPayload(
-      makeData({ manufacturing_cost: null }),
+      makeData({ manufacturing_cost: null as unknown as number }),
       12,
       null,
     );

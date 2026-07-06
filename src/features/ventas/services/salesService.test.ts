@@ -834,8 +834,8 @@ describe("updateSale", () => {
       ([call]) => (call as { details?: { metodo_anterior?: string } }).details?.metodo_anterior === "Efectivo",
     );
     expect(auditCall).toBeDefined();
-    const details = (auditCall![0] as { details: { metodo_nuevo: string } }).details;
-    expect(details.metodo_nuevo).toBe("Plin");
+    const details = auditCall![0].details;
+    expect(details?.metodo_nuevo).toBe("Plin");
   });
 
   it("Rappi: cambia total_price → rappiTotalChanged regenera transacciones", async () => {

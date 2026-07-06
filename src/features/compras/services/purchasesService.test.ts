@@ -284,8 +284,8 @@ describe("createPurchase", () => {
         description: expect.stringContaining("Vuelto Plin"),
       }),
     );
-    const auditDetails = (mockedLogAudit.mock.calls[0]?.[0] as { details: { vuelto_plin: number } })?.details;
-    expect(auditDetails.vuelto_plin).toBe(10);
+    const auditDetails = mockedLogAudit.mock.calls[0]?.[0]?.details;
+    expect(auditDetails?.vuelto_plin).toBe(10);
   });
 
   it("hasDelivery=true: incluye delivery_cost en el insert", async () => {

@@ -17,6 +17,7 @@ function makeParams(overrides: Partial<SaleSubmitParams> = {}): SaleSubmitParams
     customerDni: "",
     saleProducts: [],
     totalPrice: 100,
+    discountAmount: 0,
     registerPayment: true,
     paymentMethod: "Efectivo",
     cashAmount: "",
@@ -28,6 +29,7 @@ function makeParams(overrides: Partial<SaleSubmitParams> = {}): SaleSubmitParams
     cajaAccountId: 1,
     bancoAccountId: 2,
     rappiAccountId: 3,
+    posAccountId: null,
     existingPaymentDate: null,
     ...overrides,
   };

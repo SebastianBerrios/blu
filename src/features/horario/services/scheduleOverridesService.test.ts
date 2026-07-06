@@ -201,7 +201,7 @@ describe("markAbsence", () => {
 
   it("mode='full': insert override con missedStart=shiftStart, missedEnd=shiftEnd, hours negativas", async () => {
     const sb = makeMockSupabase({ single: { data: { id: 300 }, error: null } });
-    sb.setResult("schedule_overrides", { single: { data: { id: 300 }, error: null }, data: [] });
+    sb.setResult("schedule_overrides", { data: [] });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await markAbsence({
@@ -248,7 +248,7 @@ describe("markAbsence", () => {
 
   it("mode='late' con actualTime válido: marca tardanza con missedStart=shiftStart", async () => {
     const sb = makeMockSupabase({ single: { data: { id: 300 }, error: null } });
-    sb.setResult("schedule_overrides", { single: { data: { id: 300 }, error: null }, data: [] });
+    sb.setResult("schedule_overrides", { data: [] });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await markAbsence({
