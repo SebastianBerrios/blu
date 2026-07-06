@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ArrowLeft, X } from "lucide-react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
 import type { Category, Product, SaleWithProducts, PaymentMethod } from "@/types";
 import type { LoyaltyReward, SaleProductLine } from "@/features/ventas/types";
-import { ORDER_TYPES } from "@/features/ventas/constants";
 import { createSale, updateSale } from "@/features/ventas";
 import {
   applyLoyaltyReward,
@@ -16,8 +14,10 @@ import ProductSelector from "@/features/ventas/components/ProductSelector";
 import PaymentSection from "@/features/ventas/components/PaymentSection";
 import LoyaltyRewardsSection from "@/features/ventas/components/LoyaltyRewardsSection";
 import DiscountSection from "@/features/ventas/components/DiscountSection";
+import SaleOrderHeader from "@/features/ventas/components/SaleOrderHeader";
+import SaleFormShell from "@/features/ventas/components/SaleFormShell";
 import { useSaleDiscount } from "@/features/ventas/hooks/useSaleDiscount";
-import { round2 } from "@/features/ventas/utils/discount";
+import { useSaleFormInit } from "@/features/ventas/hooks/useSaleFormInit";
 
 interface SaleFormProps {
   isOpen: boolean;
@@ -50,6 +50,22 @@ export default function SaleForm({
 
   const discount = useSaleDiscount(saleProducts, setSaleProducts);
 
+  useSaleFormInit(isOpen, sale, products, {
+    setSubmitError,
+    setOrderType,
+    setTableNumber,
+    setCustomerDni,
+    setSaleProducts,
+    setNotes,
+    setRegisterPayment,
+    setPaymentMethod,
+    setCashAmount,
+    setPlinAmount,
+    setCashReceived,
+    initTotalDiscount: discount.initTotalDiscount,
+    resetTotalDiscount: discount.resetTotalDiscount,
+  });
+
   const totalPrice = saleProducts.reduce((sum, p) => sum + p.subtotal, 0);
   const netPayable = discount.netPayable;
   const discountAmount = discount.discountAmount;
@@ -60,80 +76,6 @@ export default function SaleForm({
     : isEditMode
       ? "Actualizar"
       : "Registrar venta";
-
-  useEffect(() => {
-    if (!isOpen) return;
-    setSubmitError(null);
-    if (sale) {
-      setOrderType(sale.order_type);
-      setTableNumber(sale.table_number ? String(sale.table_number) : "");
-      setCustomerDni(sale.customer_dni ? String(sale.customer_dni) : "");
-      setSaleProducts(
-        sale.sale_products.map((sp) => {
-          const product = products.find((p) => p.id === sp.product_id);
-          return {
-            id: sp.id,
-            product_id: sp.product_id,
-            product_name: sp.product_name,
-            quantity: sp.quantity,
-            unit_price: sp.unit_price,
-            unit_cost: product?.manufacturing_cost ?? 0,
-            subtotal: sp.quantity * sp.unit_price,
-            temperatura: sp.temperatura,
-            tipo_leche: sp.tipo_leche,
-            category_id: product?.category_id ?? null,
-            loyalty_reward:
-              sp.loyalty_reward === "50_postre" ||
-              sp.loyalty_reward === "bebida_gratis"
-                ? sp.loyalty_reward
-                : null,
-            status: sp.status,
-            discount_amount: sp.discount_amount ?? 0,
-            discount_mode:
-              (sp.discount_amount ?? 0) > 0 ? ("monto" as const) : undefined,
-            discount_value:
-              (sp.discount_amount ?? 0) > 0 ? sp.discount_amount : undefined,
-          };
-        }),
-      );
-      // Descuento de nivel total = total de la venta − suma de descuentos de línea.
-      const lineDiscountSum = sale.sale_products.reduce(
-        (s, sp) => s + (sp.discount_amount ?? 0),
-        0,
-      );
-      const totalLevelDiscount = round2(
-        (sale.discount_amount ?? 0) - lineDiscountSum,
-      );
-      discount.initTotalDiscount(totalLevelDiscount > 0 ? totalLevelDiscount : 0);
-      setNotes(sale.notes ?? "");
-      if (sale.payment_method) {
-        setRegisterPayment(true);
-        setPaymentMethod(sale.payment_method as PaymentMethod);
-        setCashAmount(sale.cash_amount ? String(sale.cash_amount) : "");
-        setPlinAmount(sale.plin_amount ? String(sale.plin_amount) : "");
-        setCashReceived(sale.cash_received ? String(sale.cash_received) : "");
-      } else {
-        setRegisterPayment(false);
-        setPaymentMethod("Efectivo");
-        setCashAmount("");
-        setPlinAmount("");
-        setCashReceived("");
-      }
-    } else {
-      setOrderType("Mesa");
-      setTableNumber("");
-      setCustomerDni("");
-      setSaleProducts([]);
-      setRegisterPayment(false);
-      setPaymentMethod("Efectivo");
-      setCashAmount("");
-      setPlinAmount("");
-      setCashReceived("");
-      setNotes("");
-      discount.resetTotalDiscount();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, sale, products]);
 
   if (!isOpen) return null;
 
@@ -238,63 +180,24 @@ export default function SaleForm({
     }
   };
 
-  const formFields = (
-    <>
-      <div>
-        <label className="block text-sm font-medium text-slate-900 mb-2">
-          Tipo de pedido <span className="text-red-600">*</span>
-        </label>
-        <div className="flex gap-2">
-          {ORDER_TYPES.map((type) => (
-            <button
-              key={type.value}
-              type="button"
-              onClick={() => handleOrderTypeChange(type.value)}
-              disabled={isSubmitting}
-              className={`flex-1 px-4 py-3 min-h-[44px] rounded-lg border-2 font-medium transition-all ${
-                orderType === type.value
-                  ? `${type.color} border-current`
-                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-              }`}
-            >
-              {type.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      {orderType === "Mesa" && (
-        <div>
-          <label className="block text-sm font-medium text-slate-900 mb-1.5">
-            Número de mesa <span className="text-red-600">*</span>
-          </label>
-          <input
-            type="number"
-            inputMode="numeric"
-            min="1"
-            value={tableNumber}
-            onChange={(e) => setTableNumber(e.target.value)}
-            disabled={isSubmitting}
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-            placeholder="Ej: 1, 2, 3..."
-          />
-        </div>
-      )}
-      <div>
-        <label className="block text-sm font-medium text-slate-900 mb-1.5">
-          DNI del cliente <span className="text-slate-500 text-xs">(opcional)</span>
-        </label>
-        <input
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]{8}"
-          maxLength={8}
-          value={customerDni}
-          onChange={(e) => setCustomerDni(e.target.value.replace(/\D/g, ""))}
-          disabled={isSubmitting}
-          className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-          placeholder="Ej: 12345678"
-        />
-      </div>
+  return (
+    <SaleFormShell
+      title={title}
+      onClose={onClose}
+      isSubmitting={isSubmitting}
+      submitDisabled={isSubmitting || saleProducts.length === 0}
+      submitLabel={submitLabel}
+      onSubmit={handleSubmit}
+    >
+      <SaleOrderHeader
+        orderType={orderType}
+        onOrderTypeChange={handleOrderTypeChange}
+        tableNumber={tableNumber}
+        onTableNumberChange={setTableNumber}
+        customerDni={customerDni}
+        onCustomerDniChange={setCustomerDni}
+        isSubmitting={isSubmitting}
+      />
       <ProductSelector
         products={products}
         saleProducts={saleProducts}
@@ -346,7 +249,8 @@ export default function SaleForm({
       )}
       <div>
         <label className="block text-sm font-medium text-slate-900 mb-1.5">
-          Nota del pedido <span className="text-slate-500 text-xs">(opcional)</span>
+          Nota del pedido{" "}
+          <span className="text-slate-500 text-xs">(opcional)</span>
         </label>
         <textarea
           value={notes}
@@ -363,70 +267,6 @@ export default function SaleForm({
           <p className="text-sm text-red-700">{submitError}</p>
         </div>
       )}
-    </>
-  );
-
-  const submitDisabled = isSubmitting || saleProducts.length === 0;
-
-  return (
-    <>
-      {/* Mobile fullscreen */}
-      <div className="fixed inset-0 z-50 flex flex-col bg-white md:hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50 shrink-0">
-          <button type="button" onClick={onClose} disabled={isSubmitting} className="p-3 hover:bg-slate-100 rounded-lg transition-colors">
-            <ArrowLeft className="w-5 h-5 text-slate-700" />
-          </button>
-          <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-          <div className="w-11" />
-        </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">{formFields}</div>
-        <div className="shrink-0 px-4 py-3 border-t border-slate-200 bg-white">
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitDisabled}
-            className="w-full px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-          >
-            {submitLabel}
-          </button>
-        </div>
-      </div>
-
-      {/* Desktop modal */}
-      <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden md:flex items-center justify-center p-4"
-        onClick={onClose}
-      >
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl sticky top-0 z-10">
-            <h2 className="text-xl font-semibold text-slate-900">{title}</h2>
-            <button type="button" onClick={onClose} disabled={isSubmitting} className="p-3 hover:bg-slate-100 rounded-lg transition-colors">
-              <X className="w-5 h-5 text-slate-700" />
-            </button>
-          </div>
-          <div className="p-6 space-y-4">
-            {formFields}
-            <div className="flex gap-3 pt-4 sticky bottom-0 bg-white pb-2">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isSubmitting}
-                className="flex-1 px-4 py-3 min-h-[44px] border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={submitDisabled}
-                className="flex-1 px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-              >
-                {submitLabel}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
+    </SaleFormShell>
   );
 }
