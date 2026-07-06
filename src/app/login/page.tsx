@@ -1,75 +1,36 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/utils/supabase/client";
-import { Coffee, Mail, Lock, User } from "lucide-react";
+import { Coffee, Mail, Lock } from "lucide-react";
+import { signInWithPassword, signInWithGoogle } from "@/features/auth/services/authService";
 
 export default function LoginPage() {
-  const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const supabase = createClient();
 
   const handleGoogleLogin = async () => {
     setError("");
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) setError("Error al iniciar sesión con Google");
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al iniciar sesión con Google");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setMessage("");
     setLoading(true);
-
-    if (isRegister) {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: fullName },
-        },
-      });
-      if (error) {
-        setError(getErrorMessage(error.message));
-      } else {
-        setMessage("Revisa tu correo para confirmar tu cuenta.");
-      }
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) {
-        setError(getErrorMessage(error.message));
-      } else {
-        window.location.href = "/";
-      }
+    try {
+      await signInWithPassword(email, password);
+      window.location.href = "/";
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ocurrió un error. Intenta de nuevo.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
-  };
-
-  const getErrorMessage = (msg: string) => {
-    if (msg.includes("Invalid login credentials"))
-      return "Correo o contraseña incorrectos";
-    if (msg.includes("Email not confirmed"))
-      return "Debes confirmar tu correo electrónico";
-    if (msg.includes("already registered"))
-      return "Este correo ya está registrado";
-    if (msg.includes("Password should be at least"))
-      return "La contraseña debe tener al menos 6 caracteres";
-    return "Ocurrió un error. Intenta de nuevo.";
   };
 
   return (
@@ -87,7 +48,7 @@ export default function LoginPage() {
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 md:p-8">
           <h2 className="text-xl font-semibold text-slate-900 text-center mb-6">
-            {isRegister ? "Crear cuenta" : "Iniciar sesión"}
+            Iniciar sesión
           </h2>
 
           {/* Google Button */}
@@ -125,25 +86,6 @@ export default function LoginPage() {
 
           {/* Email/Password Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {isRegister && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Nombre completo
-                </label>
-                <div className="relative">
-                  <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="Tu nombre"
-                    required
-                  />
-                </div>
-              </div>
-            )}
-
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Correo electrónico
@@ -185,39 +127,14 @@ export default function LoginPage() {
               </div>
             )}
 
-            {message && (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-                {message}
-              </div>
-            )}
-
             <button
               type="submit"
               disabled={loading}
               className="w-full py-3 bg-primary-500 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
             >
-              {loading
-                ? "Cargando..."
-                : isRegister
-                  ? "Registrarse"
-                  : "Iniciar sesión"}
+              {loading ? "Cargando..." : "Iniciar sesión"}
             </button>
           </form>
-
-          {/* Toggle */}
-          <p className="text-center text-sm text-slate-600 mt-6">
-            {isRegister ? "¿Ya tienes cuenta?" : "¿No tienes cuenta?"}{" "}
-            <button
-              onClick={() => {
-                setIsRegister(!isRegister);
-                setError("");
-                setMessage("");
-              }}
-              className="text-primary-600 font-medium hover:underline"
-            >
-              {isRegister ? "Inicia sesión" : "Regístrate"}
-            </button>
-          </p>
         </div>
       </div>
     </div>
