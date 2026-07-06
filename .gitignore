@@ -47,3 +47,6 @@ skills-lock.json
 
 # local tooling output
 .playwright-cli/
+
+# gentle-ai skill registry cache
+.atl/.skill-registry.cache.json
