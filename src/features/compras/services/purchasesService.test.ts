@@ -80,15 +80,6 @@ function defaults() {
   };
 }
 
-function findReplaceCall(rpcCalls: Array<{ fn: string; params: unknown }>) {
-  return rpcCalls.find((c) => c.fn === "replace_purchase_transactions");
-}
-
-function getReplacePayments(rpcCalls: Array<{ fn: string; params: unknown }>) {
-  const call = findReplaceCall(rpcCalls);
-  if (!call) return null;
-  return (call.params as { p_payments: Array<Record<string, unknown>> }).p_payments;
-}
 
 describe("validatePurchaseForm", () => {
   it("retorna error cuando items está vacío", () => {
@@ -211,38 +202,37 @@ describe("deletePurchase", () => {
   });
 });
 
+// Helper to extract the payload passed to create_purchase_atomic
+function getAtomicPayload(rpcCalls: Array<{ fn: string; params: unknown }>) {
+  const call = rpcCalls.find((c) => c.fn === "create_purchase_atomic");
+  return (call?.params as { p_payload: Record<string, unknown> })?.p_payload;
+}
+
 describe("createPurchase", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockedGetPurchaseNumber.mockResolvedValue(7);
   });
 
-  it("no autenticado: throws sin tocar la DB", async () => {
-    const sb = makeMockSupabase({ authUser: { user: null } });
-    vi.mocked(createClient).mockReturnValue(sb.client as never);
-
-    await expect(createPurchase(makeCreateParams())).rejects.toThrow("No autenticado");
-    expect(sb.insertCalls).toHaveLength(0);
-  });
-
-  it("happy path sin Plin change: 1 transacción via replace_purchase_transactions + audit", async () => {
-    const sb = makeMockSupabase({ single: { data: { id: 88 }, error: null } });
+  it("happy path sin Plin change: llama create_purchase_atomic + audit", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 88, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await createPurchase(makeCreateParams());
 
-    const purchaseInsert = sb.insertCalls.find((c) => c.table === "purchases")!;
-    const payload = purchaseInsert.payload as Record<string, unknown>;
-    expect(payload.user_id).toBe("test-user-uuid");
-    expect(payload.total).toBe(30);
-    expect(payload.account_id).toBe(1);
-    expect(payload.plin_change).toBeNull();
-    expect(payload.delivery_cost).toBeNull();
+    const atomicCall = sb.rpcCalls.find((c) => c.fn === "create_purchase_atomic");
+    expect(atomicCall).toBeDefined();
 
-    const itemsInsert = sb.insertCalls.find((c) => c.table === "purchase_items")!;
-    expect(itemsInsert).toBeDefined();
+    // Must NOT have done a direct purchases insert
+    expect(sb.insertCalls.find((c) => c.table === "purchases")).toBeUndefined();
 
-    const payments = getReplacePayments(sb.rpcCalls);
+    const payload = getAtomicPayload(sb.rpcCalls);
+    const header = payload?.header as Record<string, unknown>;
+    expect(header.total).toBe(30);
+    expect(header.account_id).toBe(1);
+    expect(header.has_delivery).toBe(false);
+
+    const payments = payload?.payments as Array<Record<string, unknown>>;
     expect(payments).toEqual([
       expect.objectContaining({
         account_id: 1,
@@ -258,17 +248,18 @@ describe("createPurchase", () => {
     );
   });
 
-  it("con Plin change > 0: 2 entradas en payload (caja egreso total+plin, banco ingreso_extra)", async () => {
-    const sb = makeMockSupabase({ single: { data: { id: 88 }, error: null } });
+  it("con Plin change > 0: 2 entradas en payments (caja egreso total+plin, banco ingreso_extra)", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 88, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await createPurchase(
       makeCreateParams({ plinChangeAmount: 10, total: 50 }),
     );
 
-    const payments = getReplacePayments(sb.rpcCalls);
+    const payload = getAtomicPayload(sb.rpcCalls);
+    const payments = payload?.payments as Array<Record<string, unknown>>;
     expect(payments).toHaveLength(2);
-    expect(payments![0]).toEqual(
+    expect(payments[0]).toEqual(
       expect.objectContaining({
         account_id: 1,
         type: "egreso_compra",
@@ -276,7 +267,7 @@ describe("createPurchase", () => {
         description: expect.stringContaining("vuelto Plin S/ 10.00"),
       }),
     );
-    expect(payments![1]).toEqual(
+    expect(payments[1]).toEqual(
       expect.objectContaining({
         account_id: 2,
         type: "ingreso_extra",
@@ -288,44 +279,26 @@ describe("createPurchase", () => {
     expect(auditDetails?.vuelto_plin).toBe(10);
   });
 
-  it("hasDelivery=true: incluye delivery_cost en el insert", async () => {
-    const sb = makeMockSupabase({ single: { data: { id: 88 }, error: null } });
+  it("hasDelivery=true: incluye has_delivery=true y delivery_cost en header del payload", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 88, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await createPurchase(
       makeCreateParams({ hasDelivery: true, deliveryCost: 7.5 }),
     );
 
-    const purchaseInsert = sb.insertCalls.find((c) => c.table === "purchases")!;
-    const payload = purchaseInsert.payload as Record<string, unknown>;
-    expect(payload.has_delivery).toBe(true);
-    expect(payload.delivery_cost).toBe(7.5);
+    const payload = getAtomicPayload(sb.rpcCalls);
+    const header = payload?.header as Record<string, unknown>;
+    expect(header.has_delivery).toBe(true);
+    expect(header.delivery_cost).toBe(7.5);
   });
 
-  it("error en insert items: propaga sin llamar replace_purchase_transactions", async () => {
-    const sb = makeMockSupabase();
-    let insertCount = 0;
-    sb.from.mockImplementation((table: string) => {
-      if (table === "purchases") {
-        return {
-          insert: vi.fn(() => ({
-            select: vi.fn(() => ({
-              single: vi.fn(async () => ({ data: { id: 88 }, error: null })),
-            })),
-          })),
-        };
-      }
-      // purchase_items
-      insertCount++;
-      return {
-        insert: vi.fn(async () => ({ error: { message: "items broken" } })),
-      };
-    });
+  it("RPC error: propaga sin llamar logAudit", async () => {
+    const sb = makeMockSupabase({ rpc: { data: null, error: { message: "items broken" } } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await expect(createPurchase(makeCreateParams())).rejects.toBeTruthy();
-    expect(insertCount).toBe(1);
-    expect(sb.rpcCalls).toEqual([]);
+    expect(mockedLogAudit).not.toHaveBeenCalled();
   });
 });
 

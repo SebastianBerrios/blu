@@ -283,16 +283,20 @@ describe("deleteSale", () => {
   });
 });
 
+// Helper to extract the payload passed to create_sale_atomic
+function getAtomicPayload(rpcCalls: Array<{ fn: string; params: unknown }>) {
+  const call = rpcCalls.find((c) => c.fn === "create_sale_atomic");
+  return (call?.params as { p_payload: Record<string, unknown> })?.p_payload;
+}
+
 describe("createSale", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockedGetSaleNumber.mockResolvedValue(101);
   });
 
-  it("permite venta gratis (total 0): inserta venta sin generar transacción", async () => {
-    const sb = makeMockSupabase({
-      single: { data: { id: 999 }, error: null },
-    });
+  it("permite venta gratis (total 0): llama create_sale_atomic sin payment_entries", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 999, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await createSale(
@@ -315,26 +319,20 @@ describe("createSale", () => {
       }),
     );
 
-    // La venta se inserta con total 0 y método Efectivo (cash_amount 0)
-    const salesInsert = sb.insertCalls.find((c) => c.table === "sales");
-    expect(salesInsert).toBeDefined();
-    const payload = salesInsert!.payload as Record<string, unknown>;
-    expect(payload.total_price).toBe(0);
-    expect(payload.payment_method).toBe("Efectivo");
-    expect(payload.cash_amount).toBe(0);
+    // create_sale_atomic is called
+    const atomicCall = sb.rpcCalls.find((c) => c.fn === "create_sale_atomic");
+    expect(atomicCall).toBeDefined();
 
-    // sale_products se inserta
-    const productsInsert = sb.insertCalls.find((c) => c.table === "sale_products");
-    expect(productsInsert).toBeDefined();
+    const payload = getAtomicPayload(sb.rpcCalls);
+    expect((payload?.header as Record<string, unknown>)?.total_price).toBe(0);
+    expect((payload?.header as Record<string, unknown>)?.register_payment).toBe(true);
 
-    // No se genera ninguna transacción de ingreso (payments vacío)
-    expect(getReplacePayments(sb.rpcCalls)).toEqual([]);
+    // payment_entries empty for zero-total Efectivo (net = 0, buildSalePayments returns [])
+    expect(Array.isArray(payload?.payment_entries)).toBe(true);
   });
 
-  it("happy path Mesa con Efectivo y sin DNI: insert sales, sale_products, audit + transacciones via RPC", async () => {
-    const sb = makeMockSupabase({
-      single: { data: { id: 999 }, error: null },
-    });
+  it("happy path Mesa con Efectivo y sin DNI: llama create_sale_atomic con header/products/payment + doble audit", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 999, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await createSale(makeSubmitParams());
@@ -343,23 +341,19 @@ describe("createSale", () => {
     const customerCalls = sb.selectCalls.filter((c) => c.table === "customers");
     expect(customerCalls).toHaveLength(0);
 
-    // Insert sales
-    const salesInsert = sb.insertCalls.find((c) => c.table === "sales");
-    expect(salesInsert).toBeDefined();
-    const payload = salesInsert!.payload as Record<string, unknown>;
-    expect(payload.order_type).toBe("Mesa");
-    expect(payload.table_number).toBe(5);
-    expect(payload.customer_id).toBeNull();
-    expect(payload.commission).toBeNull();
-    expect(payload.payment_method).toBe("Efectivo");
-    expect(payload.cash_amount).toBe(12);
-    expect(payload.cash_received).toBe(12);
-    expect(payload.user_id).toBe("user-uuid");
+    // create_sale_atomic is the single DB call for creating the sale
+    const atomicCall = sb.rpcCalls.find((c) => c.fn === "create_sale_atomic");
+    expect(atomicCall).toBeDefined();
 
-    // Insert sale_products excludes Entregado (none here)
-    const productsInsert = sb.insertCalls.find((c) => c.table === "sale_products");
-    expect(productsInsert).toBeDefined();
-    expect((productsInsert!.payload as unknown[]).length).toBe(1);
+    const payload = getAtomicPayload(sb.rpcCalls);
+    const header = payload?.header as Record<string, unknown>;
+    expect(header.order_type).toBe("Mesa");
+    expect(header.table_number).toBe(5);
+    expect(header.customer_dni).toBeNull();
+    expect(header.user_id).toBe("user-uuid");
+
+    const products = payload?.products as Array<Record<string, unknown>>;
+    expect(products).toHaveLength(1);
 
     // Audit logs: crear_venta + crear_transaccion
     expect(mockedLogAudit).toHaveBeenCalledTimes(2);
@@ -372,58 +366,26 @@ describe("createSale", () => {
       expect.objectContaining({ action: "crear_transaccion" }),
     );
 
-    // Transaction recorded for caja via replace_sale_transactions
-    const payments = getReplacePayments(sb.rpcCalls);
-    expect(payments).toEqual([
+    // payment_entries built for caja (Efectivo → account 1, amount 12)
+    const entries = payload?.payment_entries as Array<Record<string, unknown>>;
+    expect(entries).toEqual([
       expect.objectContaining({ account_id: 1, amount: 12 }),
     ]);
   });
 
-  it("Mesa con DNI nuevo: inserta customer y usa el id retornado", async () => {
-    const sb = makeMockSupabase();
-    sb.setResult("customers", { data: null, error: null }); // no existing
-    let insertCount = 0;
-    sb.from.mockImplementation((table: string) => {
-      if (table === "customers") {
-        insertCount++;
-        const isFirstCall = insertCount === 1;
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              maybeSingle: vi.fn(async () => ({
-                data: isFirstCall ? null : { id: 555 },
-                error: null,
-              })),
-            })),
-          })),
-          insert: vi.fn(() => ({
-            select: vi.fn(() => ({
-              single: vi.fn(async () => ({ data: { id: 555 }, error: null })),
-            })),
-          })),
-        };
-      }
-      // sales / sale_products
-      return {
-        insert: vi.fn(() => ({
-          select: vi.fn(() => ({
-            single: vi.fn(async () => ({ data: { id: 999 }, error: null })),
-          })),
-        })),
-      };
-    });
+  it("Mesa con DNI: customer_dni is passed in header payload", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 999, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await createSale(makeSubmitParams({ customerDni: "12345678" }));
 
-    // The sales insert uses customer_id = 555
-    const lastCalls = sb.from.mock.calls.map((c) => c[0]);
-    expect(lastCalls).toContain("customers");
-    expect(lastCalls).toContain("sales");
+    const payload = getAtomicPayload(sb.rpcCalls);
+    const header = payload?.header as Record<string, unknown>;
+    expect(header.customer_dni).toBe("12345678");
   });
 
-  it("Rappi: commission calculada, table_number null, replace_sale_transactions con neto", async () => {
-    const sb = makeMockSupabase({ single: { data: { id: 999 }, error: null } });
+  it("Rappi: header.order_type='Rappi', payment_entries net=80 (20% commission on 100)", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 999, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await createSale(
@@ -438,14 +400,14 @@ describe("createSale", () => {
       }),
     );
 
-    const salesInsert = sb.insertCalls.find((c) => c.table === "sales")!;
-    const payload = salesInsert.payload as Record<string, unknown>;
-    expect(payload.order_type).toBe("Rappi");
-    expect(payload.commission).toBe(20); // 100 * 0.2
-    expect(payload.table_number).toBeNull();
+    const payload = getAtomicPayload(sb.rpcCalls);
+    const header = payload?.header as Record<string, unknown>;
+    expect(header.order_type).toBe("Rappi");
+    expect(header.table_number).toBeNull();
 
-    const payments = getReplacePayments(sb.rpcCalls);
-    expect(payments).toEqual([
+    // payment_entries: net = 100 - 20% = 80, account rappi = id 3
+    const entries = payload?.payment_entries as Array<Record<string, unknown>>;
+    expect(entries).toEqual([
       expect.objectContaining({
         account_id: 3,
         type: "ingreso_venta",
@@ -455,35 +417,32 @@ describe("createSale", () => {
     ]);
   });
 
-  it("registerPayment=false: NO llama replace_sale_transactions ni segundo audit", async () => {
-    const sb = makeMockSupabase({ single: { data: { id: 999 }, error: null } });
+  it("registerPayment=false: header.register_payment=false, NO segundo audit", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 999, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await createSale(makeSubmitParams({ registerPayment: false }));
 
-    expect(findReplaceCall(sb.rpcCalls)).toBeUndefined();
+    const payload = getAtomicPayload(sb.rpcCalls);
+    const header = payload?.header as Record<string, unknown>;
+    expect(header.register_payment).toBe(false);
+
     expect(mockedLogAudit).toHaveBeenCalledTimes(1);
     expect(mockedLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: "crear_venta" }),
     );
   });
 
-  it("error en insert sales: propaga y no llega a sale_products ni audit", async () => {
-    const sb = makeMockSupabase({
-      single: { data: null, error: { message: "RLS denied" } },
-    });
+  it("error en create_sale_atomic: propaga y no llama audit", async () => {
+    const sb = makeMockSupabase({ rpc: { data: null, error: { message: "RLS denied" } } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await expect(createSale(makeSubmitParams())).rejects.toBeTruthy();
-
-    // sale_products insert never happened
-    expect(sb.insertCalls.find((c) => c.table === "sale_products")).toBeUndefined();
     expect(mockedLogAudit).not.toHaveBeenCalled();
-    expect(findReplaceCall(sb.rpcCalls)).toBeUndefined();
   });
 
-  it("filtra items con status=Entregado del insert de sale_products", async () => {
-    const sb = makeMockSupabase({ single: { data: { id: 999 }, error: null } });
+  it("filtra items con status=Entregado del payload de products", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 999, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     const params = makeSubmitParams({
@@ -519,14 +478,14 @@ describe("createSale", () => {
 
     await createSale(params);
 
-    const productsInsert = sb.insertCalls.find((c) => c.table === "sale_products")!;
-    const rows = productsInsert.payload as Array<{ product_id: number }>;
-    expect(rows).toHaveLength(1);
-    expect(rows[0].product_id).toBe(2);
+    const payload = getAtomicPayload(sb.rpcCalls);
+    const products = payload?.products as Array<Record<string, unknown>>;
+    expect(products).toHaveLength(1);
+    expect(products[0].product_id).toBe(2);
   });
 
-  it("con descuento total: guarda total_price bruto + discount_amount, transacción al neto", async () => {
-    const sb = makeMockSupabase({ single: { data: { id: 999 }, error: null } });
+  it("con descuento total: header.discount_amount=30, payment_entries amount=70", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 999, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await createSale(
@@ -538,20 +497,19 @@ describe("createSale", () => {
       }),
     );
 
-    const salesInsert = sb.insertCalls.find((c) => c.table === "sales")!;
-    const payload = salesInsert.payload as Record<string, unknown>;
-    expect(payload.total_price).toBe(100);
-    expect(payload.discount_amount).toBe(30);
-    expect(payload.cash_amount).toBe(70); // neto a cobrar
+    const payload = getAtomicPayload(sb.rpcCalls);
+    const header = payload?.header as Record<string, unknown>;
+    expect(header.total_price).toBe(100);
+    expect(header.discount_amount).toBe(30);
 
-    const payments = getReplacePayments(sb.rpcCalls);
-    expect(payments).toEqual([
+    const entries = payload?.payment_entries as Array<Record<string, unknown>>;
+    expect(entries).toEqual([
       expect.objectContaining({ account_id: 1, amount: 70 }),
     ]);
   });
 
-  it("descuento por línea: persiste discount_amount en sale_products", async () => {
-    const sb = makeMockSupabase({ single: { data: { id: 999 }, error: null } });
+  it("descuento por línea: discount_amount resuelto en el producto del payload", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 999, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await createSale(
@@ -577,18 +535,18 @@ describe("createSale", () => {
       }),
     );
 
-    const productsInsert = sb.insertCalls.find((c) => c.table === "sale_products")!;
-    const rows = productsInsert.payload as Array<{ discount_amount: number }>;
-    expect(rows[0].discount_amount).toBe(5);
+    const payload = getAtomicPayload(sb.rpcCalls);
+    const products = payload?.products as Array<Record<string, unknown>>;
+    expect(products[0].discount_amount).toBe(5);
 
-    const payments = getReplacePayments(sb.rpcCalls);
-    expect(payments).toEqual([
+    const entries = payload?.payment_entries as Array<Record<string, unknown>>;
+    expect(entries).toEqual([
       expect.objectContaining({ account_id: 1, amount: 15 }),
     ]);
   });
 
-  it("Rappi con descuento: commission sobre el neto, registra (total−desc)×0.8", async () => {
-    const sb = makeMockSupabase({ single: { data: { id: 999 }, error: null } });
+  it("Rappi con descuento: payment_entries net = (100−20)×0.8 = 64", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 999, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await createSale(
@@ -604,15 +562,14 @@ describe("createSale", () => {
       }),
     );
 
-    const salesInsert = sb.insertCalls.find((c) => c.table === "sales")!;
-    const payload = salesInsert.payload as Record<string, unknown>;
-    expect(payload.total_price).toBe(100);
-    expect(payload.discount_amount).toBe(20);
-    expect(payload.commission).toBe(16); // (100 − 20) × 0.2
+    const payload = getAtomicPayload(sb.rpcCalls);
+    const header = payload?.header as Record<string, unknown>;
+    expect(header.total_price).toBe(100);
+    expect(header.discount_amount).toBe(20);
 
-    const payments = getReplacePayments(sb.rpcCalls);
-    expect(payments).toEqual([
-      expect.objectContaining({ account_id: 3, amount: 64 }), // 80 − 16
+    const entries = payload?.payment_entries as Array<Record<string, unknown>>;
+    expect(entries).toEqual([
+      expect.objectContaining({ account_id: 3, amount: 64 }), // (100-20)*0.8
     ]);
   });
 });

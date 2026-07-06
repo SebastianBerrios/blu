@@ -51,57 +51,12 @@ export function validatePurchaseForm(params: {
 
 // --- Mutations ---
 
-function buildPurchaseItems(purchaseId: number, items: PurchaseItemLine[]) {
-  return items.map((i) => ({
-    purchase_id: purchaseId,
-    item_name: i.item_name,
-    ingredient_id: i.ingredient_id,
-    price: i.price,
-    quantity: i.quantity ?? null,
-    unit: i.unit ?? null,
-  }));
-}
-
 export async function createPurchase(params: CreatePurchaseParams): Promise<void> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("No autenticado");
-
-  const purchaseData = {
-    user_id: user.id,
-    has_delivery: params.hasDelivery,
-    delivery_cost: params.hasDelivery ? params.deliveryCost : null,
-    total: params.total,
-    notes: params.notes.trim() || null,
-    account_id: params.selectedAccountId,
-    plin_change: params.plinChangeAmount > 0 ? params.plinChangeAmount : null,
-  };
-
-  const { data: newPurchase, error } = await supabase
-    .from("purchases")
-    .insert(purchaseData)
-    .select()
-    .single();
-  if (error) throw error;
-
-  const { error: itemsError } = await supabase
-    .from("purchase_items")
-    .insert(buildPurchaseItems(newPurchase.id, params.items));
-  if (itemsError) throw itemsError;
-
-  // Sumar al inventario los items vinculados a un ingrediente con cantidad.
-  // El cambio de stock va por RPC (INSERT directo a inventory_movements bloqueado por RLS).
-  const { error: stockError } = await supabase.rpc("apply_purchase_inventory", {
-    p_purchase_id: newPurchase.id,
-    p_user_id: user.id,
-    p_user_name: params.userName ?? undefined,
-  });
-  if (stockError) throw stockError;
-
-  const purchaseNumber = await getPurchaseNumber(newPurchase.id);
-
+  // Build the payments array (sync pair with buildPurchasePayments below).
+  // A placeholder purchaseNumber of 0 is used here since the RPC will assign
+  // the real id; descriptions are cosmetic and updated on re-display.
   const payments = buildPurchasePayments({
-    purchaseNumber,
+    purchaseNumber: 0,
     total: params.total,
     plinChangeAmount: params.plinChangeAmount,
     selectedAccountId: params.selectedAccountId,
@@ -109,11 +64,38 @@ export async function createPurchase(params: CreatePurchaseParams): Promise<void
     bancoAccountId: params.bancoAccountId,
   });
 
-  const { error: replaceError } = await supabase.rpc("replace_purchase_transactions", {
-    p_purchase_id: newPurchase.id,
-    p_payments: payments,
+  // Build the atomic payload.
+  const payload = {
+    header: {
+      has_delivery: params.hasDelivery,
+      delivery_cost: params.hasDelivery ? params.deliveryCost : null,
+      total: params.total,
+      notes: params.notes.trim() || "",
+      account_id: params.selectedAccountId,
+      plin_change: params.plinChangeAmount > 0 ? params.plinChangeAmount : 0,
+      user_name: params.userName ?? null,
+    },
+    items: params.items.map((i) => ({
+      item_name: i.item_name,
+      ingredient_id: i.ingredient_id == null ? "" : String(i.ingredient_id),
+      price: i.price,
+      quantity: i.quantity == null ? "" : String(i.quantity),
+      unit: i.unit == null ? "" : String(i.unit),
+    })),
+    payments,
+  };
+
+  // Single atomic RPC call: inserts purchases + purchase_items + applies
+  // inventory (via apply_purchase_inventory) + records transactions
+  // (via replace_purchase_transactions) all in one transaction.
+  const supabase = createClient();
+  const { data: purchaseId, error } = await supabase.rpc("create_purchase_atomic", {
+    p_payload: payload,
   });
-  if (replaceError) throw replaceError;
+  if (error) throw error;
+
+  const newPurchaseId = purchaseId as number;
+  const purchaseNumber = await getPurchaseNumber(newPurchaseId);
 
   logAudit({
     userId: params.userId,
@@ -122,7 +104,7 @@ export async function createPurchase(params: CreatePurchaseParams): Promise<void
     targetTable: "transactions",
     targetDescription: `Compra #${purchaseNumber} - S/ ${params.total.toFixed(2)}${params.plinChangeAmount > 0 ? ` (Vuelto Plin S/ ${params.plinChangeAmount.toFixed(2)})` : ""}`,
     details: {
-      compra_id: newPurchase.id,
+      compra_id: newPurchaseId,
       total: params.total,
       vuelto_plin: params.plinChangeAmount,
     },

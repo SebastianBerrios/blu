@@ -181,6 +181,7 @@ export async function recordSaleTransactions(params: {
 }
 
 export async function createSale(params: SaleSubmitParams): Promise<void> {
+  // --- Client-side UX pre-validation (fast-fail before network round-trip) ---
   const discountAmount = round2(
     Math.min(Math.max(params.discountAmount || 0, 0), params.totalPrice),
   );
@@ -191,12 +192,11 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
   // Las utilidades de pago operan sobre el neto a cobrar (total − descuento).
   const netParams = { ...params, totalPrice: netPayable };
   validateSplitPayment(netParams);
-
-  const supabase = createClient();
-  const customerId = await resolveCustomerId(params.customerDni);
   const paymentFields = buildPaymentFields(netParams);
   validateCashReceived(paymentFields);
 
+  // Pre-compute commission for the payment entries passed to the RPC.
+  // The RPC recomputes server-side and is authoritative; this is for UX only.
   const commission = computeCommission(
     params.orderType,
     params.totalPrice,
@@ -204,41 +204,80 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
     paymentFields.payment_method,
   );
 
-  const { data: newSale, error } = await supabase
-    .from("sales")
-    .insert({
+  // Build payment_entries array (same shape as buildSalePayments) so the RPC
+  // can call replace_sale_transactions without re-deriving the split logic.
+  // Documented sync pair: buildSalePayments ↔ create_sale_atomic payment block.
+  const saleNumberForDesc = 0; // placeholder — RPC will use the real id
+  const paymentEntries = params.registerPayment
+    ? buildSalePayments({
+        saleNumber: saleNumberForDesc,
+        paymentMethod: paymentFields.payment_method,
+        totalPrice: netPayable,
+        commission,
+        cashAmount: paymentFields.cash_amount,
+        plinAmount: paymentFields.plin_amount,
+        cajaAccountId: params.cajaAccountId,
+        bancoAccountId: params.bancoAccountId,
+        rappiAccountId: params.rappiAccountId,
+        posAccountId: params.posAccountId,
+      })
+    : [];
+
+  // --- Build the atomic payload ---
+  const payload = {
+    header: {
       order_type: params.orderType,
+      table_number: params.orderType === "Mesa" ? parseInt(params.tableNumber) || null : null,
+      notes: params.notes.trim() || null,
+      customer_dni: params.customerDni || null,
+      user_id: params.userId,
       total_price: params.totalPrice,
       discount_amount: discountAmount,
-      commission,
-      customer_id: customerId,
-      table_number:
-        params.orderType === "Mesa"
-          ? parseInt(params.tableNumber) || null
-          : null,
-      notes: params.notes.trim() || null,
-      user_id: params.userId,
-      ...paymentFields,
-    })
-    .select()
-    .single();
+      register_payment: params.registerPayment,
+    },
+    products: buildSaleProductRows(0, params).map((row) => ({
+      product_id: row.product_id,
+      quantity: row.quantity,
+      unit_price: row.unit_price,
+      unit_cost: row.unit_cost,
+      temperatura: row.temperatura,
+      tipo_leche: row.tipo_leche,
+      loyalty_reward: row.loyalty_reward,
+      discount_amount: row.discount_amount,
+    })),
+    payment: {
+      payment_method: paymentFields.payment_method,
+      payment_date: paymentFields.payment_date,
+      cash_amount: paymentFields.cash_amount,
+      plin_amount: paymentFields.plin_amount,
+      cash_received: paymentFields.cash_received,
+    },
+    payment_entries: paymentEntries,
+    accounts: {
+      caja_id: params.cajaAccountId,
+      banco_id: params.bancoAccountId,
+      rappi_id: params.rappiAccountId,
+      pos_id: params.posAccountId,
+    },
+  };
 
+  // --- Single atomic RPC call ---
+  const supabase = createClient();
+  const { data: saleId, error } = await supabase.rpc("create_sale_atomic", {
+    p_payload: payload,
+  });
   if (error) throw error;
 
-  const { error: productsError } = await supabase
-    .from("sale_products")
-    .insert(buildSaleProductRows(newSale.id, params));
-
-  if (productsError) throw productsError;
-
-  const saleNumber = await getSaleNumber(newSale.id);
+  // --- Post-success side-effects (audit log + display number) ---
+  const newSaleId = saleId as number;
+  const saleNumber = await getSaleNumber(newSaleId);
 
   logAudit({
     userId: params.userId,
     userName: params.userName,
     action: "crear_venta",
     targetTable: "sales",
-    targetId: newSale.id,
+    targetId: newSaleId,
     targetDescription: `Venta #${saleNumber} - ${params.orderType} - S/ ${params.totalPrice.toFixed(2)}`,
     details: {
       tipo_pedido: params.orderType,
@@ -251,20 +290,6 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
   });
 
   if (params.registerPayment) {
-    await recordSaleTransactions({
-      saleId: newSale.id,
-      saleNumber,
-      paymentMethod: paymentFields.payment_method,
-      totalPrice: netPayable,
-      commission,
-      cashAmount: paymentFields.cash_amount,
-      plinAmount: paymentFields.plin_amount,
-      cajaAccountId: params.cajaAccountId,
-      bancoAccountId: params.bancoAccountId,
-      rappiAccountId: params.rappiAccountId,
-      posAccountId: params.posAccountId,
-    });
-
     logAudit({
       userId: params.userId,
       userName: params.userName,
@@ -272,7 +297,7 @@ export async function createSale(params: SaleSubmitParams): Promise<void> {
       targetTable: "transactions",
       targetDescription: `Venta #${saleNumber} - ${params.paymentMethod} - S/ ${params.totalPrice.toFixed(2)}`,
       details: {
-        venta_id: newSale.id,
+        venta_id: newSaleId,
         metodo: params.paymentMethod,
         total: params.totalPrice,
         commission,
@@ -345,11 +370,14 @@ export async function updateSale(
 
   // Eliminar items "Entregado" que el admin quitó: revierte inventario y borra
   // la fila de forma atómica vía RPC (valida rol admin en el servidor).
-  const { data: existingDelivered } = await supabase
+  // F5: propagate the error (was previously silently discarded, causing a
+  // failed fetch to be treated as "all delivered items kept").
+  const { data: existingDelivered, error: existingDeliveredError } = await supabase
     .from("sale_products")
     .select("id")
     .eq("sale_id", saleId)
     .eq("status", "Entregado");
+  if (existingDeliveredError) throw existingDeliveredError;
 
   const keptDeliveredIds = new Set(
     params.saleProducts
