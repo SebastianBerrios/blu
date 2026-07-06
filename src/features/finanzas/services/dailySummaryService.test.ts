@@ -148,3 +148,217 @@ describe("fetchDailySummary — round2 on money accumulators (T1.8)", () => {
     expect(cbStr).not.toContain("00000000000000");
   });
 });
+
+// ---------------------------------------------------------------------------
+// T3.3 extensions — closingBalance formula + net/ingresos/egresos aggregation
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a mock that returns controlled data for each table.
+ * accounts: one account with balance=currentBalance
+ * transactions (day range, gte+lte): the provided dayTransactions
+ * transactions (post-day, gt only): the provided postTransactions
+ * All other tables return [].
+ */
+function makeSummaryDataMock(opts: {
+  currentBalance: number;
+  dayTransactions: Array<{ account_id: number; amount: number; created_at: string }>;
+  postTransactions: Array<{ account_id: number; amount: number }>;
+}) {
+  const sb = makeMockSupabase();
+
+  let transactionsCallCount = 0;
+
+  sb.from.mockImplementation((table: string) => {
+    const chain: Record<string, unknown> = {
+      select: vi.fn(() => chain),
+      eq: vi.fn(() => chain),
+      gte: vi.fn(() => chain),
+      lte: vi.fn(() => chain),
+      gt: vi.fn(() => chain),
+      order: vi.fn(() => chain),
+      not: vi.fn(() => chain),
+      in: vi.fn(() => chain),
+      then: (onFulfilled: (v: { data: unknown; error: null }) => unknown) => {
+        let data: unknown = [];
+
+        if (table === "accounts") {
+          data = [{ id: 1, name: "Caja", type: "caja", balance: opts.currentBalance }];
+        } else if (table === "transactions") {
+          // First transactions call = day range (gte+lte), second = post-day (gt only)
+          transactionsCallCount += 1;
+          data =
+            transactionsCallCount === 1
+              ? opts.dayTransactions
+              : opts.postTransactions;
+        }
+
+        return Promise.resolve({ data, error: null }).then(onFulfilled);
+      },
+    };
+    return chain;
+  });
+
+  return sb;
+}
+
+describe("fetchDailySummary — closingBalance formula (T3.3)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("closingBalance = currentBalance minus sum of postTransactions for the account", async () => {
+    // currentBalance = 500, postTransactions sum = 75 → closingBalance = 425
+    const sb = makeSummaryDataMock({
+      currentBalance: 500,
+      dayTransactions: [],
+      postTransactions: [
+        { account_id: 1, amount: 50 },
+        { account_id: 1, amount: 25 },
+      ],
+    });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    const result = await fetchDailySummary(LIMA_DATE_KEY);
+
+    const caja = result.perAccount.find((a) => a.accountId === 1);
+    expect(caja).toBeDefined();
+    expect(caja!.closingBalance).toBe(425);
+    expect(caja!.currentBalance).toBe(500);
+  });
+
+  it("closingBalance equals currentBalance when there are no postTransactions", async () => {
+    const sb = makeSummaryDataMock({
+      currentBalance: 320.5,
+      dayTransactions: [],
+      postTransactions: [],
+    });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    const result = await fetchDailySummary(LIMA_DATE_KEY);
+
+    const caja = result.perAccount.find((a) => a.accountId === 1);
+    expect(caja!.closingBalance).toBe(320.5);
+  });
+
+  it("postTransactions from other accounts do NOT affect this account's closingBalance", async () => {
+    const sb = makeSummaryDataMock({
+      currentBalance: 200,
+      dayTransactions: [],
+      postTransactions: [
+        { account_id: 2, amount: 100 }, // different account
+      ],
+    });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    const result = await fetchDailySummary(LIMA_DATE_KEY);
+
+    const caja = result.perAccount.find((a) => a.accountId === 1);
+    expect(caja!.closingBalance).toBe(200); // unaffected by account 2's postTx
+  });
+});
+
+describe("fetchDailySummary — net/ingresos/egresos aggregation (T3.3)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("ingresos = sum of positive transaction amounts (round2 applied)", async () => {
+    const sb = makeSummaryDataMock({
+      currentBalance: 1000,
+      dayTransactions: [
+        { account_id: 1, amount: 100, created_at: LIMA_START },
+        { account_id: 1, amount: 50, created_at: LIMA_START },
+        { account_id: 1, amount: -30, created_at: LIMA_START }, // egreso, not counted
+      ],
+      postTransactions: [],
+    });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    const result = await fetchDailySummary(LIMA_DATE_KEY);
+
+    const caja = result.perAccount.find((a) => a.accountId === 1);
+    expect(caja!.ingresos).toBe(150);
+    expect(caja!.egresos).toBe(30);
+    expect(caja!.net).toBe(120);
+  });
+
+  it("egresos uses Math.abs (stored as negative amounts)", async () => {
+    const sb = makeSummaryDataMock({
+      currentBalance: 500,
+      dayTransactions: [
+        { account_id: 1, amount: -75, created_at: LIMA_START },
+        { account_id: 1, amount: -25, created_at: LIMA_START },
+      ],
+      postTransactions: [],
+    });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    const result = await fetchDailySummary(LIMA_DATE_KEY);
+
+    const caja = result.perAccount.find((a) => a.accountId === 1);
+    expect(caja!.ingresos).toBe(0);
+    expect(caja!.egresos).toBe(100); // abs(-75) + abs(-25) = 100
+    expect(caja!.net).toBe(-100); // net = ingresos - egresos = 0 - 100
+  });
+
+  it("totalIngresos, totalEgresos, totalNet aggregate across all accounts", async () => {
+    // Two-account scenario via a fresh mock override
+    const sb = makeMockSupabase();
+    let transactionsCallCount = 0;
+
+    sb.from.mockImplementation((table: string) => {
+      const chain: Record<string, unknown> = {
+        select: vi.fn(() => chain),
+        eq: vi.fn(() => chain),
+        gte: vi.fn(() => chain),
+        lte: vi.fn(() => chain),
+        gt: vi.fn(() => chain),
+        order: vi.fn(() => chain),
+        not: vi.fn(() => chain),
+        in: vi.fn(() => chain),
+        then: (onFulfilled: (v: { data: unknown; error: null }) => unknown) => {
+          let data: unknown = [];
+          if (table === "accounts") {
+            data = [
+              { id: 1, name: "Caja", type: "caja", balance: 1000 },
+              { id: 2, name: "Banco", type: "banco", balance: 2000 },
+            ];
+          } else if (table === "transactions") {
+            transactionsCallCount += 1;
+            if (transactionsCallCount === 1) {
+              // Day transactions: account 1 → +100, account 2 → +200
+              data = [
+                { account_id: 1, amount: 100, created_at: LIMA_START },
+                { account_id: 2, amount: 200, created_at: LIMA_START },
+              ];
+            }
+            // post-day transactions: empty
+          }
+          return Promise.resolve({ data, error: null }).then(onFulfilled);
+        },
+      };
+      return chain;
+    });
+
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    const result = await fetchDailySummary(LIMA_DATE_KEY);
+
+    expect(result.totalIngresos).toBe(300); // 100 + 200
+    expect(result.totalEgresos).toBe(0);
+    expect(result.totalNet).toBe(300);
+  });
+
+  it("limaDayRangeISO start/end is used for the purchases query too", async () => {
+    const { sb, allQueries } = makeServiceMock();
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await fetchDailySummary(LIMA_DATE_KEY);
+
+    const purchasesQuery = allQueries.find((q) => q.table === "purchases");
+    expect(purchasesQuery).toBeDefined();
+    expect(purchasesQuery?.gte).toBe(LIMA_START);
+    expect(purchasesQuery?.lte).toBe(LIMA_END);
+  });
+});

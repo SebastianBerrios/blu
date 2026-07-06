@@ -70,6 +70,11 @@ export async function recordTransaction(params: {
   referenceType?: string;
   categoryId?: number;
 }): Promise<number> {
+  // Guard: a null/falsy accountId would silently create a transaction with no account.
+  // Per project convention: throw early, never forward an invalid id to the RPC.
+  if (!params.accountId) {
+    throw new Error("recordTransaction: accountId is required and must be a valid non-zero id");
+  }
   const supabase = createClient();
   const { data, error } = await supabase.rpc("record_transaction", {
     p_account_id: params.accountId,

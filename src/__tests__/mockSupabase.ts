@@ -199,11 +199,23 @@ export function makeMockSupabase(defaults: MockSupabaseDefaults = {}): MockSupab
     return { eq, in: inFn };
   }
 
+  function buildUpsertChain(table: string, payload: unknown) {
+    // upsert is recorded in insertCalls so tests can inspect the payload.
+    insertCalls.push({ table, payload });
+    const tableResult = () => tableResults.get(table) ?? {};
+    // Upsert without .select() resolves to { error } directly.
+    return {
+      then: (onFulfilled: (v: { error: unknown }) => unknown) =>
+        Promise.resolve({ error: tableResult().error ?? null }).then(onFulfilled),
+    };
+  }
+
   const from = vi.fn((table: string) => ({
     select: vi.fn((columns: string, options?: unknown) =>
       buildSelectChain(table, columns, options),
     ),
     insert: vi.fn((payload: unknown) => buildInsertChain(table, payload)),
+    upsert: vi.fn((payload: unknown) => buildUpsertChain(table, payload)),
     update: vi.fn((payload: unknown) => buildUpdateChain(table, payload)),
     delete: vi.fn(() => buildDeleteChain(table)),
   }));
