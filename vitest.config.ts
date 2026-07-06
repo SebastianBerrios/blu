@@ -6,6 +6,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    allowOnly: false,
     include: ["src/**/*.test.ts"],
     coverage: {
       provider: "v8",
