@@ -93,7 +93,7 @@ export default function AuditoriaPage() {
         {/* Filters */}
         <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-900">Filtros</h3>
+            <h2 className="text-sm font-semibold text-slate-900">Filtros</h2>
             {hasFilters && (
               <button
                 onClick={clearFilters}
@@ -166,14 +166,14 @@ export default function AuditoriaPage() {
         {!isLoading && logs.length > 0 && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-base md:text-lg font-semibold text-slate-900">Registros</h3>
+              <h2 className="text-base md:text-lg font-semibold text-slate-900">Registros</h2>
               <span className="text-sm text-slate-500">{logs.length} registros</span>
             </div>
 
             {groupedLogs.map((group) => (
               <div key={group.date}>
                 <div className="px-3 md:px-4 py-2.5 md:py-3 bg-primary-100 rounded-lg mb-2">
-                  <span className="font-semibold text-primary-900 capitalize text-sm md:text-base">
+                  <span className="font-semibold text-primary-900 text-sm md:text-base">
                     {formatDateLong(group.date)}
                   </span>
                   <span className="ml-3 text-sm text-primary-700">

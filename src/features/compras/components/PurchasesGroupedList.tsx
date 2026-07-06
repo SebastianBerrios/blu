@@ -42,7 +42,7 @@ export default function PurchasesGroupedList({
               ) : (
                 <ChevronUp className="w-4 h-4 text-primary-700" />
               )}
-              <span className="font-semibold text-primary-900 capitalize text-sm md:text-base">
+              <span className="font-semibold text-primary-900 text-sm md:text-base">
                 {formatDateLong(group.date)}
               </span>
             </div>

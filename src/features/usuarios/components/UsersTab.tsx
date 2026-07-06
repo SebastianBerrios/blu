@@ -82,7 +82,7 @@ export default function UsersTab() {
       <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 bg-slate-50">
           <div className="flex items-center justify-between">
-            <h3 className="text-base md:text-lg font-semibold text-slate-900">Lista de Usuarios</h3>
+            <h2 className="text-base md:text-lg font-semibold text-slate-900">Lista de Usuarios</h2>
             <span className="text-sm text-slate-500">
               {isLoading ? "Cargando..." : `${users.length} registros`}
             </span>

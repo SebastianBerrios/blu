@@ -88,9 +88,12 @@ export default function SaleCard({
                 : ""}
             </Badge>
             {sale.payment_method ? (
-              <Badge tone={PAYMENT_TONE[sale.payment_method as PaymentMethod] ?? "neutral"}>
-                {sale.payment_method}
-              </Badge>
+              // Avoid duplicate badges when both read the same (e.g. Rappi/Rappi)
+              sale.payment_method !== sale.order_type && (
+                <Badge tone={PAYMENT_TONE[sale.payment_method as PaymentMethod] ?? "neutral"}>
+                  {sale.payment_method}
+                </Badge>
+              )
             ) : (
               <Badge tone="paymentPending">Pendiente</Badge>
             )}

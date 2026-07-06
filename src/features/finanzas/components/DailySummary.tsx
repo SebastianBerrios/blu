@@ -84,9 +84,9 @@ export default function DailySummary({ date, onDateChange }: DailySummaryProps) 
             Resumen del día
           </p>
           <div className="flex items-center justify-center gap-2 mt-0.5">
-            <h3 className="text-base md:text-lg font-semibold text-slate-900 truncate">
+            <h2 className="text-base md:text-lg font-semibold text-slate-900 truncate">
               {formatDateLong(date)}
-            </h3>
+            </h2>
             {isToday && (
               <span className="text-[11px] font-semibold text-primary-700 bg-primary-50 border border-primary-200 px-2 py-0.5 rounded-full">
                 Hoy

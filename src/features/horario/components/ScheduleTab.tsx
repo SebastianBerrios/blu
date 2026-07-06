@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import type { ScheduleSlot, ScheduleTemplate, DayOfWeek } from "@/types";
 import { getMonday, getWeekDates } from "@/hooks/useSchedule";
 import { getMonthLabel, toLocalDateStr } from "../utils/calendarDates";
+import { formatWeekRange } from "@/utils/helpers/dateFormatters";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
 import { DAY_LABELS_SHORT } from "../constants";
@@ -90,15 +91,8 @@ export default function ScheduleTab({
     }
   };
 
-  const formatWeekLabel = () => {
-    const start = new Date(weekDates[0] + "T00:00:00");
-    const end = new Date(weekDates[weekDates.length - 1] + "T00:00:00");
-    const startDay = start.getDate();
-    const endDay = end.getDate();
-    const month = start.toLocaleDateString("es-PE", { month: "long" });
-    const year = start.getFullYear();
-    return `${startDay} - ${endDay} de ${month} ${year}`;
-  };
+  const formatWeekLabel = () =>
+    formatWeekRange(weekDates[0], weekDates[weekDates.length - 1]);
 
   const goToToday = () => {
     if (viewMode === "weekly") {
@@ -149,7 +143,7 @@ export default function ScheduleTab({
               Mensual
             </button>
           </div>
-          <h3 className="text-sm font-semibold text-slate-900 capitalize">
+          <h3 className="text-sm font-semibold text-slate-900">
             {navigationLabel}
           </h3>
           <button

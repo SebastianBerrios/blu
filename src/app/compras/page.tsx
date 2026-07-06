@@ -111,7 +111,7 @@ export default function Compras() {
         <div className="flex-1 px-4 py-4 md:px-6 md:py-6 overflow-auto">
           <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-4 mb-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-slate-900">Filtrar por fecha</h3>
+              <h2 className="text-sm font-semibold text-slate-900">Filtrar por fecha</h2>
               {hasFilters && (
                 <button
                   onClick={clearFilters}
@@ -151,7 +151,7 @@ export default function Compras() {
           {isLoading && (
             <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
               <div className="px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 bg-slate-50">
-                <h3 className="text-base md:text-lg font-semibold text-slate-900">Historial de Compras</h3>
+                <h2 className="text-base md:text-lg font-semibold text-slate-900">Historial de Compras</h2>
               </div>
               <div className="divide-y divide-slate-100">
                 {Array.from({ length: 4 }).map((_, i) => (
@@ -165,7 +165,7 @@ export default function Compras() {
             <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
               <div className="px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 bg-slate-50">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base md:text-lg font-semibold text-slate-900">Historial de Compras</h3>
+                  <h2 className="text-base md:text-lg font-semibold text-slate-900">Historial de Compras</h2>
                   <span className="text-sm text-slate-500">0 registros</span>
                 </div>
               </div>
@@ -180,7 +180,7 @@ export default function Compras() {
           {!isLoading && purchases.length > 0 && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-base md:text-lg font-semibold text-slate-900">Historial de Compras</h3>
+                <h2 className="text-base md:text-lg font-semibold text-slate-900">Historial de Compras</h2>
                 <span className="text-sm text-slate-500">{purchases.length} registros</span>
               </div>
 

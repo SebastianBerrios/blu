@@ -92,7 +92,7 @@ export default function PermissionsTab() {
   return (
     <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
       <div className="px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 bg-slate-50">
-        <h3 className="text-base md:text-lg font-semibold text-slate-900">Permisos por rol</h3>
+        <h2 className="text-base md:text-lg font-semibold text-slate-900">Permisos por rol</h2>
         <p className="text-sm text-slate-500 mt-0.5">
           Activa o desactiva lo que cada rol puede hacer. El administrador siempre tiene acceso completo.
         </p>

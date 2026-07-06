@@ -50,9 +50,10 @@ export function getDayOfWeekFromDate(isoDate: string): DayOfWeek {
 }
 
 /**
- * Returns a Spanish month label like "abril 2026".
+ * Returns a Spanish month label like "Abril de 2026" (first letter capitalized).
  */
 export function getMonthLabel(year: number, month: number): string {
   const date = new Date(year, month, 1);
-  return date.toLocaleDateString("es-PE", { month: "long", year: "numeric" });
+  const label = date.toLocaleDateString("es-PE", { month: "long", year: "numeric" });
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   formatDateLong,
   formatDateMedium,
+  formatWeekRange,
   localDayRangeISO,
   limaDateKey,
   limaDayRangeISO,
@@ -19,6 +20,35 @@ describe("formatDateLong", () => {
   it("uses Spanish month names", () => {
     expect(formatDateLong("2026-12-25")).toBe("25 de diciembre de 2026");
     expect(formatDateLong("2026-08-15")).toBe("15 de agosto de 2026");
+  });
+});
+
+describe("formatWeekRange", () => {
+  it("same month: '2 - 8 de junio 2026'", () => {
+    expect(formatWeekRange("2026-06-02", "2026-06-08")).toBe(
+      "2 - 8 de junio 2026",
+    );
+  });
+
+  it("crossing months: '29 jun - 5 jul 2026'", () => {
+    expect(formatWeekRange("2026-06-29", "2026-07-05")).toBe(
+      "29 jun - 5 jul 2026",
+    );
+  });
+
+  it("crossing years: '29 dic 2025 - 4 ene 2026'", () => {
+    expect(formatWeekRange("2025-12-29", "2026-01-04")).toBe(
+      "29 dic 2025 - 4 ene 2026",
+    );
+  });
+
+  it("strips leading zeros from days", () => {
+    expect(formatWeekRange("2026-03-02", "2026-03-08")).toBe(
+      "2 - 8 de marzo 2026",
+    );
+    expect(formatWeekRange("2026-08-31", "2026-09-06")).toBe(
+      "31 ago - 6 sep 2026",
+    );
   });
 });
 

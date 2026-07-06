@@ -3,12 +3,36 @@ const MONTHS_LONG = [
   "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
 ];
 
+const MONTHS_SHORT = [
+  "ene", "feb", "mar", "abr", "may", "jun",
+  "jul", "ago", "sep", "oct", "nov", "dic",
+];
+
 /**
  * "3 de abril de 2026" — used in sales, compras, auditoria date group headers
  */
 export function formatDateLong(dateStr: string): string {
   const [year, month, day] = dateStr.split("-");
   return `${parseInt(day)} de ${MONTHS_LONG[parseInt(month) - 1]} de ${year}`;
+}
+
+/**
+ * Week range label ("YYYY-MM-DD" bounds) — used in horario weekly navigation.
+ * Same month: "2 - 8 de junio 2026"
+ * Crossing months: "29 jun - 5 jul 2026"
+ * Crossing years: "29 dic 2025 - 4 ene 2026"
+ */
+export function formatWeekRange(startStr: string, endStr: string): string {
+  const [startYear, startMonth, startDay] = startStr.split("-").map(Number);
+  const [endYear, endMonth, endDay] = endStr.split("-").map(Number);
+
+  if (startYear === endYear && startMonth === endMonth) {
+    return `${startDay} - ${endDay} de ${MONTHS_LONG[startMonth - 1]} ${startYear}`;
+  }
+  if (startYear === endYear) {
+    return `${startDay} ${MONTHS_SHORT[startMonth - 1]} - ${endDay} ${MONTHS_SHORT[endMonth - 1]} ${startYear}`;
+  }
+  return `${startDay} ${MONTHS_SHORT[startMonth - 1]} ${startYear} - ${endDay} ${MONTHS_SHORT[endMonth - 1]} ${endYear}`;
 }
 
 /**
