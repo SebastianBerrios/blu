@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
@@ -15,6 +16,19 @@ if (supabaseUrl) {
   }
 }
 
+// Derive Sentry ingest host from DSN (same parse-from-env pattern as Supabase)
+const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+let sentryIngestOrigin: string | undefined;
+
+if (sentryDsn) {
+  try {
+    const url = new URL(sentryDsn);
+    sentryIngestOrigin = url.origin;
+  } catch {
+    // Invalid DSN — omit from CSP rather than crash the build
+  }
+}
+
 const isDev = process.env.NODE_ENV === "development";
 
 const cspDirectives = [
@@ -23,7 +37,7 @@ const cspDirectives = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.googleusercontent.com",
   "font-src 'self'",
-  ["connect-src 'self'", supabaseOrigin, supabaseWsOrigin]
+  ["connect-src 'self'", supabaseOrigin, supabaseWsOrigin, sentryIngestOrigin]
     .filter(Boolean)
     .join(" "),
   "frame-ancestors 'none'",
@@ -69,4 +83,10 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Only upload source maps when auth token is present (CI/CD)
+  silent: !process.env.SENTRY_AUTH_TOKEN,
+  sourcemaps: {
+    disable: !process.env.SENTRY_AUTH_TOKEN,
+  },
+});

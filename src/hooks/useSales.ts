@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
 import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
 import { toLocalDateKey, groupByDate } from "@/utils/helpers/groupByDate";
 import { limaDayRangeISO } from "@/utils/helpers/dateFormatters";
 import { getSaleNet } from "@/features/ventas/utils/saleAmounts";
+import { useRealtimeChannel } from "@/hooks/useRealtimeChannel";
 import type { SaleWithProducts, SalesGroupedByDate, SalesFilters } from "@/types";
 
 export { toLocalDateKey };
@@ -140,31 +140,14 @@ export const useSales = ({
     }
   );
 
-  useEffect(() => {
-    const supabase = createClient();
+  const { realtimeStatus } = useRealtimeChannel({
+    channelName: "sales-realtime",
+    filters: [
+      { event: "*", schema: "public", table: "sales" },
+      { event: "*", schema: "public", table: "sale_products" },
+    ],
+    onEvent: () => mutate(),
+  });
 
-    const channel = supabase
-      .channel("sales-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "sales" },
-        () => {
-          mutate();
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "sale_products" },
-        () => {
-          mutate();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [mutate]);
-
-  return { sales: data ?? [], error, isLoading, mutate };
+  return { sales: data ?? [], error, isLoading, mutate, realtimeStatus };
 };

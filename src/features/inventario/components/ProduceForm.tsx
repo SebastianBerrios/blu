@@ -42,7 +42,13 @@ export default function ProduceForm({
       setLoadingConsumption(true);
       fetchConsumption(producible.recipe_id)
         .then(setConsumption)
-        .catch(() => setConsumption([]))
+        .catch((err: unknown) => {
+          console.error("[ProduceForm] fetchConsumption failed:", err);
+          if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+            import("@sentry/nextjs").then((Sentry) => Sentry.captureException(err));
+          }
+          setConsumption([]);
+        })
         .finally(() => setLoadingConsumption(false));
     }
   }, [isOpen, producible]);

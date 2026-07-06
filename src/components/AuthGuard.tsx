@@ -2,10 +2,35 @@
 
 import { useAuth } from "@/hooks/useAuth";
 import Spinner from "@/components/ui/Spinner";
-import { Coffee, Clock, ShieldX, LogOut } from "lucide-react";
+import { Coffee, Clock, ShieldX, LogOut, AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, isPending, isInactive, isLoading, signOut } = useAuth();
+  const { user, isPending, isInactive, isLoading, error, mutate, signOut } = useAuth();
+
+  if (error && !user) {
+    return (
+      <div className="h-dvh flex items-center justify-center bg-primary-50 p-4">
+        <div className="text-center max-w-md">
+          <div className="inline-flex items-center justify-center p-4 bg-amber-100 rounded-2xl mb-4">
+            <AlertTriangle size={40} className="text-amber-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-primary-900 mb-2">
+            No se pudo verificar tu sesión
+          </h1>
+          <p className="text-primary-700 mb-6">
+            Hubo un problema al cargar tu cuenta. Verifica tu conexión e intenta de nuevo.
+          </p>
+          <button
+            onClick={() => mutate()}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-500 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            <RefreshCw size={18} />
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

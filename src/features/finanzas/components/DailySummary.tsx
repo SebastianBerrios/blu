@@ -44,7 +44,7 @@ function shiftDate(dateKey: string, days: number): string {
 
 export default function DailySummary({ date, onDateChange }: DailySummaryProps) {
   const today = toLocalDateKey(new Date().toISOString());
-  const { summary, isLoading } = useDailyFinancialSummary(date);
+  const { summary, isLoading, error } = useDailyFinancialSummary(date);
   const isToday = date === today;
   const isFuture = date > today;
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -117,7 +117,12 @@ export default function DailySummary({ date, onDateChange }: DailySummaryProps) 
         </div>
       </div>
 
-      {isLoading || !summary ? (
+      {error ? (
+        <div className="flex items-center gap-2 px-3 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
+          <span>No se pudo cargar el resumen del día. Verifica tu conexión.</span>
+        </div>
+      ) : isLoading || !summary ? (
         <div className="text-center py-6 text-slate-500 text-sm">
           Cargando resumen...
         </div>

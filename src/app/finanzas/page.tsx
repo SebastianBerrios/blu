@@ -14,6 +14,7 @@ import {
   CreditCard,
   ListFilter,
   Tags,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
@@ -54,7 +55,7 @@ export default function FinanzasPage() {
   if (!authLoading && !isAdmin) {
     redirect("/");
   }
-  const { cajaAccount, bancoAccount, rappiAccount, posAccount, mutate: mutateAccounts } = useAccounts();
+  const { cajaAccount, bancoAccount, rappiAccount, posAccount, error: accountsError, mutate: mutateAccounts } = useAccounts();
   const { categories } = useTransactionCategories();
   const [accountFilter, setAccountFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState<TransactionType | "">("");
@@ -117,6 +118,14 @@ export default function FinanzasPage() {
       <div className="flex-1 px-4 py-4 md:px-6 md:py-6 overflow-auto space-y-4 md:space-y-6">
         {/* Daily summary */}
         <DailySummary date={summaryDate} onDateChange={setSummaryDate} />
+
+        {/* Accounts error banner */}
+        {accountsError && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
+            <span>No se pudieron cargar los saldos de las cuentas. Los valores mostrados podrían no estar actualizados.</span>
+          </div>
+        )}
 
         {/* Balance cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">

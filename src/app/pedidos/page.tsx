@@ -8,6 +8,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import Badge, { ORDER_TYPE_TONE } from "@/components/ui/Badge";
+import StaleDataBanner from "@/components/ui/StaleDataBanner";
 import type { OrderType } from "@/types";
 
 import { formatTime } from "@/utils/helpers/dateFormatters";
@@ -189,7 +190,7 @@ function OrderCard({
 }
 
 export default function PedidosPendientes() {
-  const { pendingOrders, completedOrders, error, isLoading, markAsDelivered, markAllAsDelivered } =
+  const { pendingOrders, completedOrders, error, isLoading, mutate, markAsDelivered, markAllAsDelivered, realtimeStatus } =
     usePendingOrders();
 
   const hasAnyOrders = pendingOrders.length > 0 || completedOrders.length > 0;
@@ -203,6 +204,8 @@ export default function PedidosPendientes() {
       />
 
       <div className="flex-1 px-4 py-4 md:px-6 md:py-6 overflow-auto">
+        <StaleDataBanner status={realtimeStatus} onRetry={() => mutate()} />
+
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm mb-4">
             Error al cargar los pedidos

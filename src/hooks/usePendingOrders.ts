@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { logAudit } from "@/utils/auditLog";
 import { getSaleNumber } from "@/utils/saleNumber";
 import { limaDayRangeISO } from "@/utils/helpers/dateFormatters";
+import { useRealtimeChannel } from "@/hooks/useRealtimeChannel";
 import type { SaleWithProducts, SaleProductStatus } from "@/types";
 
 export interface PendingOrderSale extends SaleWithProducts {
@@ -121,39 +122,14 @@ export const usePendingOrders = () => {
     }
   );
 
-  useEffect(() => {
-    const supabase = createClient();
-
-    const channel = supabase
-      .channel("pending-orders-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "sale_products",
-        },
-        () => {
-          mutate();
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "sales",
-        },
-        () => {
-          mutate();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [mutate]);
+  const { realtimeStatus } = useRealtimeChannel({
+    channelName: "pending-orders-realtime",
+    filters: [
+      { event: "*", schema: "public", table: "sale_products" },
+      { event: "*", schema: "public", table: "sales" },
+    ],
+    onEvent: () => mutate(),
+  });
 
   const markAsDelivered = useCallback(
     async (itemId: number) => {
@@ -215,5 +191,6 @@ export const usePendingOrders = () => {
     mutate,
     markAsDelivered,
     markAllAsDelivered,
+    realtimeStatus,
   };
 };

@@ -113,7 +113,12 @@ export default function RecipeForm({
     if (isOpen && isEditMode && recipe) {
       fetchRecipeProducible(recipe.id)
         .then((p) => setAddAsIngredient(!!p))
-        .catch(() => {});
+        .catch((err: unknown) => {
+          console.error("[RecipeForm] fetchRecipeProducible failed:", err);
+          if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+            import("@sentry/nextjs").then((Sentry) => Sentry.captureException(err));
+          }
+        });
     }
   }, [isOpen, isEditMode, recipe]);
 

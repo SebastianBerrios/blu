@@ -2,10 +2,23 @@
 
 import { usePathname } from "next/navigation";
 import { Toaster } from "sonner";
+import { SWRConfig } from "swr";
 import SideBar from "@/components/SideBar";
 import BottomNav from "@/components/ui/BottomNav";
 import AuthGuard from "@/components/AuthGuard";
 import { ConfirmProvider } from "@/hooks/useConfirm";
+
+function handleSWRError(error: unknown): void {
+  // Ignore user-triggered aborts
+  if (error instanceof DOMException && error.name === "AbortError") return;
+
+  console.error("[SWR]", error);
+
+  if (!process.env.NEXT_PUBLIC_SENTRY_DSN) return;
+  import("@sentry/nextjs").then((Sentry) => {
+    Sentry.captureException(error);
+  });
+}
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -20,6 +33,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
+    <SWRConfig value={{ onError: handleSWRError }}>
     <ConfirmProvider>
       <AuthGuard>
         <main className="h-dvh flex flex-col md:flex-row bg-slate-50">
@@ -32,5 +46,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </AuthGuard>
       <Toaster position="top-right" richColors closeButton />
     </ConfirmProvider>
+    </SWRConfig>
   );
 }
