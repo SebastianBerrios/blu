@@ -1,17 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
 import { CalendarDays } from "lucide-react";
-import { toast } from "sonner";
-import { useAuth } from "@/hooks/useAuth";
-import { useConfirm } from "@/hooks/useConfirm";
-import { useSchedule, getMonday } from "@/hooks/useSchedule";
-import { useMonthSchedule, type MonthParams } from "@/hooks/useMonthSchedule";
-import { useTimeOffRequests } from "@/hooks/useTimeOffRequests";
-import { useExtraHours } from "@/hooks/useExtraHours";
-import type { ScheduleTemplate, ScheduleSlot, TimeOffRequestWithUser } from "@/types";
-import type { ViewMode } from "@/features/horario/components/ScheduleTab";
-import { deleteTemplate, deleteExtraShift } from "@/features/horario";
+import { useHorarioPage } from "@/features/horario/hooks/useHorarioPage";
 import PageHeader from "@/components/ui/PageHeader";
 import FAB from "@/components/ui/FAB";
 import ScheduleTemplateForm from "@/features/horario/components/ScheduleTemplateForm";
@@ -24,165 +14,63 @@ import ExtraHoursForm from "@/components/forms/ExtraHoursForm";
 import ScheduleTab from "@/features/horario/components/ScheduleTab";
 import RequestsTab from "@/features/horario/components/RequestsTab";
 import BalanceTab from "@/features/horario/components/BalanceTab";
-import ScheduleTabsNav, { type TabId } from "@/features/horario/components/ScheduleTabsNav";
+import ScheduleTabsNav from "@/features/horario/components/ScheduleTabsNav";
 
 export default function HorarioPage() {
-  const { user, isAdmin, profile } = useAuth();
-  const confirm = useConfirm();
-  const [activeTab, setActiveTab] = useState<TabId>("horario");
-
-  // View mode
-  const [viewMode, setViewMode] = useState<ViewMode>("weekly");
-
-  // Week navigation
-  const [weekStart, setWeekStart] = useState(() => getMonday());
-
-  // Month navigation
-  const [monthYear, setMonthYear] = useState<{ year: number; month: number }>(() => {
-    const now = new Date();
-    return { year: now.getFullYear(), month: now.getMonth() };
-  });
-
-  // Override default date (for monthly calendar clicks)
-  const [overrideDefaultDate, setOverrideDefaultDate] = useState<string | undefined>();
-
-  // Weekly schedule data (null key when not in weekly view)
   const {
+    isAdmin,
+    activeTab,
+    setActiveTab,
+    pendingCount,
+    viewMode,
+    weekStart,
+    setWeekStart,
+    monthYear,
+    setMonthYear,
+    overrideDefaultDate,
     slots,
     templates,
-    users,
-    isLoading: scheduleLoading,
-    mutate: mutateSchedule,
-  } = useSchedule(viewMode === "weekly" ? weekStart : null);
-
-  // Monthly schedule data (null key when not in monthly view)
-  const monthParams: MonthParams | null = viewMode === "monthly" ? monthYear : null;
-  const {
-    slots: monthSlots,
-    gridDates: monthGridDates,
-    users: monthUsers,
-    isLoading: monthLoading,
-    mutate: mutateMonthSchedule,
-  } = useMonthSchedule(monthParams);
-
-  // Time off requests
-  const {
+    scheduleLoading,
+    monthSlots,
+    monthGridDates,
+    monthLoading,
+    activeUsers,
     requests,
-    isLoading: requestsLoading,
-    mutate: mutateRequests,
-  } = useTimeOffRequests();
-
-  // Extra hours
-  const {
-    entries: extraHoursEntries,
+    requestsLoading,
+    extraHoursEntries,
     balances,
-    isLoading: hoursLoading,
-    mutate: mutateHours,
-  } = useExtraHours();
-
-  // Use users from whichever view is active
-  const activeUsers = viewMode === "weekly" ? users : monthUsers;
-
-  // Modals
-  const [showTemplateForm, setShowTemplateForm] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<ScheduleTemplate | undefined>();
-  const [showOverrideForm, setShowOverrideForm] = useState(false);
-  const [showTimeOffForm, setShowTimeOffForm] = useState(false);
-  const [showExtraHoursForm, setShowExtraHoursForm] = useState(false);
-  const [showExtraShiftForm, setShowExtraShiftForm] = useState(false);
-  const [editingExtraShift, setEditingExtraShift] = useState<ScheduleSlot | undefined>();
-  const [reviewingRequest, setReviewingRequest] = useState<TimeOffRequestWithUser | null>(null);
-  const [absenceSlot, setAbsenceSlot] = useState<ScheduleSlot | null>(null);
-
-  // Derived state
-  const myBalance = useMemo(() => {
-    if (!user) return 0;
-    const b = balances.find((b) => b.user_id === user.id);
-    return b?.balance ?? 0;
-  }, [balances, user]);
-
-  const getEmployeeBalance = (userId: string) => {
-    const b = balances.find((b) => b.user_id === userId);
-    return b?.balance ?? 0;
-  };
-
-  const pendingCount = requests.filter((r) => r.status === "pendiente").length;
-
-  // Handlers
-  const handleDeleteTemplate = async (templateId: number) => {
-    try {
-      await deleteTemplate(templateId, user?.id ?? null, profile?.full_name ?? null);
-      mutateSchedule();
-      mutateMonthSchedule();
-      toast.success("Turno eliminado");
-    } catch (err) {
-      console.error("Error al eliminar turno:", err);
-      toast.error(err instanceof Error ? err.message : "Error al eliminar turno");
-    }
-  };
-
-  const handleSuccess = () => {
-    mutateSchedule();
-    mutateMonthSchedule();
-    mutateRequests();
-    mutateHours();
-  };
-
-  const handleEditExtraShift = (slot: ScheduleSlot) => {
-    setEditingExtraShift(slot);
-    setShowExtraShiftForm(true);
-  };
-
-  const handleDeleteExtraShift = async (slot: ScheduleSlot) => {
-    if (!slot.override_id || !user) return;
-    const ok = await confirm({
-      title: "¿Eliminar turno extra?",
-      description: `Turno extra de ${slot.user_name} (${slot.date}).`,
-      confirmLabel: "Eliminar",
-      variant: "danger",
-    });
-    if (!ok) return;
-    try {
-      await deleteExtraShift({
-        overrideId: slot.override_id,
-        adminId: user.id,
-        adminName: profile?.full_name ?? null,
-        employeeName: slot.user_name,
-        date: slot.date,
-      });
-      handleSuccess();
-      toast.success("Turno extra eliminado");
-    } catch (err) {
-      console.error("Error al eliminar turno extra:", err);
-      toast.error(err instanceof Error ? err.message : "Error al eliminar turno extra");
-    }
-  };
-
-  // View mode change with navigation sync
-  const handleViewModeChange = useCallback((mode: ViewMode) => {
-    if (mode === "monthly") {
-      // Sync month from current weekStart
-      const d = new Date(weekStart + "T00:00:00");
-      setMonthYear({ year: d.getFullYear(), month: d.getMonth() });
-    } else {
-      // Sync week from current month (first Monday of the month)
-      const firstOfMonth = new Date(monthYear.year, monthYear.month, 1);
-      setWeekStart(getMonday(firstOfMonth));
-    }
-    setViewMode(mode);
-  }, [weekStart, monthYear]);
-
-  // Monthly calendar day click → open override form
-  const handleDayClick = useCallback((date: string) => {
-    setOverrideDefaultDate(date);
-    setShowOverrideForm(true);
-  }, []);
-
-  // Reset override default date when form closes
-  const handleOverrideClose = () => {
-    setShowOverrideForm(false);
-    setOverrideDefaultDate(undefined);
-  };
+    hoursLoading,
+    myBalance,
+    user,
+    getEmployeeBalance,
+    showTemplateForm,
+    setShowTemplateForm,
+    editingTemplate,
+    showOverrideForm,
+    setShowOverrideForm,
+    showTimeOffForm,
+    setShowTimeOffForm,
+    showExtraHoursForm,
+    setShowExtraHoursForm,
+    showExtraShiftForm,
+    setShowExtraShiftForm,
+    editingExtraShift,
+    setEditingExtraShift,
+    reviewingRequest,
+    setReviewingRequest,
+    absenceSlot,
+    setAbsenceSlot,
+    handleSuccess,
+    handleDeleteTemplate,
+    handleEditExtraShift,
+    handleDeleteExtraShift,
+    handleViewModeChange,
+    handleDayClick,
+    handleOverrideClose,
+    openAddTemplate,
+    openEditTemplate,
+    openAddExtraShift,
+  } = useHorarioPage();
 
   return (
     <>
@@ -209,20 +97,11 @@ export default function HorarioPage() {
               setWeekStart={setWeekStart}
               isAdmin={isAdmin}
               isLoading={scheduleLoading}
-              onEditTemplate={(t) => {
-                setEditingTemplate(t);
-                setShowTemplateForm(true);
-              }}
+              onEditTemplate={openEditTemplate}
               onDeleteTemplate={handleDeleteTemplate}
-              onAddTemplate={() => {
-                setEditingTemplate(undefined);
-                setShowTemplateForm(true);
-              }}
+              onAddTemplate={openAddTemplate}
               onAddOverride={() => setShowOverrideForm(true)}
-              onAddExtraShift={() => {
-                setEditingExtraShift(undefined);
-                setShowExtraShiftForm(true);
-              }}
+              onAddExtraShift={openAddExtraShift}
               onMarkAbsence={(slot) => setAbsenceSlot(slot)}
               onEditExtraShift={handleEditExtraShift}
               onDeleteExtraShift={handleDeleteExtraShift}
@@ -269,13 +148,7 @@ export default function HorarioPage() {
       )}
       {activeTab === "horario" && isAdmin && (
         <div className="md:hidden">
-          <FAB
-            onClick={() => {
-              setEditingTemplate(undefined);
-              setShowTemplateForm(true);
-            }}
-            label="Agregar turno"
-          />
+          <FAB onClick={openAddTemplate} label="Agregar turno" />
         </div>
       )}
 
@@ -305,11 +178,7 @@ export default function HorarioPage() {
         onClose={() => setReviewingRequest(null)}
         onSuccess={handleSuccess}
         request={reviewingRequest}
-        employeeBalance={
-          reviewingRequest
-            ? getEmployeeBalance(reviewingRequest.user_id)
-            : 0
-        }
+        employeeBalance={reviewingRequest ? getEmployeeBalance(reviewingRequest.user_id) : 0}
       />
       <ExtraShiftForm
         isOpen={showExtraShiftForm}
