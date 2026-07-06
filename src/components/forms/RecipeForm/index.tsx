@@ -2,25 +2,23 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { ArrowLeft, X } from "lucide-react";
 import { useIngredients } from "@/hooks/useIngredients";
 import { useAuth } from "@/hooks/useAuth";
 import type { Recipe, CreateRecipe } from "@/types";
 import type { RecipeIngredientLine, RecipeSubmitParams } from "@/features/recetas/types";
 import {
   calculateTotalCost,
-  loadRecipeIngredients,
   createRecipe,
   updateRecipe,
   updateRecipeIngredientsOnly,
-  fetchRecipeProducible,
 } from "@/features/recetas";
-import Skeleton from "@/components/ui/Skeleton";
-import IngredientSelector from "@/features/recetas/components/IngredientSelector";
-import IngredientList from "@/features/recetas/components/IngredientList";
 import RecipeMetadataSection from "@/features/recetas/components/RecipeMetadataSection";
 import RecipeYieldSection from "@/features/recetas/components/RecipeYieldSection";
 import AddAsIngredientToggle from "@/features/recetas/components/AddAsIngredientToggle";
+import RecipeFormShell from "@/features/recetas/components/RecipeFormShell";
+import RecipeIngredientsSection from "@/features/recetas/components/RecipeIngredientsSection";
+import RecipeManufacturingCost from "@/features/recetas/components/RecipeManufacturingCost";
+import { useRecipeFormInit } from "@/features/recetas/hooks/useRecipeFormInit";
 
 interface RecipeFormProps {
   isOpen: boolean;
@@ -45,6 +43,7 @@ export default function RecipeForm({
 }: RecipeFormProps) {
   const effectiveReadOnlyMeta = readOnlyMeta || viewOnly;
   const isEditMode = !!recipe;
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredientLine[]>([]);
@@ -60,67 +59,21 @@ export default function RecipeForm({
 
   const totalCost = calculateTotalCost(recipeIngredients);
 
-  // Sync totalCost to form field
+  // Sync totalCost to the form's manufacturing_cost field
   useEffect(() => {
     setValue("manufacturing_cost", Number(totalCost.toFixed(2)));
   }, [totalCost, setValue]);
 
-  // Load recipe ingredients on edit
-  useEffect(() => {
-    if (isEditMode && recipe) {
-      setLoadingIngredients(true);
-      loadRecipeIngredients(recipe.id)
-        .then((loaded) => {
-          setRecipeIngredients(loaded);
-          originalIngredientsRef.current = loaded;
-        })
-        .finally(() => setLoadingIngredients(false));
-    }
-  }, [isEditMode, recipe]);
-
-  // Reset form on open
-  useEffect(() => {
-    if (isOpen) {
-      if (recipe) {
-        reset({
-          name: recipe.name,
-          description: recipe.description,
-          preparation_steps: recipe.preparation_steps ?? "",
-          quantity: recipe.quantity,
-          unit_of_measure: recipe.unit_of_measure,
-          manufacturing_cost: recipe.manufacturing_cost,
-        });
-      } else {
-        reset({
-          name: "",
-          description: "",
-          preparation_steps: "",
-          quantity: hidePrice ? 1 : 0,
-          unit_of_measure: hidePrice ? "und" : "",
-          manufacturing_cost: 0,
-        });
-        setRecipeIngredients([]);
-        originalIngredientsRef.current = [];
-      }
-      setAddAsIngredient(!isEditMode && !effectiveReadOnlyMeta && !hidePrice);
-      setEditingIngredient(null);
-      setSubmitError(null);
-    }
-  }, [isOpen, recipe, reset, effectiveReadOnlyMeta, hidePrice, isEditMode]);
-
-  // En edición, inicializar el toggle según si la receta ya es producible
-  useEffect(() => {
-    if (isOpen && isEditMode && recipe) {
-      fetchRecipeProducible(recipe.id)
-        .then((p) => setAddAsIngredient(!!p))
-        .catch((err: unknown) => {
-          console.error("[RecipeForm] fetchRecipeProducible failed:", err);
-          if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
-            import("@sentry/nextjs").then((Sentry) => Sentry.captureException(err));
-          }
-        });
-    }
-  }, [isOpen, isEditMode, recipe]);
+  // Init effects: form reset, ingredient loading, producible toggle
+  useRecipeFormInit(isOpen, recipe, isEditMode, effectiveReadOnlyMeta, hidePrice, {
+    reset,
+    setRecipeIngredients,
+    setLoadingIngredients,
+    setAddAsIngredient,
+    setEditingIngredient,
+    setSubmitError,
+    originalIngredientsRef,
+  });
 
   if (!isOpen) return null;
 
@@ -129,7 +82,6 @@ export default function RecipeForm({
       setSubmitError("Debes agregar al menos un ingrediente a la receta");
       return;
     }
-
     if (!data.unit_of_measure) {
       setSubmitError("Debes seleccionar una unidad de medida para la receta");
       return;
@@ -196,226 +148,73 @@ export default function RecipeForm({
     return isEditMode ? "Editar Receta" : "Agregar Receta";
   };
 
-  const formTitle = getFormTitle();
-  const submitLabel = isSubmitting
-    ? "Guardando..."
-    : isEditMode
-      ? "Actualizar"
-      : "Guardar";
+  const submitLabel = isSubmitting ? "Guardando..." : isEditMode ? "Actualizar" : "Guardar";
 
   return (
-    <>
-      {/* Desktop backdrop */}
-      <div
-        className="hidden md:block fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
-        onClick={onClose}
+    <RecipeFormShell
+      title={getFormTitle()}
+      onClose={onClose}
+      isSubmitting={isSubmitting}
+      submitLabel={submitLabel}
+      viewOnly={viewOnly}
+      onFormSubmit={handleSubmit(onSubmit)}
+    >
+      <RecipeMetadataSection
+        register={register}
+        isSubmitting={isSubmitting}
+        nameReadOnly={effectiveReadOnlyMeta}
+        fieldsReadOnly={viewOnly}
       />
 
-      {/* Unified container */}
-      <div className="fixed inset-0 z-50 flex flex-col bg-white md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl md:max-h-[90vh] md:rounded-xl md:shadow-2xl">
-        {/* Mobile header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50 shrink-0 md:hidden">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="p-2 -ml-2 text-slate-600 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <h2 className="text-lg font-semibold text-slate-900">{formTitle}</h2>
-          <div className="w-9" />
+      <RecipeIngredientsSection
+        ingredients={ingredients}
+        recipeIngredients={recipeIngredients}
+        loadingIngredients={loadingIngredients}
+        editingIngredient={editingIngredient}
+        isSubmitting={isSubmitting}
+        hidePrice={hidePrice}
+        viewOnly={viewOnly}
+        onAdd={handleAddIngredient}
+        onUpdate={handleUpdateIngredient}
+        onEdit={setEditingIngredient}
+        onRemove={handleRemoveIngredient}
+        onCancelEdit={() => setEditingIngredient(null)}
+        totalCost={totalCost}
+      />
+
+      {!hidePrice && <RecipeManufacturingCost register={register} />}
+
+      {/* Hidden fields when hidePrice */}
+      {hidePrice && (
+        <>
+          <input type="hidden" {...register("quantity")} />
+          <input type="hidden" {...register("unit_of_measure")} />
+        </>
+      )}
+
+      {/* Yield section */}
+      {!hidePrice && (addAsIngredient || !effectiveReadOnlyMeta) && (
+        <RecipeYieldSection
+          register={register}
+          isSubmitting={isSubmitting}
+          readOnlyMeta={effectiveReadOnlyMeta}
+        />
+      )}
+
+      {/* Add as ingredient toggle */}
+      {isAdmin && !effectiveReadOnlyMeta && (!isEditMode || (!productId && !hidePrice)) && (
+        <AddAsIngredientToggle
+          addAsIngredient={addAsIngredient}
+          onToggle={() => setAddAsIngredient((prev) => !prev)}
+          isSubmitting={isSubmitting}
+        />
+      )}
+
+      {submitError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+          <p className="text-sm text-red-700 font-medium">{submitError}</p>
         </div>
-
-        {/* Desktop header */}
-        <div className="hidden md:flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl sticky top-0 z-10">
-          <h2 className="text-xl font-semibold text-slate-900">{formTitle}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="p-3 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-slate-700" />
-          </button>
-        </div>
-
-        {/* Form */}
-        <form
-          id="recipe-form"
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4"
-        >
-          <RecipeMetadataSection
-            register={register}
-            isSubmitting={isSubmitting}
-            nameReadOnly={effectiveReadOnlyMeta}
-            fieldsReadOnly={viewOnly}
-          />
-
-          {/* Ingredients section */}
-          <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
-            <label className="block text-sm font-medium text-slate-900 mb-3">
-              Ingredientes de la receta {!viewOnly && <span className="text-red-600">*</span>}
-            </label>
-
-            {!viewOnly && (
-              <IngredientSelector
-                ingredients={ingredients}
-                recipeIngredients={recipeIngredients}
-                onAdd={handleAddIngredient}
-                onUpdate={handleUpdateIngredient}
-                editingItem={editingIngredient}
-                onCancelEdit={() => setEditingIngredient(null)}
-                isSubmitting={isSubmitting}
-              />
-            )}
-
-            {loadingIngredients && recipeIngredients.length === 0 ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between gap-3 px-3 py-2.5 bg-white border border-slate-200 rounded-lg"
-                  >
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-4 w-16" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <IngredientList
-                ingredients={recipeIngredients}
-                onEdit={setEditingIngredient}
-                onRemove={handleRemoveIngredient}
-                hidePrice={hidePrice}
-                totalCost={totalCost}
-                isSubmitting={isSubmitting}
-                viewOnly={viewOnly}
-              />
-            )}
-
-            {viewOnly && recipeIngredients.length === 0 && (
-              <p className="text-sm text-slate-500 italic">
-                Esta receta no tiene ingredientes registrados.
-              </p>
-            )}
-          </div>
-
-          {/* Manufacturing cost */}
-          {!hidePrice && (
-            <div className="border-2 border-green-300 rounded-lg p-4 bg-linear-to-br from-green-50 to-white">
-              <label className="block text-sm font-medium text-green-900 mb-1.5">
-                Costo de fabricación (calculado automáticamente)
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">
-                  S/
-                </span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  {...register("manufacturing_cost")}
-                  disabled
-                  className="w-full pl-8 pr-4 py-3 border-2 border-green-300 rounded-lg bg-white text-gray-800 font-semibold text-lg cursor-not-allowed"
-                  placeholder="0.00"
-                />
-              </div>
-              <p className="text-xs text-green-700 mt-2">
-                Este costo se calcula automaticamente sumando los precios de
-                todos los ingredientes
-              </p>
-            </div>
-          )}
-
-          {/* Hidden fields when hidePrice */}
-          {hidePrice && (
-            <>
-              <input type="hidden" {...register("quantity")} />
-              <input type="hidden" {...register("unit_of_measure")} />
-            </>
-          )}
-
-          {/* Yield section */}
-          {!hidePrice && (addAsIngredient || !effectiveReadOnlyMeta) && (
-            <RecipeYieldSection
-              register={register}
-              isSubmitting={isSubmitting}
-              readOnlyMeta={effectiveReadOnlyMeta}
-            />
-          )}
-
-          {/* Add as ingredient toggle (crear, o convertir una receta standalone en edición) */}
-          {isAdmin && !effectiveReadOnlyMeta && (!isEditMode || (!productId && !hidePrice)) && (
-            <AddAsIngredientToggle
-              addAsIngredient={addAsIngredient}
-              onToggle={() => setAddAsIngredient((prev) => !prev)}
-              isSubmitting={isSubmitting}
-            />
-          )}
-
-          {/* Submit error */}
-          {submitError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-700 font-medium">{submitError}</p>
-            </div>
-          )}
-
-          {/* Desktop action buttons */}
-          <div className="hidden md:flex gap-3 pt-4 sticky bottom-0 bg-white pb-2">
-            {viewOnly ? (
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"
-              >
-                Cerrar
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  disabled={isSubmitting}
-                  className="flex-1 px-4 py-3 min-h-[44px] border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-                >
-                  {submitLabel}
-                </button>
-              </>
-            )}
-          </div>
-        </form>
-
-        {/* Mobile submit button */}
-        <div className="shrink-0 px-4 py-3 border-t border-slate-200 bg-white md:hidden">
-          {viewOnly ? (
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              Cerrar
-            </button>
-          ) : (
-            <button
-              type="submit"
-              form="recipe-form"
-              disabled={isSubmitting}
-              className="w-full px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-            >
-              {submitLabel}
-            </button>
-          )}
-        </div>
-      </div>
-    </>
+      )}
+    </RecipeFormShell>
   );
 }
