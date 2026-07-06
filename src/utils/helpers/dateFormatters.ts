@@ -154,3 +154,38 @@ export function limaDayRangeISO(dateKey: string = limaDateKey()): { start: strin
     end: new Date(startMs + 24 * 60 * 60 * 1000 - 1).toISOString(),
   };
 }
+
+/**
+ * Hour of day (0-23) for a timestamp, expressed in America/Lima time.
+ * Lima is UTC-5 with no DST, so this is equivalent to UTC hour − 5 (mod 24).
+ *
+ * Use instead of `new Date(ts).getHours()` (which uses browser TZ) or
+ * `new Date(ts).getUTCHours()` (UTC) when bucketing sales by hour-of-day
+ * for cafe staff whose day runs in Lima time.
+ *
+ * Sync pair: useSalesStats hourMap bucketing (F7 fix).
+ */
+export function hourInLima(ts: string | Date): number {
+  const d = typeof ts === "string" ? new Date(ts) : ts;
+  // Lima is UTC-5 fixed. Convert by shifting the UTC hours.
+  return ((d.getUTCHours() - 5 + 24) % 24);
+}
+
+/**
+ * Day of week (0=Monday … 6=Sunday) for a timestamp in America/Lima time.
+ * Matches the Mon-Sun convention used in useSalesStats heatmap (dow remapping).
+ *
+ * Use instead of `new Date(ts).getDay()` (which uses browser TZ) when
+ * bucketing by day-of-week for heatmap charts aligned to Lima business days.
+ *
+ * Sync pair: useSalesStats heatmapMap bucketing (F7 fix).
+ */
+export function dayInLima(ts: string | Date): number {
+  const d = typeof ts === "string" ? new Date(ts) : ts;
+  // Build the Lima date from UTC components shifted by −5 h.
+  const limaMs = d.getTime() - 5 * 60 * 60 * 1000;
+  const limaD = new Date(limaMs);
+  // getUTCDay() returns 0=Sun; remap to 0=Mon … 6=Sun to match the heatmap.
+  const utcDay = limaD.getUTCDay(); // 0=Sun, 1=Mon … 6=Sat
+  return utcDay === 0 ? 6 : utcDay - 1; // Mon=0 … Sun=6
+}

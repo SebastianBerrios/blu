@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/client";
-import { localDayRangeISO } from "@/utils/helpers/dateFormatters";
+import { limaDayRangeISO } from "@/utils/helpers/dateFormatters";
+import { round2 } from "@/features/ventas/utils/discount";
 import {
   generateCashChangeAlerts,
   generatePlinChangeAlerts,
@@ -31,7 +32,11 @@ export interface DailySummary {
 }
 
 export async function fetchDailySummary(dateKey: string): Promise<DailySummary> {
-  const { start, end } = localDayRangeISO(dateKey);
+  // F4: use Lima-anchored UTC range instead of browser-local range.
+  // Lima is UTC-5 (no DST), so a date key "2026-07-06" maps to
+  // [2026-07-06T05:00:00.000Z, 2026-07-07T04:59:59.999Z].
+  // Documented sync pair: limaDayRangeISO ↔ useSalesStats limaDayRangeISO usage.
+  const { start, end } = limaDayRangeISO(dateKey);
   const supabase = createClient();
 
   const [
@@ -88,12 +93,17 @@ export async function fetchDailySummary(dateKey: string): Promise<DailySummary> 
 
   const perAccount: DailyAccountSummary[] = accounts.map((a) => {
     const dayTx = transactions.filter((t) => t.account_id === a.id);
-    const ingresos = dayTx
-      .filter((t) => t.amount > 0)
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-    const egresos = dayTx
-      .filter((t) => t.amount < 0)
-      .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
+    // F10: apply round2 to prevent floating-point accumulation noise.
+    const ingresos = round2(
+      dayTx
+        .filter((t) => t.amount > 0)
+        .reduce((sum, t) => sum + Number(t.amount), 0),
+    );
+    const egresos = round2(
+      dayTx
+        .filter((t) => t.amount < 0)
+        .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0),
+    );
     const afterSum = postTransactions
       .filter((t) => t.account_id === a.id)
       .reduce((sum, t) => sum + Number(t.amount), 0);
@@ -104,15 +114,15 @@ export async function fetchDailySummary(dateKey: string): Promise<DailySummary> 
       accountName: a.name,
       ingresos,
       egresos,
-      net: ingresos - egresos,
-      closingBalance: currentBalance - afterSum,
+      net: round2(ingresos - egresos),
+      closingBalance: round2(currentBalance - afterSum),
       currentBalance,
     };
   });
 
-  const totalIngresos = perAccount.reduce((s, a) => s + a.ingresos, 0);
-  const totalEgresos = perAccount.reduce((s, a) => s + a.egresos, 0);
-  const totalNet = totalIngresos - totalEgresos;
+  const totalIngresos = round2(perAccount.reduce((s, a) => s + a.ingresos, 0));
+  const totalEgresos = round2(perAccount.reduce((s, a) => s + a.egresos, 0));
+  const totalNet = round2(totalIngresos - totalEgresos);
 
   const alerts: DailyAlert[] = [
     ...generateCashChangeAlerts(sales),

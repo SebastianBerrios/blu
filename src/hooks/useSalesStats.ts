@@ -15,7 +15,7 @@ import type {
   Granularity,
 } from "@/types";
 import { toLocalDateKey } from "@/utils/helpers/groupByDate";
-import { limaDateKey, limaDayRangeISO } from "@/utils/helpers/dateFormatters";
+import { limaDateKey, limaDayRangeISO, hourInLima, dayInLima } from "@/utils/helpers/dateFormatters";
 
 interface SaleRow {
   id: number;
@@ -226,9 +226,10 @@ async function fetchStats(ranges: PeriodRanges): Promise<StatsData> {
   );
 
   // Sales by hour
+  // F7: use Lima-aware hour to avoid browser-TZ shift on hour-of-day buckets.
   const hourMap: Record<number, { count: number; revenue: number }> = {};
   for (const s of currentSales) {
-    const hour = new Date(s.sale_date).getHours();
+    const hour = hourInLima(s.sale_date);
     if (!hourMap[hour]) hourMap[hour] = { count: 0, revenue: 0 };
     hourMap[hour].count++;
     hourMap[hour].revenue += getSaleNet(s);
@@ -238,11 +239,11 @@ async function fetchStats(ranges: PeriodRanges): Promise<StatsData> {
     .sort((a, b) => a.hour - b.hour);
 
   // Heatmap day-of-week × hour
+  // F7: use Lima-aware dow/hour to prevent browser-TZ mismatch on heatmap cells.
   const heatmapMap = new Map<string, { count: number; revenue: number }>();
   for (const s of currentSales) {
-    const d = new Date(s.sale_date);
-    const dow = d.getDay() === 0 ? 6 : d.getDay() - 1;
-    const hour = d.getHours();
+    const dow = dayInLima(s.sale_date);
+    const hour = hourInLima(s.sale_date);
     const key = `${dow}-${hour}`;
     const prev = heatmapMap.get(key) ?? { count: 0, revenue: 0 };
     heatmapMap.set(key, {
