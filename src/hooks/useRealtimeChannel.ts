@@ -1,28 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-export type RealtimeChannelStatus = "SUBSCRIBED" | "RECONNECTING" | "STALE";
+import {
+  createRealtimeSubscription,
+  realtimeStatusReducer,
+} from "./realtimeSubscription";
+import type {
+  PostgresChangesFilter,
+  RealtimeChannelStatus,
+  RealtimeClientLike,
+} from "./realtimeSubscription";
 
-/** Pure function — maps Supabase channel status strings to our domain status.
- *  Exported for unit-testing without needing a React environment. */
-export function realtimeStatusReducer(raw: string): RealtimeChannelStatus {
-  if (raw === "SUBSCRIBED") return "SUBSCRIBED";
-  if (raw === "CHANNEL_ERROR" || raw === "TIMED_OUT" || raw === "CLOSED") {
-    return "STALE";
-  }
-  return "RECONNECTING";
-}
-
-interface PostgresChangesFilter {
-  event: "*" | "INSERT" | "UPDATE" | "DELETE";
-  schema: string;
-  table: string;
-  filter?: string;
-}
+// Re-exported so existing consumers/tests keep importing from this module
+export { realtimeStatusReducer };
+export type { RealtimeChannelStatus };
 
 interface RealtimeChannelOptions {
-  /** Unique channel name — must be unique across all active subscriptions */
+  /** Logical channel name — the actual topic is suffixed with a per-mount id */
   channelName: string;
   /** One or more table change filters to subscribe to */
   filters: PostgresChangesFilter[];
@@ -35,9 +30,12 @@ interface UseRealtimeChannelReturn {
   reconnect: () => void;
 }
 
-const BASE_BACKOFF_MS = 2_000;
-const MAX_BACKOFF_MS = 30_000;
-const MAX_RETRIES = 8;
+// Module-level counter for genuinely unique topics. useId is position-stable,
+// not mount-unique: remounting the same page at the same tree position (back
+// navigation, or Strict Mode's dev double-effect) yields the SAME id, so the
+// topic-collision window would persist. Consuming the counter inside the
+// effect gives every subscription its own topic, closing that window entirely.
+let subscriptionSeq = 0;
 
 export function useRealtimeChannel({
   channelName,
@@ -45,8 +43,6 @@ export function useRealtimeChannel({
   onEvent,
 }: RealtimeChannelOptions): UseRealtimeChannelReturn {
   const [status, setStatus] = useState<RealtimeChannelStatus>("RECONNECTING");
-  const retryCount = useRef(0);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onEventRef = useRef(onEvent);
 
   // Keep callback ref fresh without recreating the subscription
@@ -54,63 +50,29 @@ export function useRealtimeChannel({
     onEventRef.current = onEvent;
   }, [onEvent]);
 
-  const subscribe = useCallback(() => {
-    const supabase = createClient();
-    let channel = supabase.channel(channelName);
-
-    for (const filter of filters) {
-      channel = channel.on(
-        "postgres_changes",
-        filter,
-        () => {
-          onEventRef.current();
-        }
-      );
-    }
-
-    channel.subscribe((rawStatus: string) => {
-      const mapped = realtimeStatusReducer(rawStatus);
-      setStatus(mapped);
-
-      if (mapped === "SUBSCRIBED") {
-        retryCount.current = 0;
-        // Catch up any events missed during the reconnect gap
-        onEventRef.current();
-      } else if (mapped === "STALE") {
-        if (retryCount.current >= MAX_RETRIES) return;
-
-        const delay = Math.min(
-          BASE_BACKOFF_MS * Math.pow(2, retryCount.current),
-          MAX_BACKOFF_MS
-        );
-        retryCount.current += 1;
-
-        timeoutRef.current = setTimeout(() => {
-          supabase.removeChannel(channel);
-          subscribe();
-        }, delay);
-      }
+  useEffect(() => {
+    // Unique topic per subscription: supabase.channel(name) returns the
+    // existing channel when the topic is already registered on the singleton
+    // client, so reusing a topic across mounts can hand back an
+    // already-subscribed channel and make .on() throw.
+    const topic = `${channelName}-${++subscriptionSeq}`;
+    const supabase: RealtimeClientLike = createClient();
+    const subscription = createRealtimeSubscription({
+      client: supabase,
+      topic,
+      filters,
+      onEvent: () => onEventRef.current(),
+      onStatus: setStatus,
     });
 
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      supabase.removeChannel(channel);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => subscription.dispose();
+    // filters is intentionally excluded: callers pass inline literals and the
+    // subscription only depends on channelName for its lifecycle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelName]);
 
-  useEffect(() => {
-    retryCount.current = 0;
-    const cleanup = subscribe();
-    return cleanup;
-  }, [subscribe]);
-
   const reconnect = useCallback(() => {
-    retryCount.current = 0;
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    // Re-trigger by calling subscribe directly is not straightforward from outside
-    // the effect, so we instead force a re-mount by bumping a key. Instead, we
-    // expose mutate via onEvent — for manual retry the caller should call mutate().
+    // Manual retry: the caller's onEvent triggers an SWR mutate as catch-up.
     onEventRef.current();
   }, []);
 
