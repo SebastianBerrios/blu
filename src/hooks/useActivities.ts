@@ -3,34 +3,43 @@
 import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import type { EmployeeTask, TaskCompletion, TodayTask, EmployeeTodayTasks, TaskCategory } from "@/types";
+import type {
+  Activity,
+  TaskCompletion,
+  TodayTask,
+  EmployeeTodayTasks,
+  ActivityWithAssignees,
+  Assignee,
+  TaskCategory,
+} from "@/types";
 import { CATEGORY_ORDER } from "@/features/actividades/constants";
+import { isActivityScheduledForDate, isOnDemand } from "@/features/actividades/frequency";
 
 function getTodayStr(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
-function getTodayDayOfWeek(): number {
-  const day = new Date().getDay();
-  // JS: 0=Sun, 1=Mon...6=Sat → convert to 0=Mon...5=Sat
-  return day === 0 ? 6 : day - 1;
-}
-
-function isTaskApplicableToday(task: EmployeeTask): boolean {
-  const dow = getTodayDayOfWeek();
-  if (dow > 5) return false; // Sunday — no work
-  if (task.frequency === "daily") return true;
-  if (task.frequency === "weekly" && task.days_of_week) {
-    return task.days_of_week.includes(dow);
-  }
-  return false;
+interface AssignmentRow {
+  activity_id: number;
+  user_id: string;
+  user: { full_name: string | null; role: string | null; is_active: boolean | null } | null;
 }
 
 interface ActivitiesData {
   myTasks: TodayTask[];
   allEmployeeTasks: EmployeeTodayTasks[];
+  catalog: ActivityWithAssignees[];
   users: { id: string; full_name: string | null; role: string | null }[];
+}
+
+function sortByCategory<T extends { category: string; sort_order: number | null }>(arr: T[]): T[] {
+  return arr.sort((a, b) => {
+    const catA = CATEGORY_ORDER.indexOf(a.category as TaskCategory);
+    const catB = CATEGORY_ORDER.indexOf(b.category as TaskCategory);
+    if (catA !== catB) return catA - catB;
+    return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+  });
 }
 
 const fetchActivities = async (
@@ -40,95 +49,112 @@ const fetchActivities = async (
   const supabase = createClient();
   const today = getTodayStr();
 
-  // Fetch all active tasks with user info
-  const { data: tasks, error: tasksError } = await supabase
-    .from("employee_tasks")
-    .select("*, user:user_profiles!employee_tasks_user_id_fkey (full_name, role)")
+  const { data: activities, error: aErr } = await supabase
+    .from("activities")
+    .select("*")
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
+  if (aErr) throw new Error(aErr.message);
 
-  if (tasksError) throw new Error(tasksError.message);
+  const { data: rawAssignments, error: asErr } = await supabase
+    .from("activity_assignments")
+    .select(
+      "activity_id, user_id, user:user_profiles!activity_assignments_user_id_fkey (full_name, role, is_active)"
+    );
+  if (asErr) throw new Error(asErr.message);
 
-  // Fetch today's completions
-  let completionsQuery = supabase
-    .from("task_completions")
-    .select("*")
-    .eq("completion_date", today);
-
+  let compQuery = supabase.from("task_completions").select("*").eq("completion_date", today);
   if (!isAdmin && userId) {
-    completionsQuery = completionsQuery.eq("user_id", userId);
+    compQuery = compQuery.eq("user_id", userId);
+  }
+  const { data: completions, error: cErr } = await compQuery;
+  if (cErr) throw new Error(cErr.message);
+
+  const activityMap = new Map<number, Activity>();
+  for (const a of activities ?? []) activityMap.set(a.id, a);
+
+  // Only assignments to active users, and to activities that still exist (active).
+  const assignments = ((rawAssignments ?? []) as unknown as AssignmentRow[]).filter(
+    (as) => as.user?.is_active !== false && activityMap.has(as.activity_id)
+  );
+
+  const countByActivity = new Map<number, number>();
+  for (const as of assignments) {
+    countByActivity.set(as.activity_id, (countByActivity.get(as.activity_id) ?? 0) + 1);
   }
 
-  const { data: completions, error: compError } = await completionsQuery;
-  if (compError) throw new Error(compError.message);
-
-  const completionMap = new Map<number, TaskCompletion>();
+  const completionMap = new Map<string, TaskCompletion>();
   for (const c of completions ?? []) {
-    completionMap.set(c.task_id, c);
+    completionMap.set(`${c.activity_id}:${c.user_id}`, c);
   }
 
-  // Build my tasks (employee view)
-  const myActiveTasks = (tasks ?? [])
-    .filter((t) => t.user_id === userId && isTaskApplicableToday(t))
-    .map((t): TodayTask => {
-      const completion = completionMap.get(t.id);
-      return {
-        ...t,
-        is_completed: !!completion,
-        completion_id: completion?.id ?? null,
-      };
-    });
+  const makeTask = (activity: Activity, uid: string): TodayTask => {
+    const comp = completionMap.get(`${activity.id}:${uid}`);
+    return {
+      ...activity,
+      assignee_id: uid,
+      is_completed: !!comp,
+      completion_id: comp?.id ?? null,
+      shared: (countByActivity.get(activity.id) ?? 0) > 1,
+    };
+  };
 
-  // Sort by category order, then sort_order
-  myActiveTasks.sort((a, b) => {
-    const catA = CATEGORY_ORDER.indexOf(a.category as TaskCategory);
-    const catB = CATEGORY_ORDER.indexOf(b.category as TaskCategory);
-    if (catA !== catB) return catA - catB;
-    return (a.sort_order ?? 0) - (b.sort_order ?? 0);
-  });
+  const appliesToday = (activity: Activity) =>
+    isOnDemand(activity) || isActivityScheduledForDate(activity, today);
 
-  // Build all employees' tasks (admin view)
-  const userMap = new Map<string, { full_name: string; role: string; tasks: TodayTask[] }>();
+  const myTasks: TodayTask[] = [];
+  const userMap = new Map<string, { name: string; role: string; tasks: TodayTask[] }>();
 
-  for (const t of tasks ?? []) {
-    if (!isTaskApplicableToday(t)) continue;
-    const user = t.user as unknown as { full_name: string | null; role: string | null } | null;
-    if (!userMap.has(t.user_id)) {
-      userMap.set(t.user_id, {
-        full_name: user?.full_name ?? "Sin nombre",
-        role: user?.role ?? "",
+  for (const as of assignments) {
+    const activity = activityMap.get(as.activity_id)!;
+    if (!appliesToday(activity)) continue;
+
+    const task = makeTask(activity, as.user_id);
+    if (as.user_id === userId) myTasks.push(task);
+
+    if (!userMap.has(as.user_id)) {
+      userMap.set(as.user_id, {
+        name: as.user?.full_name ?? "Sin nombre",
+        role: as.user?.role ?? "",
         tasks: [],
       });
     }
-    const completion = completionMap.get(t.id);
-    userMap.get(t.user_id)!.tasks.push({
-      ...t,
-      is_completed: !!completion,
-      completion_id: completion?.id ?? null,
-    });
+    userMap.get(as.user_id)!.tasks.push(task);
   }
+
+  sortByCategory(myTasks);
 
   const allEmployeeTasks: EmployeeTodayTasks[] = [];
   for (const [uid, data] of userMap) {
-    data.tasks.sort((a, b) => {
-      const catA = CATEGORY_ORDER.indexOf(a.category as TaskCategory);
-      const catB = CATEGORY_ORDER.indexOf(b.category as TaskCategory);
-      if (catA !== catB) return catA - catB;
-      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
-    });
+    sortByCategory(data.tasks);
+    const scheduled = data.tasks.filter((t) => !isOnDemand(t));
     allEmployeeTasks.push({
       user_id: uid,
-      user_name: data.full_name,
+      user_name: data.name,
       user_role: data.role,
       tasks: data.tasks,
-      completed_count: data.tasks.filter((t) => t.is_completed).length,
-      total_count: data.tasks.length,
+      completed_count: scheduled.filter((t) => t.is_completed).length,
+      total_count: scheduled.length,
     });
   }
-
   allEmployeeTasks.sort((a, b) => a.user_name.localeCompare(b.user_name, "es"));
 
-  // Fetch active users (for management tab)
+  // Full catalog with assignees (admin management view)
+  const assigneesByActivity = new Map<number, Assignee[]>();
+  for (const as of assignments) {
+    const list = assigneesByActivity.get(as.activity_id) ?? [];
+    list.push({ id: as.user_id, name: as.user?.full_name ?? "Sin nombre", role: as.user?.role ?? null });
+    assigneesByActivity.set(as.activity_id, list);
+  }
+  const catalog: ActivityWithAssignees[] = sortByCategory(
+    (activities ?? []).map((a) => ({
+      ...a,
+      assignees: (assigneesByActivity.get(a.id) ?? []).sort((x, y) =>
+        x.name.localeCompare(y.name, "es")
+      ),
+    }))
+  );
+
   const { data: users } = await supabase
     .from("user_profiles")
     .select("id, full_name, role")
@@ -136,11 +162,7 @@ const fetchActivities = async (
     .neq("role", "admin")
     .order("full_name");
 
-  return {
-    myTasks: myActiveTasks,
-    allEmployeeTasks,
-    users: users ?? [],
-  };
+  return { myTasks, allEmployeeTasks, catalog, users: users ?? [] };
 };
 
 export const useActivities = () => {
@@ -159,6 +181,7 @@ export const useActivities = () => {
   return {
     myTasks: data?.myTasks ?? [],
     allEmployeeTasks: data?.allEmployeeTasks ?? [],
+    catalog: data?.catalog ?? [],
     users: data?.users ?? [],
     error,
     isLoading: authLoading || isLoading,

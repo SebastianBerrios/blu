@@ -47,6 +47,7 @@ export type AuditTargetTable =
   | "time_off_requests"
   | "extra_hours_log"
   | "employee_tasks"
+  | "activities"
   | "task_completions"
   | "ingredient_groups"
   | "transaction_categories"
@@ -98,6 +99,7 @@ export const AUDIT_TABLE_LABELS: Record<AuditTargetTable, string> = {
   time_off_requests: "Solicitudes de permiso",
   extra_hours_log: "Horas extra",
   employee_tasks: "Tareas de empleados",
+  activities: "Actividades",
   task_completions: "Completaciones de tareas",
   ingredient_groups: "Grupos de ingredientes",
   transaction_categories: "Categorías de transacciones",

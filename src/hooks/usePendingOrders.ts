@@ -23,6 +23,7 @@ const fetchTodayOrders = async (): Promise<PendingOrderSale[]> => {
     .select(
       `
       id,
+      sale_number,
       sale_date,
       notes,
       total_price,

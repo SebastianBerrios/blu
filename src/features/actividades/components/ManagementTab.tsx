@@ -1,27 +1,26 @@
 import { useState, useMemo } from "react";
-import { Pencil, Trash2, ClipboardList, Plus, X, Search } from "lucide-react";
-import type { EmployeeTaskWithUser, TaskCategory } from "@/types";
+import { Pencil, Trash2, ClipboardList, Plus, X, Search, Users } from "lucide-react";
+import type { ActivityWithAssignees, TaskCategory } from "@/types";
 import Spinner from "@/components/ui/Spinner";
 import { normalizeText } from "@/utils/helpers";
 import {
   CATEGORY_LABELS,
   CATEGORY_STYLES,
   CATEGORY_ORDER,
-  DAY_LABELS_SHORT,
-  FREQUENCY_LABELS,
+  frequencyLabel,
 } from "../constants";
 
 interface ManagementTabProps {
-  tasks: EmployeeTaskWithUser[];
+  catalog: ActivityWithAssignees[];
   users: { id: string; full_name: string | null; role: string | null }[];
   isLoading: boolean;
   onAdd: () => void;
-  onEdit: (task: EmployeeTaskWithUser) => void;
-  onDelete: (task: EmployeeTaskWithUser) => void;
+  onEdit: (activity: ActivityWithAssignees) => void;
+  onDelete: (activity: ActivityWithAssignees) => void;
 }
 
 export default function ManagementTab({
-  tasks,
+  catalog,
   users,
   isLoading,
   onAdd,
@@ -34,24 +33,15 @@ export default function ManagementTab({
 
   const hasFilters = !!selectedUserId || !!selectedCategory || query.trim().length > 0;
 
-  const filteredTasks = useMemo(() => {
+  const filtered = useMemo(() => {
     const q = normalizeText(query);
-    const filtered = tasks.filter((t) => {
-      if (selectedUserId && t.user_id !== selectedUserId) return false;
-      if (selectedCategory && t.category !== selectedCategory) return false;
-      if (q && !normalizeText(t.title).includes(q)) return false;
+    return catalog.filter((a) => {
+      if (selectedUserId && !a.assignees.some((x) => x.id === selectedUserId)) return false;
+      if (selectedCategory && a.category !== selectedCategory) return false;
+      if (q && !normalizeText(a.title).includes(q)) return false;
       return true;
     });
-    return [...filtered].sort((a, b) => {
-      const nameA = a.user_name ?? "";
-      const nameB = b.user_name ?? "";
-      if (nameA !== nameB) return nameA.localeCompare(nameB, "es");
-      const catA = CATEGORY_ORDER.indexOf(a.category as TaskCategory);
-      const catB = CATEGORY_ORDER.indexOf(b.category as TaskCategory);
-      if (catA !== catB) return catA - catB;
-      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
-    });
-  }, [tasks, selectedUserId, selectedCategory, query]);
+  }, [catalog, selectedUserId, selectedCategory, query]);
 
   const resetFilters = () => {
     setSelectedUserId("");
@@ -59,9 +49,9 @@ export default function ManagementTab({
     setQuery("");
   };
 
-  if (isLoading) return <Spinner text="Cargando tareas..." />;
+  if (isLoading) return <Spinner text="Cargando actividades..." />;
 
-  const hasTasks = tasks.length > 0;
+  const hasActivities = catalog.length > 0;
 
   return (
     <div className="p-4 md:p-6">
@@ -74,7 +64,7 @@ export default function ManagementTab({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar tarea..."
+              placeholder="Buscar actividad..."
               className="w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none text-sm"
             />
           </div>
@@ -95,7 +85,7 @@ export default function ManagementTab({
             className="hidden md:inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-primary-500 text-white text-sm font-medium rounded-lg hover:bg-primary-600 transition-colors shrink-0 shadow-sm"
           >
             <Plus className="w-4 h-4" />
-            Agregar tarea
+            Agregar actividad
           </button>
         </div>
 
@@ -130,7 +120,7 @@ export default function ManagementTab({
           {hasFilters && (
             <>
               <span className="text-xs text-slate-500 ml-1">
-                {filteredTasks.length} de {tasks.length}
+                {filtered.length} de {catalog.length}
               </span>
               <button
                 onClick={resetFilters}
@@ -144,18 +134,18 @@ export default function ManagementTab({
         </div>
       </div>
 
-      {filteredTasks.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="text-center py-12 text-slate-500">
           <ClipboardList className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-          {!hasTasks ? (
+          {!hasActivities ? (
             <>
-              <p className="font-medium">Sin tareas definidas</p>
-              <p className="text-sm mt-1">Agrega tareas usando el botón +</p>
+              <p className="font-medium">Sin actividades definidas</p>
+              <p className="text-sm mt-1">Agrega actividades usando el botón +</p>
             </>
           ) : (
             <>
               <p className="font-medium">Sin resultados</p>
-              <p className="text-sm mt-1">Ajusta o limpia los filtros para ver más tareas</p>
+              <p className="text-sm mt-1">Ajusta o limpia los filtros para ver más actividades</p>
               <button
                 onClick={resetFilters}
                 className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700"
@@ -168,18 +158,19 @@ export default function ManagementTab({
         </div>
       ) : (
         <div className="space-y-2">
-          {filteredTasks.map((task) => {
-            const style = CATEGORY_STYLES[task.category as TaskCategory];
+          {filtered.map((activity) => {
+            const style = CATEGORY_STYLES[activity.category as TaskCategory];
+            const shared = activity.assignees.length > 1;
             return (
               <div
-                key={task.id}
-                className="group bg-white rounded-lg border border-slate-200 hover:border-slate-300 px-4 py-3 flex items-center gap-3 transition-colors"
+                key={activity.id}
+                className="group bg-white rounded-lg border border-slate-200 hover:border-slate-300 px-4 py-3 flex items-start gap-3 transition-colors"
               >
                 <span
                   className={`shrink-0 w-1 self-stretch rounded-full ${
-                    task.category === "apertura"
+                    activity.category === "apertura"
                       ? "bg-amber-400"
-                      : task.category === "jornada"
+                      : activity.category === "jornada"
                       ? "bg-sky-400"
                       : "bg-purple-400"
                   }`}
@@ -187,36 +178,41 @@ export default function ManagementTab({
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium text-slate-900">{task.title}</span>
+                    <span className="text-sm font-medium text-slate-900">{activity.title}</span>
                     <span
                       className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${style.bg} ${style.text} ${style.border}`}
                     >
-                      {CATEGORY_LABELS[task.category as TaskCategory]}
+                      {CATEGORY_LABELS[activity.category as TaskCategory]}
                     </span>
                     <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                      {FREQUENCY_LABELS[task.frequency]}
-                      {task.frequency === "weekly" && task.days_of_week && task.days_of_week.length > 0 && (
-                        <>
-                          {" · "}
-                          {task.days_of_week.map((d) => DAY_LABELS_SHORT[d]).join(", ")}
-                        </>
-                      )}
+                      {frequencyLabel(activity)}
                     </span>
+                    {shared && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-sky-50 text-sky-700">
+                        <Users className="w-3 h-3" />
+                        Compartida ({activity.assignees.length})
+                      </span>
+                    )}
                   </div>
-                  {!selectedUserId && task.user_name && (
-                    <p className="text-xs text-slate-500 mt-1">{task.user_name}</p>
+                  {activity.description && (
+                    <p className="text-xs text-slate-500 mt-1">{activity.description}</p>
                   )}
+                  <p className="text-xs text-slate-500 mt-1">
+                    {activity.assignees.length > 0
+                      ? activity.assignees.map((a) => a.name).join(", ")
+                      : "Sin asignar"}
+                  </p>
                 </div>
                 <button
-                  onClick={() => onEdit(task)}
-                  className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                  onClick={() => onEdit(activity)}
+                  className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors shrink-0"
                   title="Editar"
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => onDelete(task)}
-                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  onClick={() => onDelete(activity)}
+                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0"
                   title="Eliminar"
                 >
                   <Trash2 className="w-4 h-4" />

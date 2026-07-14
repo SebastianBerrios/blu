@@ -1,20 +1,20 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { ClipboardCheck, CheckSquare, Settings, History, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useActivities } from "@/hooks/useActivities";
 import { toLocalDateKey } from "@/utils/helpers/groupByDate";
-import type { EmployeeTaskWithUser, TodayTask } from "@/types";
-import { createTask, updateTask, deleteTask, toggleTaskCompletion } from "@/features/actividades";
+import type { ActivityWithAssignees, CreateActivity, TodayTask } from "@/types";
+import { createActivity, updateActivity, deleteActivity, toggleTaskCompletion } from "@/features/actividades";
 import PageHeader from "@/components/ui/PageHeader";
 import FAB from "@/components/ui/FAB";
 import EmployeeTaskList from "@/features/actividades/components/EmployeeTaskList";
 import TodayTab from "@/features/actividades/components/TodayTab";
 import ManagementTab from "@/features/actividades/components/ManagementTab";
-import TaskDefinitionForm from "@/features/actividades/components/TaskDefinitionForm";
+import ActivityForm from "@/features/actividades/components/ActivityForm";
 import HistoryTab from "@/features/actividades/components/HistoryTab";
 
 type TabId = "hoy" | "gestion" | "historial";
@@ -28,121 +28,96 @@ function getTodayStr(): string {
 export default function ActividadesPage() {
   const { user, isAdmin, profile } = useAuth();
   const confirm = useConfirm();
-  const { myTasks, allEmployeeTasks, users, isLoading, mutate } = useActivities();
-  const [activeTab, setActiveTab] = useState<TabId>(isAdmin ? "hoy" : "hoy");
+  const { myTasks, allEmployeeTasks, catalog, users, isLoading, mutate } = useActivities();
+  const [activeTab, setActiveTab] = useState<TabId>("hoy");
 
-  // Form state
   const [showForm, setShowForm] = useState(false);
-  const [editingTask, setEditingTask] = useState<EmployeeTaskWithUser | undefined>();
+  const [editingActivity, setEditingActivity] = useState<ActivityWithAssignees | undefined>();
 
-  // All tasks for management (fetch separately with user info)
-  const allTasksWithUser = useMemo((): EmployeeTaskWithUser[] => {
-    return allEmployeeTasks.flatMap((emp) =>
-      emp.tasks.map((t) => ({
-        ...t,
-        user_name: emp.user_name,
-        user_role: emp.user_role,
-      }))
-    );
-  }, [allEmployeeTasks]);
+  const handleToggle = useCallback(
+    async (task: TodayTask) => {
+      if (!user) return;
+      const today = getTodayStr();
 
-  const handleToggle = useCallback(async (task: TodayTask) => {
-    if (!user) return;
-    const today = getTodayStr();
+      // Optimistic update — match by activity id AND the assignee it belongs to.
+      mutate(
+        (prev) => {
+          if (!prev) return prev;
+          const toggleInList = (tasks: TodayTask[]) =>
+            tasks.map((t) =>
+              t.id === task.id && t.assignee_id === task.assignee_id
+                ? { ...t, is_completed: !t.is_completed }
+                : t
+            );
 
-    // Optimistic update
-    mutate(
-      (prev) => {
-        if (!prev) return prev;
-        const toggleInList = (tasks: TodayTask[]) =>
-          tasks.map((t) =>
-            t.id === task.id ? { ...t, is_completed: !t.is_completed } : t
-          );
+          return {
+            ...prev,
+            myTasks: toggleInList(prev.myTasks),
+            allEmployeeTasks: prev.allEmployeeTasks.map((emp) => {
+              if (emp.user_id !== task.assignee_id) return emp;
+              const updated = toggleInList(emp.tasks);
+              const scheduled = updated.filter((t) => t.frequency !== "on_demand");
+              return {
+                ...emp,
+                tasks: updated,
+                completed_count: scheduled.filter((t) => t.is_completed).length,
+              };
+            }),
+          };
+        },
+        { revalidate: false }
+      );
 
-        return {
-          ...prev,
-          myTasks: toggleInList(prev.myTasks),
-          allEmployeeTasks: prev.allEmployeeTasks.map((emp) => {
-            if (emp.user_id !== task.user_id) return emp;
-            const updated = toggleInList(emp.tasks);
-            return {
-              ...emp,
-              tasks: updated,
-              completed_count: updated.filter((t) => t.is_completed).length,
-            };
-          }),
-        };
-      },
-      { revalidate: false }
-    );
+      try {
+        await toggleTaskCompletion({
+          activityId: task.id,
+          userId: task.assignee_id,
+          date: today,
+          isCompleted: task.is_completed,
+        });
+      } catch (err) {
+        console.error("Error al cambiar estado de tarea:", err);
+        mutate(); // Revert on error
+      }
+    },
+    [user, mutate]
+  );
 
-    try {
-      await toggleTaskCompletion({
-        taskId: task.id,
-        userId: user.id,
-        date: today,
-        isCompleted: task.is_completed,
+  const handleFormSubmit = useCallback(
+    async (data: CreateActivity) => {
+      if (editingActivity) {
+        await updateActivity(
+          { ...data, id: editingActivity.id },
+          user?.id ?? null,
+          profile?.full_name ?? null
+        );
+      } else {
+        await createActivity(data, user?.id ?? null, profile?.full_name ?? null);
+      }
+    },
+    [editingActivity, user, profile]
+  );
+
+  const handleDelete = useCallback(
+    async (activity: ActivityWithAssignees) => {
+      const ok = await confirm({
+        title: "¿Eliminar actividad?",
+        description: `Se eliminará la actividad "${activity.title}".`,
+        confirmLabel: "Eliminar",
+        variant: "danger",
       });
-    } catch (err) {
-      console.error("Error al cambiar estado de tarea:", err);
-      mutate(); // Revert on error
-    }
-  }, [user, mutate]);
-
-  const handleFormSubmit = useCallback(async (data: {
-    user_id: string;
-    title: string;
-    category: string;
-    frequency: string;
-    days_of_week: number[] | null;
-    sort_order: number;
-  }) => {
-    if (editingTask) {
-      await updateTask(
-        editingTask.id,
-        {
-          title: data.title,
-          category: data.category as "apertura" | "jornada" | "cierre",
-          frequency: data.frequency as "daily" | "weekly",
-          days_of_week: data.days_of_week,
-          sort_order: data.sort_order,
-        },
-        user?.id ?? null,
-        profile?.full_name ?? null
-      );
-    } else {
-      await createTask(
-        {
-          user_id: data.user_id,
-          title: data.title,
-          category: data.category as "apertura" | "jornada" | "cierre",
-          frequency: data.frequency as "daily" | "weekly",
-          days_of_week: data.days_of_week,
-          sort_order: data.sort_order,
-        },
-        user?.id ?? null,
-        profile?.full_name ?? null
-      );
-    }
-  }, [editingTask, user, profile]);
-
-  const handleDelete = useCallback(async (task: EmployeeTaskWithUser) => {
-    const ok = await confirm({
-      title: "¿Eliminar tarea?",
-      description: `Se eliminará la tarea "${task.title}".`,
-      confirmLabel: "Eliminar",
-      variant: "danger",
-    });
-    if (!ok) return;
-    try {
-      await deleteTask(task.id, user?.id ?? null, profile?.full_name ?? null, task.title);
-      mutate();
-      toast.success("Tarea eliminada");
-    } catch (err) {
-      console.error("Error al eliminar tarea:", err);
-      toast.error(err instanceof Error ? err.message : "Error al eliminar tarea");
-    }
-  }, [confirm, user, profile, mutate]);
+      if (!ok) return;
+      try {
+        await deleteActivity(activity.id, user?.id ?? null, profile?.full_name ?? null, activity.title);
+        mutate();
+        toast.success("Actividad eliminada");
+      } catch (err) {
+        console.error("Error al eliminar actividad:", err);
+        toast.error(err instanceof Error ? err.message : "Error al eliminar actividad");
+      }
+    },
+    [confirm, user, profile, mutate]
+  );
 
   const handleSuccess = () => {
     mutate();
@@ -214,33 +189,26 @@ export default function ActividadesPage() {
         </div>
 
         <div className="flex-1 overflow-auto">
-          {activeTab === "hoy" && (
-            <TodayTab
-              employees={allEmployeeTasks}
-              isLoading={isLoading}
-            />
-          )}
+          {activeTab === "hoy" && <TodayTab employees={allEmployeeTasks} isLoading={isLoading} />}
 
           {activeTab === "gestion" && (
             <ManagementTab
-              tasks={allTasksWithUser}
+              catalog={catalog}
               users={users}
               isLoading={isLoading}
               onAdd={() => {
-                setEditingTask(undefined);
+                setEditingActivity(undefined);
                 setShowForm(true);
               }}
-              onEdit={(task) => {
-                setEditingTask(task);
+              onEdit={(activity) => {
+                setEditingActivity(activity);
                 setShowForm(true);
               }}
               onDelete={handleDelete}
             />
           )}
 
-          {activeTab === "historial" && (
-            <HistoryTab users={users} />
-          )}
+          {activeTab === "historial" && <HistoryTab users={users} />}
         </div>
       </section>
 
@@ -248,20 +216,20 @@ export default function ActividadesPage() {
       {activeTab === "gestion" && (
         <FAB
           onClick={() => {
-            setEditingTask(undefined);
+            setEditingActivity(undefined);
             setShowForm(true);
           }}
-          label="Agregar tarea"
+          label="Agregar actividad"
         />
       )}
 
-      {/* Task form modal */}
-      <TaskDefinitionForm
+      {/* Activity form modal */}
+      <ActivityForm
         isOpen={showForm}
         onClose={() => setShowForm(false)}
         onSuccess={handleSuccess}
         users={users}
-        item={editingTask}
+        item={editingActivity}
         onSubmit={handleFormSubmit}
       />
     </>

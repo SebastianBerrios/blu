@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -40,6 +40,87 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      activities: {
+        Row: {
+          anchor_date: string | null
+          category: string
+          created_at: string
+          days_of_week: number[] | null
+          description: string | null
+          frequency: string
+          id: number
+          interval_days: number | null
+          is_active: boolean
+          sort_order: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          anchor_date?: string | null
+          category: string
+          created_at?: string
+          days_of_week?: number[] | null
+          description?: string | null
+          frequency: string
+          id?: number
+          interval_days?: number | null
+          is_active?: boolean
+          sort_order?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          anchor_date?: string | null
+          category?: string
+          created_at?: string
+          days_of_week?: number[] | null
+          description?: string | null
+          frequency?: string
+          id?: number
+          interval_days?: number | null
+          is_active?: boolean
+          sort_order?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      activity_assignments: {
+        Row: {
+          activity_id: number
+          created_at: string
+          id: number
+          user_id: string
+        }
+        Insert: {
+          activity_id: number
+          created_at?: string
+          id?: number
+          user_id: string
+        }
+        Update: {
+          activity_id?: number
+          created_at?: string
+          id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_assignments_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_assignments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       audit_logs: {
         Row: {
@@ -769,6 +850,7 @@ export type Database = {
           payment_registered_by: string | null
           plin_amount: number | null
           sale_date: string
+          sale_number: number
           table_number: number | null
           total_price: number
           user_id: string | null
@@ -789,6 +871,7 @@ export type Database = {
           payment_registered_by?: string | null
           plin_amount?: number | null
           sale_date?: string
+          sale_number?: number
           table_number?: number | null
           total_price: number
           user_id?: string | null
@@ -809,6 +892,7 @@ export type Database = {
           payment_registered_by?: string | null
           plin_amount?: number | null
           sale_date?: string
+          sale_number?: number
           table_number?: number | null
           total_price?: number
           user_id?: string | null
@@ -951,42 +1035,42 @@ export type Database = {
       }
       task_completions: {
         Row: {
+          activity_id: number
           completed_at: string | null
           completed_by: string | null
           completion_date: string
           id: number
-          task_id: number
           user_id: string
         }
         Insert: {
+          activity_id: number
           completed_at?: string | null
           completed_by?: string | null
           completion_date: string
           id?: never
-          task_id: number
           user_id: string
         }
         Update: {
+          activity_id?: number
           completed_at?: string | null
           completed_by?: string | null
           completion_date?: string
           id?: never
-          task_id?: number
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "task_completions_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "task_completions_completed_by_fkey"
             columns: ["completed_by"]
             isOneToOne: false
             referencedRelation: "user_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_completions_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "employee_tasks"
             referencedColumns: ["id"]
           },
           {
@@ -1227,6 +1311,8 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_purchase_atomic: { Args: { p_payload: Json }; Returns: number }
+      create_sale_atomic: { Args: { p_payload: Json }; Returns: number }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       deduct_inventory_for_delivery: {
         Args: {
@@ -1294,6 +1380,10 @@ export type Database = {
           p_user_name?: string
         }
         Returns: number
+      }
+      recompute_bundle_cost: {
+        Args: { p_bundle_id: number }
+        Returns: undefined
       }
       record_transaction: {
         Args: {
@@ -1375,6 +1465,21 @@ export type Database = {
           p_user_id?: string
         }
         Returns: undefined
+      }
+      upsert_activity_with_assignments: {
+        Args: {
+          p_activity_id: number
+          p_anchor_date: string
+          p_assignee_ids: string[]
+          p_category: string
+          p_days_of_week: number[]
+          p_description: string
+          p_frequency: string
+          p_interval_days: number
+          p_sort_order: number
+          p_title: string
+        }
+        Returns: number
       }
     }
     Enums: {
