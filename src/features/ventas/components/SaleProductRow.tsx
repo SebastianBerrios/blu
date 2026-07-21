@@ -108,7 +108,7 @@ export default function SaleProductRow({
           {showDiscount && (
             <div className="mt-1.5">
               <LineDiscountInput
-                mode={item.discount_mode ?? "monto"}
+                mode={item.discount_mode ?? "porcentaje"}
                 value={item.discount_value}
                 onChange={(mode, value) => onSetLineDiscount!(idx, mode, value)}
                 disabled={isSubmitting}
@@ -163,7 +163,7 @@ export default function SaleProductRow({
       {showDiscount && (
         <div className="mt-2 flex justify-end">
           <LineDiscountInput
-            mode={item.discount_mode ?? "monto"}
+            mode={item.discount_mode ?? "porcentaje"}
             value={item.discount_value}
             onChange={(mode, value) => onSetLineDiscount!(idx, mode, value)}
             disabled={isSubmitting}
