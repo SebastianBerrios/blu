@@ -14,7 +14,7 @@ export function useSaleDiscount(
   setSaleProducts: Dispatch<SetStateAction<SaleProductLine[]>>,
 ) {
   const [totalDiscountMode, setTotalDiscountMode] =
-    useState<DiscountMode>("monto");
+    useState<DiscountMode>("porcentaje");
   const [totalDiscountValue, setTotalDiscountValue] = useState("");
 
   const setLineDiscount = useCallback(
@@ -36,14 +36,23 @@ export function useSaleDiscount(
   );
 
   const resetTotalDiscount = useCallback(() => {
-    setTotalDiscountMode("monto");
+    setTotalDiscountMode("porcentaje");
     setTotalDiscountValue("");
   }, []);
 
-  /** Al editar: el descuento total guardado (S/) se re-muestra como monto fijo. */
+  /**
+   * Al editar: si hay descuento guardado (siempre almacenado en S/), se re-muestra
+   * como monto fijo para no reinterpretarlo como porcentaje. Sin descuento previo,
+   * se usa el default (porcentaje).
+   */
   const initTotalDiscount = useCallback((amount: number) => {
-    setTotalDiscountMode("monto");
-    setTotalDiscountValue(amount > 0 ? String(amount) : "");
+    if (amount > 0) {
+      setTotalDiscountMode("monto");
+      setTotalDiscountValue(String(amount));
+    } else {
+      setTotalDiscountMode("porcentaje");
+      setTotalDiscountValue("");
+    }
   }, []);
 
   const totalLevel = useMemo(() => {
