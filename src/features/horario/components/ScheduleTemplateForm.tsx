@@ -281,7 +281,7 @@ export default function ScheduleTemplateForm({
               <label className="block text-sm font-medium text-slate-900 mb-1.5">
                 Días <span className="text-red-600">*</span>
               </label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {ALL_DAYS.map((day) => {
                   const isSelected = selectedDays.has(day);
                   return (
@@ -291,7 +291,7 @@ export default function ScheduleTemplateForm({
                       onClick={() => toggleDay(day)}
                       disabled={isProcessing}
                       className={`
-                        relative flex items-center justify-center gap-1.5 px-3 py-2.5
+                        relative flex items-center justify-center gap-1.5 px-3 py-2.5 min-h-[44px]
                         rounded-lg text-sm font-medium transition-all
                         ${
                           isSelected

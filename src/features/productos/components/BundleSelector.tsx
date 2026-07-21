@@ -121,10 +121,10 @@ export default function BundleSelector({
               <li
                 key={p.id}
                 onClick={() => handleAdd(p)}
-                className="px-4 py-3.5 hover:bg-blue-50 cursor-pointer transition-colors capitalize flex justify-between"
+                className="px-4 py-3.5 hover:bg-blue-50 cursor-pointer transition-colors capitalize flex justify-between items-center gap-2"
               >
-                <span>{p.name}</span>
-                <span className="text-xs text-blue-600 font-medium">
+                <span className="min-w-0 truncate">{p.name}</span>
+                <span className="text-xs text-blue-600 font-medium shrink-0">
                   S/ {(p.manufacturing_cost ?? 0).toFixed(2)}
                 </span>
               </li>

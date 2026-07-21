@@ -235,7 +235,7 @@ export default function ActivityForm({
                     type="button"
                     onClick={() => toggleDay(idx)}
                     disabled={isSubmitting}
-                    className={`px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                    className={`inline-flex items-center justify-center px-3 py-2 min-h-[44px] text-sm font-medium rounded-lg border transition-colors ${
                       daysOfWeek.includes(idx)
                         ? "bg-primary-500 text-white border-primary-500"
                         : "bg-white text-slate-600 border-slate-300 hover:border-primary-300"
@@ -264,7 +264,7 @@ export default function ActivityForm({
                       type="button"
                       onClick={() => setIntervalDays(n)}
                       disabled={isSubmitting}
-                      className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${
+                      className={`inline-flex items-center text-xs font-medium px-3 py-2 min-h-[44px] rounded-full border transition-colors ${
                         intervalDays === n
                           ? "bg-primary-500 text-white border-primary-500"
                           : "bg-white text-slate-600 border-slate-300 hover:border-primary-300"
@@ -311,7 +311,7 @@ export default function ActivityForm({
                   type="button"
                   onClick={() => toggleAssignee(u.id)}
                   disabled={isSubmitting}
-                  className={`px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                  className={`inline-flex items-center justify-center px-3 py-2 min-h-[44px] text-sm font-medium rounded-lg border transition-colors ${
                     assigneeIds.includes(u.id)
                       ? "bg-primary-500 text-white border-primary-500"
                       : "bg-white text-slate-600 border-slate-300 hover:border-primary-300"

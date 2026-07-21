@@ -155,11 +155,11 @@ export default function ProductSelector({
                         onClick={() =>
                           handleSelectProduct(product.id, product.name)
                         }
-                        className="px-4 py-3.5 hover:bg-slate-100 cursor-pointer transition-colors capitalize flex justify-between items-center"
+                        className="px-4 py-3.5 hover:bg-slate-100 cursor-pointer transition-colors capitalize flex justify-between items-center gap-2"
                       >
-                        <span>{product.name}</span>
+                        <span className="min-w-0 truncate">{product.name}</span>
                         <span
-                          className={`text-xs font-semibold ${
+                          className={`text-xs font-semibold shrink-0 ${
                             isRappi ? "text-orange-600" : "text-green-600"
                           }`}
                         >

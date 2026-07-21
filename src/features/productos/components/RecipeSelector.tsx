@@ -126,10 +126,10 @@ export default function RecipeSelector({
               <li
                 key={recipe.id}
                 onClick={() => handleSelect(recipe.id, recipe.name)}
-                className="px-4 py-3.5 hover:bg-blue-50 cursor-pointer transition-colors capitalize flex justify-between"
+                className="px-4 py-3.5 hover:bg-blue-50 cursor-pointer transition-colors capitalize flex justify-between items-center gap-2"
               >
-                <span>{recipe.name}</span>
-                <span className="text-xs text-blue-600 font-medium">
+                <span className="min-w-0 truncate">{recipe.name}</span>
+                <span className="text-xs text-blue-600 font-medium shrink-0">
                   S/ {recipe.manufacturing_cost}
                 </span>
               </li>

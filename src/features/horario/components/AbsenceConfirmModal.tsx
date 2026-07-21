@@ -178,7 +178,7 @@ export default function AbsenceConfirmModal({
                   key={opt.value}
                   type="button"
                   onClick={() => setMode(opt.value)}
-                  className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  className={`flex-1 inline-flex items-center justify-center px-2 py-2 min-h-[44px] text-xs font-medium leading-tight rounded-md transition-colors ${
                     mode === opt.value
                       ? "bg-white text-slate-900 shadow-sm"
                       : "text-slate-500 hover:text-slate-700"
@@ -201,7 +201,7 @@ export default function AbsenceConfirmModal({
                 min={shiftStart}
                 max={shiftEnd}
                 onChange={(e) => setActualTime(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 min-h-[44px] border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
           )}

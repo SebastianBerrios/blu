@@ -109,18 +109,18 @@ export default function ItemSelector({
                 <li
                   key={ing.id}
                   onClick={() => handleSelectIngredient(ing.id, ing.name)}
-                  className="px-4 py-3.5 hover:bg-primary-100 cursor-pointer transition-colors capitalize flex justify-between items-center"
+                  className="px-4 py-3.5 hover:bg-primary-100 cursor-pointer transition-colors capitalize flex justify-between items-center gap-2"
                 >
-                  <span>{ing.name}</span>
-                  <span className="text-xs text-slate-500">Ingrediente</span>
+                  <span className="min-w-0 truncate">{ing.name}</span>
+                  <span className="text-xs text-slate-500 shrink-0">Ingrediente</span>
                 </li>
               ))}
             </ul>
           )}
       </div>
 
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+        <div className="relative sm:flex-1">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
             S/
           </span>
@@ -135,11 +135,11 @@ export default function ItemSelector({
               setError(null);
             }}
             disabled={isSubmitting}
-            className="w-full pl-9 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
+            className="w-full pl-9 pr-4 py-3 min-h-[44px] border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
             placeholder="Precio total"
           />
         </div>
-        <div className="flex-1 flex gap-2">
+        <div className="flex gap-2 sm:flex-1">
           <input
             type="number"
             inputMode="decimal"
@@ -151,7 +151,7 @@ export default function ItemSelector({
               setError(null);
             }}
             disabled={isSubmitting}
-            className="flex-1 w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
+            className="flex-1 min-w-0 px-4 py-3 min-h-[44px] border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
             placeholder="Cantidad"
           />
           {selectedIngredient && unitChoices.length > 1 ? (
@@ -159,14 +159,14 @@ export default function ItemSelector({
               value={itemUnit}
               onChange={(e) => setItemUnit(e.target.value)}
               disabled={isSubmitting}
-              className="w-20 px-2 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
+              className="w-24 shrink-0 px-2 py-3 min-h-[44px] border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
             >
               {unitChoices.map((u) => (
                 <option key={u.value} value={u.value}>{u.label}</option>
               ))}
             </select>
           ) : selectedIngredient ? (
-            <span className="flex items-center px-3 text-slate-500 text-sm">
+            <span className="flex items-center px-3 text-slate-500 text-sm shrink-0">
               {selectedIngredient.unit_of_measure}
             </span>
           ) : null}
@@ -175,7 +175,7 @@ export default function ItemSelector({
           type="button"
           onClick={handleAddItem}
           disabled={isSubmitting}
-          className="px-6 py-3 bg-primary-900 text-white rounded-lg hover:bg-primary-800 disabled:bg-gray-400 transition-colors font-medium"
+          className="w-full sm:w-auto px-6 py-3 min-h-[44px] bg-primary-900 text-white rounded-lg hover:bg-primary-800 disabled:bg-gray-400 transition-colors font-medium"
         >
           Agregar
         </button>

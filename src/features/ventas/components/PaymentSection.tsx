@@ -69,7 +69,7 @@ export default function PaymentSection({
           Rappi cobra al cliente y te deposita el neto semanalmente. El pago se
           registrará automáticamente en la cuenta Rappi.
         </p>
-        <div className="grid grid-cols-3 gap-2 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
           <div className="bg-white border border-orange-200 rounded-lg p-2.5">
             <p className="text-[11px] uppercase tracking-wide text-orange-700">
               Subtotal
@@ -226,7 +226,7 @@ export default function PaymentSection({
                     El POS cobra al cliente y deposita el neto tras la comisión.
                     El pago se registrará en la cuenta POS.
                   </p>
-                  <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
                     <div className="bg-white border border-indigo-200 rounded-lg p-2.5">
                       <p className="text-[11px] uppercase tracking-wide text-indigo-700">
                         Subtotal

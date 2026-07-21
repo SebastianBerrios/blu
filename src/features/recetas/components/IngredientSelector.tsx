@@ -163,10 +163,10 @@ export default function IngredientSelector({
                     onClick={() =>
                       handleSelectIngredient(ingredient.id, ingredient.name)
                     }
-                    className="px-4 py-3.5 hover:bg-slate-100 cursor-pointer transition-colors capitalize flex justify-between items-center"
+                    className="px-4 py-3.5 hover:bg-slate-100 cursor-pointer transition-colors capitalize flex justify-between items-center gap-2"
                   >
-                    <span>{ingredient.name}</span>
-                    <span className="text-xs text-slate-500 font-medium lowercase">
+                    <span className="min-w-0 truncate">{ingredient.name}</span>
+                    <span className="text-xs text-slate-500 font-medium lowercase shrink-0">
                       ({ingredient.quantity} {ingredient.unit_of_measure})
                     </span>
                   </li>
