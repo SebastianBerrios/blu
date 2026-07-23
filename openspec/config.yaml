@@ -1,0 +1,61 @@
+project: blu
+initialized: 2026-07-23
+artifact_store: hybrid
+
+context:
+  description: Café/bakery business management system (ingredients, recipes, products, categories, sales, scheduling, inventory, finance)
+  stack: Next.js 15 (App Router) + React 19 + TypeScript strict + Tailwind CSS 4 + Supabase (PostgreSQL + Auth + Realtime) + SWR + pnpm
+  architecture: Feature-based (pragmatic) — layers types→services→hooks→components→pages; cafeteria-architecture skill is mandatory entry point
+  ui_language: Spanish (lang="es")
+  package_manager: pnpm
+  repo_root: D:\Programming\Frontend\blu
+  convention_file: CLAUDE.md
+
+testing:
+  strict_tdd: true
+  runner: vitest
+  test_command: pnpm test
+  watch_command: pnpm test:watch
+  coverage_command: pnpm test:coverage
+  coverage_provider: v8
+  test_pattern: "src/**/*.test.ts"
+  environment: node
+  test_count: 42
+  layers:
+    unit: true
+    integration: false
+    e2e: false
+  coverage_scope:
+    - src/utils/**/*.ts
+    - src/features/**/utils/*.ts
+    - src/features/**/services/*.ts
+  quality:
+    linter: eslint
+    lint_command: pnpm lint
+    type_checker: tsc (via Next.js build)
+    type_command: pnpm build
+    formatter: null
+
+conventions:
+  size_limits:
+    page: 200 LOC
+    form: 300 LOC
+    hook: 200 LOC
+    service: 150 LOC
+  new_code: feature modules under src/features/[name]/ with service layer
+  error_handling: service throws → hook catches → component shows inline error (no alert())
+  state: SWR for server state; local useState / useModalState for UI state; no global store
+  delete_pattern: deleteWithAudit() helper (new code)
+  forms: react-hook-form (most), plain useState (schedule/HR forms)
+  swr_config: "{ revalidateOnFocus: false, revalidateOnReconnect: true, dedupingInterval: 2000 }"
+  rls_model: all tables have RLS; financial writes via SECURITY DEFINER RPCs only
+  stock_column: ingredients.stock_quantity (NOT quantity)
+
+phase_rules:
+  proposal: Read CLAUDE.md and existing features before proposing. Scope to feature-based architecture.
+  spec: Must reference exact file paths and layer boundaries (types/services/hooks/components).
+  design: Must call out RLS implications and any new RPCs needed.
+  tasks: Include vitest test tasks for all new services and utils. Flag 400-line budget.
+  apply: Follow cafeteria-architecture skill. New services never call createClient() directly.
+  verify: Run `pnpm test` and confirm coverage for new services/utils.
+  archive: Update CLAUDE.md if new patterns or modules are introduced.

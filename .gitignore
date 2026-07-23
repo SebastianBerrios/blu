@@ -50,3 +50,6 @@ skills-lock.json
 
 # gentle-ai skill registry cache
 .atl/.skill-registry.cache.json
+
+# Supabase CLI temp
+supabase/.temp/
