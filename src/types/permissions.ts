@@ -2,26 +2,20 @@ import type { Tables } from "./database";
 import type { AppRole } from "./auth";
 
 export type RolePermission = Tables<"role_permissions">;
+export type UserPermission = Tables<"user_permissions">;
 
-export type PermissionKey =
-  | "sales.edit_any_date"
-  | "sales.delete"
-  | "inventory.adjust_stock"
-  | "inventory.discard"
-  | "inventory.produce"
-  | "inventory.view_history";
-
-export type PermissionGroup = "Ventas" | "Inventario";
+export type PermissionGroup = "Ventas" | "Inventario" | "Compras";
 
 export interface PermissionDef {
-  key: PermissionKey;
+  key: string;
   label: string;
   description: string;
   group: PermissionGroup;
 }
 
 // Fuente única de labels/orden/grupos para el dashboard de permisos.
-export const PERMISSION_DEFS: PermissionDef[] = [
+// Declared as const + satisfies so PermissionKey is derived from literals below.
+export const PERMISSION_DEFS = [
   {
     key: "sales.edit_any_date",
     label: "Editar ventas de cualquier fecha",
@@ -58,7 +52,23 @@ export const PERMISSION_DEFS: PermissionDef[] = [
     description: "Permite ver la pestaña de historial de inventario.",
     group: "Inventario",
   },
-];
+  {
+    key: "purchases.delete",
+    label: "Eliminar compras",
+    description: "Permite borrar compras y revertir sus transacciones.",
+    group: "Compras",
+  },
+] as const satisfies readonly PermissionDef[];
+
+// Derived from PERMISSION_DEFS — adding/removing an entry auto-updates this type.
+export type PermissionKey = (typeof PERMISSION_DEFS)[number]["key"];
+
+export interface PermissionResolutionCtx {
+  isAdmin: boolean;
+  role: AppRole | null;
+  rolePerms: RolePermission[];
+  userPerms: UserPermission[];
+}
 
 // Roles configurables en el dashboard (admin siempre tiene todo).
 export const CONFIGURABLE_ROLES: Exclude<AppRole, "admin">[] = ["cocinero", "barista"];

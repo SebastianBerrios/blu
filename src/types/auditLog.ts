@@ -51,7 +51,8 @@ export type AuditTargetTable =
   | "task_completions"
   | "ingredient_groups"
   | "transaction_categories"
-  | "role_permissions";
+  | "role_permissions"
+  | "user_permissions";
 
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   eliminar: "Eliminación",
@@ -104,4 +105,5 @@ export const AUDIT_TABLE_LABELS: Record<AuditTargetTable, string> = {
   ingredient_groups: "Grupos de ingredientes",
   transaction_categories: "Categorías de transacciones",
   role_permissions: "Permisos por rol",
+  user_permissions: "Permisos por usuario",
 };
