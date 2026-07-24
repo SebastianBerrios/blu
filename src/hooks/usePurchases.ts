@@ -28,6 +28,7 @@ const fetchPurchases = async (
       notes,
       created_at,
       plin_change,
+      purchase_number,
       user_profiles (
         full_name,
         email,
