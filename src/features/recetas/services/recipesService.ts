@@ -1,35 +1,38 @@
 import { createClient } from "@/utils/supabase/client";
 import { logAudit } from "@/utils/auditLog";
+import type { CreateRecipe } from "@/types";
 import type { RecipeSubmitParams } from "../types";
 import {
-  buildIngredientsToInsert,
   computeIngredientDiff,
+  replaceRecipeIngredients,
 } from "./recipeIngredientsService";
+import {
+  buildLinkedIngredientRow,
+  syncRecipeProducible,
+} from "./recipeProducibleService";
 
-async function replaceRecipeIngredients(
-  recipeId: number,
-  ingredients: ReturnType<typeof buildIngredientsToInsert>,
-): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase.rpc("replace_recipe_ingredients", {
-    p_recipe_id: recipeId,
-    p_ingredients: ingredients as unknown as never,
-  });
-  if (error) throw error;
+/** Full recipe row payload shared by create/update. */
+function buildRecipeData(formData: CreateRecipe) {
+  return {
+    name: formData.name.toLowerCase(),
+    description: formData.description,
+    preparation_steps: formData.preparation_steps || null,
+    quantity: Number(formData.quantity),
+    unit_of_measure: formData.unit_of_measure,
+    manufacturing_cost: Number(formData.manufacturing_cost),
+  };
+}
+
+/** Per-unit cost of a batch recipe; 0 when the yield is unknown. */
+function computeUnitCost(cost: number, quantity: number): number {
+  return quantity > 0 ? Number((cost / quantity).toFixed(2)) : 0;
 }
 
 export async function updateRecipeIngredientsOnly(
   params: RecipeSubmitParams,
 ): Promise<void> {
-  const {
-    formData,
-    ingredients,
-    originalIngredients,
-    recipe,
-    productId,
-    userId,
-    userName,
-  } = params;
+  const { formData, ingredients, originalIngredients, recipe, productId, userId, userName } =
+    params;
   if (!recipe) throw new Error("Recipe is required for this operation");
 
   const supabase = createClient();
@@ -44,10 +47,7 @@ export async function updateRecipeIngredientsOnly(
     .eq("id", recipe.id);
   if (recipeError) throw recipeError;
 
-  await replaceRecipeIngredients(
-    recipe.id,
-    buildIngredientsToInsert(recipe.id, ingredients),
-  );
+  await replaceRecipeIngredients(recipe.id, ingredients);
 
   await supabase
     .from("ingredients")
@@ -55,10 +55,14 @@ export async function updateRecipeIngredientsOnly(
     .eq("recipe_id", recipe.id);
 
   if (productId && recipe.quantity > 0) {
-    const unitCost = Number(formData.manufacturing_cost) / recipe.quantity;
     await supabase
       .from("products")
-      .update({ manufacturing_cost: Number(unitCost.toFixed(2)) })
+      .update({
+        manufacturing_cost: computeUnitCost(
+          Number(formData.manufacturing_cost),
+          recipe.quantity,
+        ),
+      })
       .eq("id", productId);
   }
 
@@ -79,22 +83,6 @@ export async function updateRecipeIngredientsOnly(
   });
 }
 
-/** Lee el ingrediente vinculado a una receta (si la receta es "producible"). */
-export async function fetchRecipeProducible(
-  recipeId: number,
-): Promise<{ ingredientId: number; stockQuantity: number } | null> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("ingredients")
-    .select("id, stock_quantity")
-    .eq("recipe_id", recipeId)
-    .maybeSingle();
-  if (error) throw error;
-  return data
-    ? { ingredientId: data.id, stockQuantity: data.stock_quantity ?? 0 }
-    : null;
-}
-
 export async function updateRecipe(params: RecipeSubmitParams): Promise<void> {
   const { formData, ingredients, recipe, addAsIngredient, userId, userName } =
     params;
@@ -102,18 +90,9 @@ export async function updateRecipe(params: RecipeSubmitParams): Promise<void> {
 
   const supabase = createClient();
 
-  const recipeData = {
-    name: formData.name.toLowerCase(),
-    description: formData.description,
-    preparation_steps: formData.preparation_steps || null,
-    quantity: Number(formData.quantity),
-    unit_of_measure: formData.unit_of_measure,
-    manufacturing_cost: Number(formData.manufacturing_cost),
-  };
-
   const { error } = await supabase
     .from("recipes")
-    .update(recipeData)
+    .update(buildRecipeData(formData))
     .eq("id", recipe.id);
   if (error) throw error;
 
@@ -127,61 +106,17 @@ export async function updateRecipe(params: RecipeSubmitParams): Promise<void> {
     })
     .eq("recipe_id", recipe.id);
 
-  await replaceRecipeIngredients(
-    recipe.id,
-    buildIngredientsToInsert(recipe.id, ingredients),
-  );
+  await replaceRecipeIngredients(recipe.id, ingredients);
 
-  // Sincronizar estado "producible" (solo cuando addAsIngredient es explícito)
+  // Sync "producible" state only when addAsIngredient is explicit.
   if (addAsIngredient !== undefined) {
-    const linked = await fetchRecipeProducible(recipe.id);
-
-    if (addAsIngredient && !linked) {
-      // Convertir en producible: crear el ingrediente vinculado
-      const { error: insertError } = await supabase.from("ingredients").insert({
-        name: formData.name.toLowerCase(),
-        quantity: Number(formData.quantity),
-        stock_quantity: 0,
-        unit_of_measure: formData.unit_of_measure,
-        price: Number(formData.manufacturing_cost),
-        recipe_id: recipe.id,
-      });
-      if (insertError) throw insertError;
-
-      logAudit({
-        userId,
-        userName,
-        action: "convertir_receta_producible",
-        targetTable: "recipes",
-        targetId: recipe.id,
-        targetDescription: `Receta: ${formData.name} marcada como producible`,
-      });
-    } else if (!addAsIngredient && linked) {
-      // Quitar producible: solo si no tiene stock
-      if (linked.stockQuantity > 0) {
-        throw new Error(
-          "No se puede quitar el producible: el ingrediente vinculado tiene stock. Descártalo primero en Inventario.",
-        );
-      }
-      const { error: deleteError } = await supabase
-        .from("ingredients")
-        .delete()
-        .eq("id", linked.ingredientId);
-      if (deleteError) {
-        throw new Error(
-          "No se puede quitar el producible: el ingrediente vinculado está en uso (otras recetas, ventas o movimientos).",
-        );
-      }
-
-      logAudit({
-        userId,
-        userName,
-        action: "quitar_receta_producible",
-        targetTable: "recipes",
-        targetId: recipe.id,
-        targetDescription: `Receta: ${formData.name} dejó de ser producible`,
-      });
-    }
+    await syncRecipeProducible({
+      recipe,
+      formData,
+      addAsIngredient,
+      userId,
+      userName,
+    });
   }
 }
 
@@ -191,43 +126,28 @@ export async function createRecipe(params: RecipeSubmitParams): Promise<void> {
 
   const supabase = createClient();
 
-  const recipeData = {
-    name: formData.name.toLowerCase(),
-    description: formData.description,
-    preparation_steps: formData.preparation_steps || null,
-    quantity: Number(formData.quantity),
-    unit_of_measure: formData.unit_of_measure,
-    manufacturing_cost: Number(formData.manufacturing_cost),
-  };
-
   const { data: newRecipe, error } = await supabase
     .from("recipes")
-    .insert(recipeData)
+    .insert(buildRecipeData(formData))
     .select()
     .single();
   if (error) throw error;
 
   if (addAsIngredient) {
-    await supabase.from("ingredients").insert({
-      name: formData.name.toLowerCase(),
-      quantity: Number(formData.quantity),
-      stock_quantity: 0,
-      unit_of_measure: formData.unit_of_measure,
-      price: Number(formData.manufacturing_cost),
-      recipe_id: newRecipe.id,
-    });
+    await supabase
+      .from("ingredients")
+      .insert(buildLinkedIngredientRow(formData, newRecipe.id));
   }
 
   if (productId) {
-    const unitCost =
-      Number(formData.quantity) > 0
-        ? Number(formData.manufacturing_cost) / Number(formData.quantity)
-        : 0;
     await supabase
       .from("products")
       .update({
         recipe_id: newRecipe.id,
-        manufacturing_cost: Number(unitCost.toFixed(2)),
+        manufacturing_cost: computeUnitCost(
+          Number(formData.manufacturing_cost),
+          Number(formData.quantity),
+        ),
       })
       .eq("id", productId);
 
@@ -251,8 +171,5 @@ export async function createRecipe(params: RecipeSubmitParams): Promise<void> {
     });
   }
 
-  await replaceRecipeIngredients(
-    newRecipe.id,
-    buildIngredientsToInsert(newRecipe.id, ingredients),
-  );
+  await replaceRecipeIngredients(newRecipe.id, ingredients);
 }

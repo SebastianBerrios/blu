@@ -66,6 +66,25 @@ export function buildIngredientsToInsert(
   }));
 }
 
+/**
+ * Atomically replaces a recipe's ingredient rows (delete + insert in one tx)
+ * via the replace_recipe_ingredients RPC. Builds the insert payload internally.
+ */
+export async function replaceRecipeIngredients(
+  recipeId: number,
+  ingredients: RecipeIngredientLine[]
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("replace_recipe_ingredients", {
+    p_recipe_id: recipeId,
+    p_ingredients: buildIngredientsToInsert(
+      recipeId,
+      ingredients
+    ) as unknown as never,
+  });
+  if (error) throw error;
+}
+
 export function computeIngredientDiff(
   original: RecipeIngredientLine[],
   current: RecipeIngredientLine[]

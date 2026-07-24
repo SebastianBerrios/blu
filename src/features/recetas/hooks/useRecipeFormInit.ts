@@ -3,7 +3,7 @@ import type { UseFormReset } from "react-hook-form";
 import type { Recipe, CreateRecipe } from "@/types";
 import type { RecipeIngredientLine } from "../types";
 import { loadRecipeIngredients } from "../services/recipeIngredientsService";
-import { fetchRecipeProducible } from "../services/recipesService";
+import { fetchRecipeProducible } from "../services/recipeProducibleService";
 
 interface RecipeFormInitState {
   reset: UseFormReset<CreateRecipe>;
