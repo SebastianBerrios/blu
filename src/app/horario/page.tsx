@@ -1,7 +1,9 @@
 "use client";
 
+import { redirect } from "next/navigation";
 import { CalendarDays } from "lucide-react";
 import { useHorarioPage } from "@/features/horario/hooks/useHorarioPage";
+import { usePermissions } from "@/hooks/usePermissions";
 import PageHeader from "@/components/ui/PageHeader";
 import FAB from "@/components/ui/FAB";
 import ScheduleTemplateForm from "@/features/horario/components/ScheduleTemplateForm";
@@ -17,6 +19,12 @@ import BalanceTab from "@/features/horario/components/BalanceTab";
 import ScheduleTabsNav from "@/features/horario/components/ScheduleTabsNav";
 
 export default function HorarioPage() {
+  const { can, isLoading: permsLoading } = usePermissions();
+
+  if (!permsLoading && !can("module.horario")) {
+    redirect("/");
+  }
+
   const {
     isAdmin,
     activeTab,

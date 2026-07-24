@@ -62,30 +62,30 @@ Chain strategy: stacked-to-main
 
 ### Phase 5: Pure nav resolver (RED → GREEN, Strict TDD)
 
-- [ ] 5.1 RED: Write `src/features/usuarios/permissions/__tests__/moduleNav.test.ts`. Assert for `isNavItemVisible`: (a) `adminOnly` item → only visible when `isAdmin: true`; (b) mapped configurable item → `can()` false → hidden; (c) mapped configurable item → `can()` true → visible; (d) unmapped item → always visible; (e) admin `isAdmin: true` → all mapped items visible regardless of `can()` (branch-1). Run `pnpm test` — expect failures (file doesn't exist yet).
-- [ ] 5.2 Create `src/features/usuarios/permissions/moduleNav.ts`: export `NAV_MODULE_KEY` (10-entry `Record<string, PermissionKey>`) and `isNavItemVisible(item, ctx)` as per ADR-3. No React, no hooks. Run `pnpm test` — expect all assertions to pass (GREEN).
+- [x] 5.1 RED: Write `src/features/usuarios/permissions/moduleNav.test.ts`. Assert for `isNavItemVisible`: (a) `adminOnly` item → only visible when `isAdmin: true`; (b) mapped configurable item → `can()` false → hidden; (c) mapped configurable item → `can()` true → visible; (d) unmapped item → always visible; (e) admin `isAdmin: true` → all mapped items visible regardless of `can()` (branch-1). Run `pnpm test` — expect failures (file doesn't exist yet).
+- [x] 5.2 Create `src/features/usuarios/permissions/moduleNav.ts`: export `NAV_MODULE_KEY` (10-entry `Record<string, PermissionKey>`) and `isNavItemVisible(item, ctx)` as per ADR-3. No React, no hooks. Run `pnpm test` — expect all assertions to pass (GREEN).
 
 ### Phase 6: Nav wiring
 
-- [ ] 6.1 In `src/components/SideBar/index.tsx` (or equivalent): call `usePermissions()` alongside `useAuth()`; replace the current `!item.adminOnly || isAdmin` filter with `isNavItemVisible(item, { isAdmin, can })`. Verify sensitive items still admin-only, configurable items use `can()`. No flash: `isLoading` state handled (items render stable; skeleton or full list, not flickering — S3.3-a).
-- [ ] 6.2 In `src/components/ui/BottomNav/` (and `BottomSheet` if applicable): same — import `isNavItemVisible`, pass `{ isAdmin, can }`. Use `item.href` as the path accessor (adapt if needed per ADR-3 note). Verify S3.1-a, S3.2-a/b/c/d.
+- [x] 6.1 In `src/components/SideBar/index.tsx` (or equivalent): call `usePermissions()` alongside `useAuth()`; replace the current `!item.adminOnly || isAdmin` filter with `isNavItemVisible(item, { isAdmin, can })`. Verify sensitive items still admin-only, configurable items use `can()`. No flash: `isLoading` state handled (items render stable; skeleton or full list, not flickering — S3.3-a).
+- [x] 6.2 In `src/components/ui/BottomNav/` (and `BottomSheet` if applicable): same — import `isNavItemVisible`, pass `{ isAdmin, can }`. Use `item.href` as the path accessor (adapt if needed per ADR-3 note). Verify S3.1-a, S3.2-a/b/c/d.
 
 ### Phase 7: Page guards (~10 pages)
 
-- [ ] 7.1 `src/app/categories/page.tsx`: add `const { can, isLoading } = usePermissions(); if (!isLoading && !can("module.categories")) redirect("/");` (mirrors finanzas pattern). Acceptance: S4.1-a/d/e.
-- [ ] 7.2 `src/app/products/page.tsx`: same guard, key `module.products`.
-- [ ] 7.3 `src/app/ingredients/page.tsx`: replace existing `isAdmin` redirect with `can("module.ingredients")` guard. Default-OFF seed preserves admin-only day one (S4.2-a/b).
-- [ ] 7.4 `src/app/recipes/page.tsx`: replace `isAdmin` redirect with `can("module.recipes")` guard (same rationale as 7.3).
-- [ ] 7.5 `src/app/sales/page.tsx`: add `can("module.sales")` guard.
-- [ ] 7.6 `src/app/pedidos/page.tsx`: add `can("module.pedidos")` guard.
-- [ ] 7.7 `src/app/compras/page.tsx`: add `can("module.compras")` guard.
-- [ ] 7.8 `src/app/inventario/page.tsx`: add `can("module.inventario")` guard.
-- [ ] 7.9 `src/app/horario/page.tsx`: add `can("module.horario")` guard.
-- [ ] 7.10 `src/app/actividades/page.tsx`: add `can("module.actividades")` guard. Verify S4.1-b/c (force-OFF redirects).
+- [x] 7.1 `src/app/categories/page.tsx`: add `const { can, isLoading } = usePermissions(); if (!isLoading && !can("module.categories")) redirect("/");` (mirrors finanzas pattern). Acceptance: S4.1-a/d/e.
+- [x] 7.2 `src/app/products/page.tsx`: same guard, key `module.products`.
+- [x] 7.3 `src/app/ingredients/page.tsx`: replace existing `isAdmin` redirect with `can("module.ingredients")` guard. Default-OFF seed preserves admin-only day one (S4.2-a/b).
+- [x] 7.4 `src/app/recipes/page.tsx`: replace `isAdmin` redirect with `can("module.recipes")` guard (same rationale as 7.3).
+- [x] 7.5 `src/app/sales/page.tsx`: add `can("module.sales")` guard.
+- [x] 7.6 `src/app/pedidos/page.tsx`: add `can("module.pedidos")` guard.
+- [x] 7.7 `src/app/compras/page.tsx`: add `can("module.compras")` guard.
+- [x] 7.8 `src/app/inventario/page.tsx`: add `can("module.inventario")` guard.
+- [x] 7.9 `src/app/horario/page.tsx`: add `can("module.horario")` guard.
+- [x] 7.10 `src/app/actividades/page.tsx`: add `can("module.actividades")` guard. Verify S4.1-b/c (force-OFF redirects).
 
 ### Phase 8: Middleware
 
-- [ ] 8.1 In `src/utils/supabase/middleware.ts`: after `auth.getUser()`, add the `SENSITIVE_PREFIXES` guard block (ADR-5 code). After prefix match, query `user_profiles.select("role").eq("id", user.id).single()`; if `profile?.role !== "admin"` redirect to `/`. Preserve `supabaseResponse` cookie on all other paths. Verify S5.1-a/b/c/d/e, S5.2-a, S5.3-a.
+- [x] 8.1 In `src/utils/supabase/middleware.ts`: after `auth.getUser()`, add the `SENSITIVE_PREFIXES` guard block (ADR-5 code). After prefix match, query `user_profiles.select("role").eq("id", user.id).single()`; if `profile?.role !== "admin"` redirect to `/`. Preserve `supabaseResponse` cookie on all other paths. Verify S5.1-a/b/c/d/e, S5.2-a, S5.3-a.
 - [ ] 8.2 Manual smoke-test: non-admin GET `/finanzas` → 302 to `/`; admin GET `/finanzas` → 200. Non-admin GET `/sales` → no middleware redirect (page guard handles). Unauthenticated GET `/sales` → `/login` (unchanged).
 
 ---

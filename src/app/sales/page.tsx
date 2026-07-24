@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { redirect } from "next/navigation";
 import { TrendingUp, X } from "lucide-react";
 import { toast } from "sonner";
 import { useSales, groupSalesByDate } from "@/hooks/useSales";
@@ -22,7 +23,12 @@ import EmptyState from "@/components/ui/EmptyState";
 
 export default function Sales() {
   const { isAdmin, user, profile } = useAuth();
-  const { can } = usePermissions();
+  const { can, isLoading: permsLoading } = usePermissions();
+
+  if (!permsLoading && !can("module.sales")) {
+    redirect("/");
+  }
+
   const canEditAnyDate = can("sales.edit_any_date");
   const canDeleteSales = can("sales.delete");
   const canSeeAllDates = isAdmin || canEditAnyDate;

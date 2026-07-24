@@ -23,6 +23,8 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
+import { isNavItemVisible } from "@/features/usuarios/permissions/moduleNav";
 import ProfileForm from "@/components/forms/ProfileForm";
 
 type NavItem = {
@@ -53,10 +55,11 @@ const allNavItems: NavItem[] = [
 export default function SideBar() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const { profile, isAdmin, signOut, mutate } = useAuth();
+  const { can } = usePermissions();
   const pathname = usePathname();
 
-  const navItems = allNavItems.filter(
-    (item) => !item.adminOnly || isAdmin
+  const navItems = allNavItems.filter((item) =>
+    isNavItemVisible(item, { isAdmin, can }),
   );
 
   return (

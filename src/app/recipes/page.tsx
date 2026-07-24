@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { BookOpen, ChefHat, SquarePen, Trash2 } from "lucide-react";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import type { Recipe, RecipeWithProducible } from "@/types";
 
@@ -18,10 +19,11 @@ import FAB from "@/components/ui/FAB";
 import { redirect } from "next/navigation";
 
 export default function Recipes() {
-  const { isAdmin, isLoading: authLoading, user, profile } = useAuth();
+  const { user, profile } = useAuth();
+  const { can, isLoading: permsLoading } = usePermissions();
   const { recipes, error, isLoading, mutate } = useRecipes();
 
-  if (!authLoading && !isAdmin) {
+  if (!permsLoading && !can("module.recipes")) {
     redirect("/");
   }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { redirect } from "next/navigation";
 import { Package, ShoppingCart, Clock, Settings, ChefHat } from "lucide-react";
 import { useInventory } from "@/hooks/useInventory";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,7 +28,12 @@ type TabKey = "stock" | "compras" | "produccion" | "historial";
 export default function InventarioPage() {
   const { ingredients, movements, groups, isLoading, mutateIngredients, mutateMovements, mutateGroups } = useInventory();
   const { user, profile, isAdmin } = useAuth();
-  const { can } = usePermissions();
+  const { can, isLoading: permsLoading } = usePermissions();
+
+  if (!permsLoading && !can("module.inventario")) {
+    redirect("/");
+  }
+
   const canAdjust = isAdmin || can("inventory.adjust_stock");
   const canDiscard = isAdmin || can("inventory.discard");
   const canProduce = isAdmin || can("inventory.produce");

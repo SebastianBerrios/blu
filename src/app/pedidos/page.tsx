@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { redirect } from "next/navigation";
 import { ClipboardList, CheckCircle, CheckCheck } from "lucide-react";
 import { usePendingOrders } from "@/hooks/usePendingOrders";
+import { usePermissions } from "@/hooks/usePermissions";
 import type { PendingOrderSale } from "@/hooks/usePendingOrders";
 import Skeleton from "@/components/ui/Skeleton";
 import PageHeader from "@/components/ui/PageHeader";
@@ -190,6 +192,12 @@ function OrderCard({
 }
 
 export default function PedidosPendientes() {
+  const { can, isLoading: permsLoading } = usePermissions();
+
+  if (!permsLoading && !can("module.pedidos")) {
+    redirect("/");
+  }
+
   const { pendingOrders, completedOrders, error, isLoading, mutate, markAsDelivered, markAllAsDelivered, realtimeStatus } =
     usePendingOrders();
 

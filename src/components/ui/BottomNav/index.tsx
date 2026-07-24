@@ -21,6 +21,8 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
+import { isNavItemVisible } from "@/features/usuarios/permissions/moduleNav";
 import BottomSheet from "@/components/ui/BottomSheet";
 
 interface NavTab {
@@ -67,14 +69,21 @@ const MORE_ITEMS: MoreItem[] = [
 export default function BottomNav() {
   const pathname = usePathname();
   const { isAdmin } = useAuth();
+  const { can } = usePermissions();
   const [showMore, setShowMore] = useState(false);
 
-  const tabs = isAdmin ? ADMIN_TABS : COMMON_TABS;
+  const baseTabList = isAdmin ? ADMIN_TABS : COMMON_TABS;
+  // Filter tabs by module permission (tabs have no adminOnly flag — all use can() lookup).
+  const tabs = baseTabList.filter((tab) =>
+    isNavItemVisible({ nav: tab.href }, { isAdmin, can }),
+  );
 
-  // Filter "Más" items: exclude items already in tabs, filter by role
+  // Filter "Más" items: exclude items already in tabs, filter by role and module permission.
   const tabHrefs = new Set(tabs.map((t) => t.href));
   const moreItems = MORE_ITEMS.filter(
-    (item) => !tabHrefs.has(item.href) && (!item.adminOnly || isAdmin)
+    (item) =>
+      !tabHrefs.has(item.href) &&
+      isNavItemVisible({ nav: item.href, adminOnly: item.adminOnly }, { isAdmin, can }),
   );
 
   const isMoreActive = moreItems.some((item) => pathname.startsWith(item.href));
