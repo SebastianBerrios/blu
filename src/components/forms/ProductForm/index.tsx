@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { X, ChefHat, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import type { CreateProduct, Product, ProductComponentLine } from "@/types";
 import { useCategories } from "@/hooks/useCategories";
@@ -18,9 +17,11 @@ import {
   saveProductComponents,
 } from "@/features/productos/services/bundleService";
 import ProductBasicInfoSection from "@/features/productos/components/ProductBasicInfoSection";
-import RecipeSelector from "@/features/productos/components/RecipeSelector";
-import BundleSelector from "@/features/productos/components/BundleSelector";
 import PricingSection from "@/features/productos/components/PricingSection";
+import ProductFormHeader from "./ProductFormHeader";
+import CostStructureSection from "./CostStructureSection";
+import ProductFormFooter from "./ProductFormFooter";
+import ProductFormMobileSubmit from "./ProductFormMobileSubmit";
 
 type CostMode = "receta" | "combo";
 
@@ -236,36 +237,11 @@ export default function ProductForm({
 
       {/* Unified container */}
       <div className="fixed inset-0 z-50 flex flex-col bg-white md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl md:max-h-[90vh] md:rounded-xl md:shadow-2xl">
-        {/* Mobile header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50 shrink-0 md:hidden">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="p-2 -ml-2 text-slate-600 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <h2 className="text-lg font-semibold text-slate-900">
-            {isEditMode ? "Editar Producto" : "Nuevo Producto"}
-          </h2>
-          <div className="w-9" />
-        </div>
-
-        {/* Desktop header */}
-        <div className="hidden md:flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl sticky top-0 z-10">
-          <h2 className="text-xl font-semibold text-slate-900">
-            {isEditMode ? "Editar Producto" : "Nuevo Producto"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="p-3 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-slate-700" />
-          </button>
-        </div>
+        <ProductFormHeader
+          isEditMode={isEditMode}
+          isSubmitting={isSubmitting}
+          onClose={onClose}
+        />
 
         {/* Single form */}
         <form
@@ -279,63 +255,26 @@ export default function ProductForm({
             isSubmitting={isSubmitting}
           />
 
-          {/* Sección: Estructura de Costos */}
-          <div className="border-2 border-blue-200 rounded-lg p-4 bg-gradient-to-br from-blue-50 to-white">
-            <h3 className="text-base font-semibold text-blue-900 mb-3 flex items-center gap-2">
-              <ChefHat className="w-5 h-5" />
-              Estructura de Costo
-            </h3>
-
-            {/* Selector de modo: receta base vs combo (paquete de productos) */}
-            <div className="flex gap-2 mb-3">
-              {(
-                [
-                  { mode: "receta" as const, label: "Receta base" },
-                  { mode: "combo" as const, label: "Combo (paquete)" },
-                ]
-              ).map(({ mode, label }) => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => setCostMode(mode)}
-                  disabled={isSubmitting}
-                  className={`flex-1 px-3 py-2 min-h-[40px] rounded-lg text-sm font-medium border transition-all ${
-                    costMode === mode
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-white text-blue-700 border-blue-200 hover:bg-blue-50"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {costMode === "receta" ? (
-              <RecipeSelector
-                recipes={recipes}
-                selectedRecipeId={selectedRecipeId}
-                initialSearchText={initialSearchText}
-                recipeBatchCost={recipeBatchCost}
-                recipeYield={recipeYield}
-                manufacturingCost={manufacturingCost}
-                register={register}
-                setValue={setValue}
-                isSubmitting={isSubmitting}
-                onSelectRecipe={handleSelectRecipe}
-                onClearRecipe={handleClearRecipe}
-              />
-            ) : (
-              <BundleSelector
-                products={products}
-                currentProductId={product?.id}
-                currentCategoryId={selectedCategoryId || undefined}
-                components={components}
-                onChange={setComponents}
-                setValue={setValue}
-                isSubmitting={isSubmitting}
-              />
-            )}
-          </div>
+          <CostStructureSection
+            costMode={costMode}
+            onChangeMode={setCostMode}
+            isSubmitting={isSubmitting}
+            register={register}
+            setValue={setValue}
+            recipes={recipes}
+            selectedRecipeId={selectedRecipeId}
+            initialSearchText={initialSearchText}
+            recipeBatchCost={recipeBatchCost}
+            recipeYield={recipeYield}
+            manufacturingCost={manufacturingCost}
+            onSelectRecipe={handleSelectRecipe}
+            onClearRecipe={handleClearRecipe}
+            products={products}
+            currentProductId={product?.id}
+            currentCategoryId={selectedCategoryId || undefined}
+            components={components}
+            onComponentsChange={setComponents}
+          />
 
           <PricingSection
             register={register}
@@ -355,37 +294,17 @@ export default function ProductForm({
             </div>
           )}
 
-          {/* Desktop action buttons */}
-          <div className="hidden md:flex gap-3 pt-4 sticky bottom-0 bg-white pb-2 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="flex-1 px-4 py-3 min-h-[44px] border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-            >
-              {submitLabel}
-            </button>
-          </div>
+          <ProductFormFooter
+            isSubmitting={isSubmitting}
+            submitLabel={submitLabel}
+            onClose={onClose}
+          />
         </form>
 
-        {/* Mobile submit button */}
-        <div className="shrink-0 px-4 py-3 border-t border-slate-200 bg-white md:hidden">
-          <button
-            type="submit"
-            form="product-form"
-            disabled={isSubmitting}
-            className="w-full px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-          >
-            {submitLabel}
-          </button>
-        </div>
+        <ProductFormMobileSubmit
+          isSubmitting={isSubmitting}
+          submitLabel={submitLabel}
+        />
       </div>
     </>
   );
