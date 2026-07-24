@@ -1,37 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Package, Check, X, ArrowUpDown, ShoppingCart, Search, Trash2, ChefHat } from "lucide-react";
+import { Package, ArrowUpDown, Search } from "lucide-react";
 import type { Ingredient, IngredientGroup } from "@/types";
 import { normalizeText } from "@/utils/helpers";
 import { groupIngredientsByGroup } from "../utils/groupIngredients";
-
-const LOW_STOCK_THRESHOLD = 0.1;
-
-const StockColGroup = ({ showGroup }: { showGroup: boolean }) => (
-  <colgroup>
-    <col />
-    <col style={{ width: "140px" }} />
-    <col style={{ width: "100px" }} />
-    {showGroup && <col style={{ width: "200px" }} />}
-    <col style={{ width: "140px" }} />
-  </colgroup>
-);
-
-function getStockColor(quantity: number, unit: string) {
-  const thresholds: Record<string, number> = {
-    kg: 0.5,
-    g: 200,
-    l: 0.5,
-    ml: 200,
-    und: 5,
-    unidad: 5,
-  };
-  const threshold = thresholds[unit.toLowerCase()] ?? LOW_STOCK_THRESHOLD;
-  if (quantity <= 0) return "text-red-600 bg-red-50 border-red-200";
-  if (quantity <= threshold) return "text-amber-600 bg-amber-50 border-amber-200";
-  return "text-emerald-600 bg-emerald-50 border-emerald-200";
-}
+import { StockColGroup } from "./stockHelpers";
+import StockDesktopRow from "./StockDesktopRow";
+import StockMobileCard from "./StockMobileCard";
 
 interface EditingState {
   ingredientId: number;
@@ -116,217 +92,20 @@ export default function StockTab({
     );
   }
 
-  const renderDesktopRow = (ingredient: Ingredient) => {
-    const isEditing = editing?.ingredientId === ingredient.id;
-    const colorClass = getStockColor(ingredient.stock_quantity, ingredient.unit_of_measure);
-    const isProducible = ingredient.recipe_id !== null;
-
-    return (
-      <tr key={ingredient.id} className="hover:bg-slate-50 transition-colors">
-        <td className="px-4 py-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="font-medium text-slate-900 capitalize truncate">{ingredient.name}</span>
-            {isProducible && (
-              <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700">
-                <ChefHat className="w-3 h-3" />
-                Producible
-              </span>
-            )}
-          </div>
-        </td>
-        <td className="px-4 py-3 text-right">
-          {isEditing ? (
-            <input
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              min="0"
-              value={editing.value}
-              onChange={(e) => onEditChange(e.target.value)}
-              autoFocus
-              className="w-28 px-2 py-1 border-2 border-primary-400 rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          ) : (
-            <span className={`inline-block px-2 py-0.5 rounded border text-sm font-semibold ${colorClass}`}>
-              {ingredient.stock_quantity}
-            </span>
-          )}
-        </td>
-        <td className="px-4 py-3 text-slate-500">{ingredient.unit_of_measure}</td>
-        {isAdmin && (
-          <td className="px-4 py-3">
-            <select
-              value={ingredient.group_id ?? ""}
-              onChange={(e) => onChangeGroup(ingredient, e.target.value ? Number(e.target.value) : null)}
-              className="text-sm text-slate-600 bg-transparent border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 rounded"
-            >
-              <option value="">Sin grupo</option>
-              {groups.sort((a, b) => a.name.localeCompare(b.name, "es")).map((g) => (
-                <option key={g.id} value={g.id}>{g.name}</option>
-              ))}
-            </select>
-          </td>
-        )}
-        <td className="px-4 py-3 text-right">
-          <div className="flex items-center justify-end gap-1">
-            {isEditing ? (
-              <>
-                <button
-                  onClick={() => onSaveEdit(ingredient)}
-                  disabled={saving}
-                  className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg disabled:opacity-50"
-                  title="Confirmar"
-                >
-                  <Check className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={onCancelEdit}
-                  disabled={saving}
-                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-50"
-                  title="Cancelar"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </>
-            ) : (
-              <>
-                {!isProducible && (
-                  <button
-                    onClick={() => onTogglePurchase(ingredient)}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      ingredient.needs_purchase
-                        ? "text-primary-600 bg-primary-50 hover:bg-primary-100"
-                        : "text-slate-400 hover:text-primary-600 hover:bg-primary-50"
-                    }`}
-                    title={ingredient.needs_purchase ? "Quitar de compras" : "Agregar a compras"}
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                  </button>
-                )}
-                {canAdjust && (
-                  <button
-                    onClick={() => onStartEdit(ingredient)}
-                    className="text-xs text-primary-600 hover:text-primary-800 font-medium px-2 py-1 hover:bg-primary-50 rounded"
-                  >
-                    Ajustar
-                  </button>
-                )}
-                {canDiscard && (
-                  <button
-                    onClick={() => onDiscard(ingredient)}
-                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Descartar (merma)"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        </td>
-      </tr>
-    );
-  };
-
-  const renderMobileCard = (ingredient: Ingredient) => {
-    const isEditing = editing?.ingredientId === ingredient.id;
-    const colorClass = getStockColor(ingredient.stock_quantity, ingredient.unit_of_measure);
-    const isProducible = ingredient.recipe_id !== null;
-
-    return (
-      <div
-        key={ingredient.id}
-        className="bg-white rounded-xl border border-slate-200 px-4 py-3"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            {isProducible ? (
-              <span className="shrink-0 p-1 text-emerald-600" title="Producto producible">
-                <ChefHat className="w-4 h-4" />
-              </span>
-            ) : (
-              <button
-                onClick={() => onTogglePurchase(ingredient)}
-                className={`shrink-0 p-1 rounded transition-colors ${
-                  ingredient.needs_purchase
-                    ? "text-primary-600"
-                    : "text-slate-300"
-                }`}
-                title={ingredient.needs_purchase ? "Quitar de compras" : "Agregar a compras"}
-              >
-                <ShoppingCart className="w-4 h-4" />
-              </button>
-            )}
-            <div className="min-w-0">
-              <p className="font-medium text-slate-900 capitalize truncate">{ingredient.name}</p>
-              {isAdmin && (
-                <select
-                  value={ingredient.group_id ?? ""}
-                  onChange={(e) => onChangeGroup(ingredient, e.target.value ? Number(e.target.value) : null)}
-                  className="text-xs text-slate-500 bg-transparent border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 rounded p-0"
-                >
-                  <option value="">Sin grupo</option>
-                  {groups.sort((a, b) => a.name.localeCompare(b.name, "es")).map((g) => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-          </div>
-          {isEditing ? (
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0"
-                value={editing.value}
-                onChange={(e) => onEditChange(e.target.value)}
-                autoFocus
-                className="w-24 px-2 py-1 border-2 border-primary-400 rounded-lg text-right focus:outline-none"
-              />
-              <button
-                onClick={() => onSaveEdit(ingredient)}
-                disabled={saving}
-                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg disabled:opacity-50"
-              >
-                <Check className="w-4 h-4" />
-              </button>
-              <button
-                onClick={onCancelEdit}
-                disabled={saving}
-                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-50"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <span className={`inline-block px-2 py-0.5 rounded border text-sm font-semibold ${colorClass}`}>
-                {ingredient.stock_quantity} {ingredient.unit_of_measure}
-              </span>
-              {canAdjust && (
-                <button
-                  onClick={() => onStartEdit(ingredient)}
-                  className="text-xs text-primary-600 hover:text-primary-800 font-medium px-2 py-1 hover:bg-primary-50 rounded"
-                >
-                  Ajustar
-                </button>
-              )}
-              {canDiscard && (
-                <button
-                  onClick={() => onDiscard(ingredient)}
-                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Descartar (merma)"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
+  const rowProps = {
+    isAdmin,
+    canAdjust,
+    canDiscard,
+    editing,
+    saving,
+    groups,
+    onStartEdit,
+    onCancelEdit,
+    onSaveEdit,
+    onEditChange,
+    onTogglePurchase,
+    onChangeGroup,
+    onDiscard,
   };
 
   return (
@@ -386,7 +165,9 @@ export default function StockTab({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {sortIngredients(section.ingredients).map(renderDesktopRow)}
+                    {sortIngredients(section.ingredients).map((i) => (
+                      <StockDesktopRow key={i.id} ingredient={i} {...rowProps} />
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -401,7 +182,9 @@ export default function StockTab({
                   {section.group?.name ?? "Sin grupo"}
                 </h3>
                 <div className="space-y-2">
-                  {sortIngredients(section.ingredients).map(renderMobileCard)}
+                  {sortIngredients(section.ingredients).map((i) => (
+                    <StockMobileCard key={i.id} ingredient={i} {...rowProps} />
+                  ))}
                 </div>
               </div>
             ))}
@@ -423,14 +206,18 @@ export default function StockTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredIngredients.map(renderDesktopRow)}
+                {filteredIngredients.map((i) => (
+                  <StockDesktopRow key={i.id} ingredient={i} {...rowProps} />
+                ))}
               </tbody>
             </table>
           </div>
 
           {/* Mobile flat cards */}
           <div className="md:hidden space-y-2">
-            {sortIngredients(filteredIngredients).map(renderMobileCard)}
+            {sortIngredients(filteredIngredients).map((i) => (
+              <StockMobileCard key={i.id} ingredient={i} {...rowProps} />
+            ))}
           </div>
         </>
       )}
