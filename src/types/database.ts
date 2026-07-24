@@ -1485,6 +1485,10 @@ export type Database = {
         Args: { p_payments: Json; p_purchase_id: number; p_user_id?: string }
         Returns: undefined
       }
+      replace_recipe_ingredients: {
+        Args: { p_ingredients: Json; p_recipe_id: number }
+        Returns: undefined
+      }
       replace_sale_transactions: {
         Args: { p_payments: Json; p_sale_id: number; p_user_id?: string }
         Returns: undefined
