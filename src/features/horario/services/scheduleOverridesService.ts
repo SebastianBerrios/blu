@@ -74,39 +74,20 @@ export async function createExtraShift(params: {
   const hours = computeShiftHours(startTime, endTime);
   if (hours <= 0) throw new Error("La hora fin debe ser mayor a la hora inicio");
 
-  // 1. Insert schedule override
-  const { data: override, error: overrideError } = await supabase
-    .from("schedule_overrides")
-    .insert({
-      user_id: userId,
-      override_date: date,
-      is_day_off: false,
-      start_time: startTime,
-      end_time: endTime,
-      reason: description || "Turno extra",
-      is_extra_shift: true,
-      created_by: adminId,
-    })
-    .select("id")
-    .single();
+  const reason = description || "Turno extra";
+  const logDescription = `Turno extra ${date} (${startTime}-${endTime})`;
 
-  if (overrideError) throw overrideError;
-
-  // 2. Insert extra hours credit
-  const { error: hoursError } = await supabase.from("extra_hours_log").insert({
-    user_id: userId,
-    hours: Math.round(hours * 100) / 100,
-    description: `Turno extra ${date} (${startTime}-${endTime})`,
-    reference_type: "extra_shift",
-    reference_id: override.id,
-    created_by: adminId,
+  const { error } = await supabase.rpc("create_extra_shift_atomic", {
+    p_user_id: userId,
+    p_date: date,
+    p_start_time: startTime,
+    p_end_time: endTime,
+    p_reason: reason,
+    p_log_description: logDescription,
+    p_admin_id: adminId,
   });
 
-  if (hoursError) {
-    // Cleanup: remove the override if hours insert fails
-    await supabase.from("schedule_overrides").delete().eq("id", override.id);
-    throw hoursError;
-  }
+  if (error) throw error;
 
   logAudit({
     userId: adminId,
@@ -265,44 +246,8 @@ export async function markAbsence(params: {
   const missedHours = computeShiftHours(missedStart, missedEnd);
   if (missedHours <= 0) throw new Error("Rango inválido");
   const missedMinutes = Math.round(missedHours * 60);
-
-  // Prevent duplicates for the same shift range on the same date.
-  const { data: existing } = await supabase
-    .from("schedule_overrides")
-    .select("id, start_time, end_time")
-    .eq("user_id", userId)
-    .eq("override_date", date)
-    .eq("is_absence", true);
-
-  if (existing) {
-    const duplicate = existing.find((o) => {
-      const s = (o.start_time ?? "").slice(0, 5);
-      const e = (o.end_time ?? "").slice(0, 5);
-      return s === missedStart && e === missedEnd;
-    });
-    if (duplicate) {
-      throw new Error("Ya existe un registro para este rango de tiempo");
-    }
-  }
-
-  const { data: override, error: overrideError } = await supabase
-    .from("schedule_overrides")
-    .insert({
-      user_id: userId,
-      override_date: date,
-      is_day_off: mode === "full",
-      is_absence: true,
-      start_time: missedStart,
-      end_time: missedEnd,
-      reason: reason || (mode === "full" ? "Inasistencia" : mode === "late" ? "Tardanza" : "Salida temprana"),
-      created_by: adminId,
-    })
-    .select("id")
-    .single();
-
-  if (overrideError) throw overrideError;
-
   const roundedHours = Math.round(missedHours * 100) / 100;
+
   const description =
     mode === "full"
       ? `Inasistencia ${date} (${missedStart}-${missedEnd})`
@@ -310,26 +255,25 @@ export async function markAbsence(params: {
       ? `Tardanza ${date}: ${missedMinutes} min`
       : `Salida temprana ${date}: ${missedMinutes} min`;
 
-  const { error: hoursError } = await supabase.from("extra_hours_log").insert({
-    user_id: userId,
-    hours: -roundedHours,
-    description,
-    reference_type: "absence",
-    reference_id: override.id,
-    created_by: adminId,
+  const { data: overrideId, error } = await supabase.rpc("mark_absence_atomic", {
+    p_user_id: userId,
+    p_date: date,
+    p_missed_start: missedStart,
+    p_missed_end: missedEnd,
+    p_is_day_off: mode === "full",
+    p_reason: reason || (mode === "full" ? "Inasistencia" : mode === "late" ? "Tardanza" : "Salida temprana"),
+    p_log_description: description,
+    p_admin_id: adminId,
   });
 
-  if (hoursError) {
-    await supabase.from("schedule_overrides").delete().eq("id", override.id);
-    throw hoursError;
-  }
+  if (error) throw error;
 
   logAudit({
     userId: adminId,
     userName: adminName,
     action: mode === "full" ? "marcar_inasistencia" : mode === "late" ? "marcar_tardanza" : "marcar_salida_temprana",
     targetTable: "schedule_overrides",
-    targetId: override.id,
+    targetId: overrideId ?? undefined,
     targetDescription: `${description} de ${employeeName} (-${roundedHours}h)`,
     details: { employee_id: userId, date, mode, missedStart, missedEnd, hours: roundedHours },
   });
