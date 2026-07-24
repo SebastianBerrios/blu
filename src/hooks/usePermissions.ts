@@ -63,9 +63,6 @@ export function usePermissions() {
   return {
     rolePermissions: rolePerms,
     userPermissions: userPerms,
-    // Keep alias so existing PermissionsTab compiles unchanged in PR1.
-    // Removed in PR2 when the dashboard is rewritten.
-    permissions: rolePerms,
     error: roleErr ?? userErr,
     isLoading: roleLoading || userLoading || authLoading,
     mutate: async () => {
