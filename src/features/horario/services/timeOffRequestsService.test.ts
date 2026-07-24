@@ -118,7 +118,7 @@ describe("approveTimeOffRequest", () => {
 describe("rejectTimeOffRequest", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("update con status=rechazado + audit", async () => {
+  it("rejects a pending request: UPDATE carries status=rechazado + eq(status,pendiente) + audit", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
@@ -136,10 +136,55 @@ describe("rejectTimeOffRequest", () => {
     expect(payload.status).toBe("rechazado");
     expect(payload.reviewed_by).toBe("admin");
     expect(payload.review_note).toBe("Cubrimos turno");
-    expect(update.filters).toEqual([["id", 5]]);
+    // Must filter by both id AND status so only pending requests are affected
+    expect(update.filters).toContainEqual(["id", 5]);
+    expect(update.filters).toContainEqual(["status", "pendiente"]);
 
     expect(mockedLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: "rechazar_permiso" }),
     );
+  });
+
+  it("throws 'La solicitud ya fue procesada' when 0 rows affected (already processed)", async () => {
+    const sb = makeMockSupabase();
+    // Simulate conditional UPDATE finding 0 rows (request already approved/rejected)
+    sb.setUpdateSelectResult("time_off_requests", { data: [], error: null });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(
+      rejectTimeOffRequest({
+        requestId: 5,
+        adminId: "admin",
+        adminName: "Admin",
+        employeeName: "Seba",
+        requestedDate: "2026-05-12",
+        reviewNote: null,
+      }),
+    ).rejects.toThrow("La solicitud ya fue procesada");
+
+    // Must NOT fire audit when blocked
+    expect(mockedLogAudit).not.toHaveBeenCalled();
+  });
+
+  it("supabase error propagates without audit", async () => {
+    const sb = makeMockSupabase();
+    sb.setUpdateSelectResult("time_off_requests", {
+      data: null,
+      error: { message: "connection error" },
+    });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(
+      rejectTimeOffRequest({
+        requestId: 5,
+        adminId: "admin",
+        adminName: null,
+        employeeName: "Seba",
+        requestedDate: "2026-05-12",
+        reviewNote: null,
+      }),
+    ).rejects.toBeTruthy();
+
+    expect(mockedLogAudit).not.toHaveBeenCalled();
   });
 });

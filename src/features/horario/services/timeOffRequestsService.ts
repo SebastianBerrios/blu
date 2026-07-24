@@ -59,7 +59,7 @@ export async function rejectTimeOffRequest(params: {
   reviewNote: string | null;
 }): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("time_off_requests")
     .update({
       status: "rechazado",
@@ -67,9 +67,12 @@ export async function rejectTimeOffRequest(params: {
       reviewed_at: new Date().toISOString(),
       review_note: params.reviewNote,
     })
-    .eq("id", params.requestId);
+    .eq("id", params.requestId)
+    .eq("status", "pendiente")
+    .select("id");
 
   if (error) throw error;
+  if (!data || data.length === 0) throw new Error("La solicitud ya fue procesada");
 
   logAudit({
     userId: params.adminId,

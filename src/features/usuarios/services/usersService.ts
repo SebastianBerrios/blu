@@ -23,9 +23,14 @@ interface SetUserRoleParams {
   newRole: AppRole;
   adminId: string | null;
   adminName: string | null;
+  currentUserId: string;
 }
 
 export async function setUserRole(params: SetUserRoleParams): Promise<void> {
+  if (params.targetUserId === params.currentUserId && params.newRole !== "admin") {
+    throw new Error("No puedes cambiar tu propio rol de administrador");
+  }
+
   const supabase = createClient();
   const { error } = await supabase
     .from("user_profiles")
@@ -54,9 +59,14 @@ interface ToggleUserActiveParams {
   newActive: boolean;
   adminId: string | null;
   adminName: string | null;
+  currentUserId: string;
 }
 
 export async function toggleUserActive(params: ToggleUserActiveParams): Promise<void> {
+  if (params.targetUserId === params.currentUserId && params.newActive === false) {
+    throw new Error("No puedes desactivar tu propia cuenta");
+  }
+
   const supabase = createClient();
   const { error } = await supabase
     .from("user_profiles")
