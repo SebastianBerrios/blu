@@ -180,7 +180,7 @@ UI: `/inventario` tabs — Stock (adjust/discard/alerts for all ingredients incl
 - **audit_logs** — action tracking (userId, action, targetTable, targetId, targetDescription)
 - **inventory_movements** — stock in/out tracking (reason: manual/entrega/reverso_entrega/compra/reverso_compra/merma/produccion/produccion_consumo/reverso_produccion; optional `note`)
 - **productions** — batch production log (ingredient_id, recipe_id, batches, yield_added, reversed_at/by) for traceability + undo
-- **schedule_templates** — recurring weekly schedule (user_id, day_of_week 0=Mon..5=Sat, start_time, end_time)
+- **schedule_templates** — recurring weekly schedule (user_id, day_of_week 0=Mon..6=Sun, start_time, end_time)
 - **schedule_overrides** — one-time schedule changes (override_date, is_day_off, optional time range, linked to time_off_request_id)
 - **time_off_requests** — employee time-off requests (status: pendiente/aprobado/rechazado, hours_requested, is_full_day)
 - **extra_hours_log** — credit/debit ledger (positive=credit, negative=debit from approved time-off)
@@ -198,7 +198,7 @@ Types in `src/types/` wrap auto-generated Supabase types and are re-exported fro
 - **Create/Update types**: Separate interfaces like `CreateSale`, `CreateProduct`
 - **Literal unions**: `PaymentMethod = "Efectivo" | "Plin" | "Efectivo + Plin"`, `TransactionType = "ingreso_venta" | "egreso_compra" | ...`, `TimeOffStatus = "pendiente" | "aprobado" | "rechazado"`
 - **Filters**: `SalesFilters`, `TransactionFilters` for hook parameters
-- **Schedule types** in `src/types/schedule.ts`: `ScheduleSlot` (merged template+override for weekly display), `EmployeeBalance`, `DayOfWeek` (0–5, Mon–Sat, 6-day work week), `DAY_LABELS`
+- **Schedule types** in `src/types/schedule.ts`: `ScheduleSlot` (merged template+override for weekly display), `EmployeeBalance`, `DayOfWeek` (0–6, Mon–Sun; `DAY_LABELS` maps 0=Lunes..6=Domingo), `DAY_LABELS`
 
 ## UI Components
 
