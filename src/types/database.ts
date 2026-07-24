@@ -1343,6 +1343,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_extra_shift_atomic: {
+        Args: {
+          p_admin_id?: string
+          p_date: string
+          p_end_time: string
+          p_log_description: string
+          p_reason: string
+          p_start_time: string
+          p_user_id: string
+        }
+        Returns: number
+      }
       create_purchase_atomic: { Args: { p_payload: Json }; Returns: number }
       create_sale_atomic: { Args: { p_payload: Json }; Returns: number }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
@@ -1411,6 +1423,19 @@ export type Database = {
       has_permission: {
         Args: { p_permission: string; p_user_id?: string }
         Returns: boolean
+      }
+      mark_absence_atomic: {
+        Args: {
+          p_admin_id?: string
+          p_date: string
+          p_is_day_off: boolean
+          p_log_description: string
+          p_missed_end: string
+          p_missed_start: string
+          p_reason: string
+          p_user_id: string
+        }
+        Returns: number
       }
       produce_recipe_batch: {
         Args: {

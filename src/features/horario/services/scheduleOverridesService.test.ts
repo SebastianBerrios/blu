@@ -79,8 +79,8 @@ describe("createScheduleOverrides", () => {
 describe("createExtraShift", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("happy path: insert override + insert hours + audit", async () => {
-    const sb = makeMockSupabase({ single: { data: { id: 200 }, error: null } });
+  it("happy path: calls create_extra_shift_atomic RPC with correct params + audit", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 200, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await createExtraShift({
@@ -94,22 +94,61 @@ describe("createExtraShift", () => {
       employeeName: "Seba",
     });
 
-    const overrideInsert = sb.insertCalls.find(
-      (c) => c.table === "schedule_overrides",
-    )!;
-    const overridePayload = overrideInsert.payload as Record<string, unknown>;
-    expect(overridePayload.is_extra_shift).toBe(true);
-    expect(overridePayload.start_time).toBe("18:00");
+    expect(sb.rpcCalls).toHaveLength(1);
+    expect(sb.rpcCalls[0].fn).toBe("create_extra_shift_atomic");
+    expect(sb.rpcCalls[0].params).toMatchObject({
+      p_user_id: "u1",
+      p_date: "2026-05-15",
+      p_start_time: "18:00",
+      p_end_time: "21:00",
+      p_reason: "Refuerzo",
+      p_log_description: "Turno extra 2026-05-15 (18:00-21:00)",
+      p_admin_id: "admin",
+    });
 
-    const hoursInsert = sb.insertCalls.find((c) => c.table === "extra_hours_log")!;
-    const hoursPayload = hoursInsert.payload as Record<string, unknown>;
-    expect(hoursPayload.hours).toBe(3);
-    expect(hoursPayload.reference_type).toBe("extra_shift");
-    expect(hoursPayload.reference_id).toBe(200);
+    // No direct table inserts
+    expect(sb.insertCalls).toHaveLength(0);
 
     expect(mockedLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: "crear" }),
     );
+  });
+
+  it("default reason when description is omitted", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 201, error: null } });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await createExtraShift({
+      userId: "u1",
+      date: "2026-05-15",
+      startTime: "18:00",
+      endTime: "21:00",
+      adminId: "admin",
+      adminName: null,
+      employeeName: "Seba",
+    });
+
+    expect(sb.rpcCalls[0].params).toMatchObject({ p_reason: "Turno extra" });
+  });
+
+  it("propagates RPC error", async () => {
+    const rpcError = new Error("RPC failed");
+    const sb = makeMockSupabase({ rpc: { data: null, error: rpcError } });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(
+      createExtraShift({
+        userId: "u1",
+        date: "2026-05-15",
+        startTime: "18:00",
+        endTime: "21:00",
+        adminId: "admin",
+        adminName: null,
+        employeeName: "Seba",
+      }),
+    ).rejects.toThrow("RPC failed");
+
+    expect(mockedLogAudit).not.toHaveBeenCalled();
   });
 
   it("hora fin <= inicio: throws antes de tocar la DB", async () => {
@@ -128,6 +167,7 @@ describe("createExtraShift", () => {
       }),
     ).rejects.toThrow("La hora fin debe ser mayor");
 
+    expect(sb.rpcCalls).toHaveLength(0);
     expect(sb.insertCalls).toHaveLength(0);
   });
 });
@@ -199,9 +239,8 @@ describe("deleteExtraShift", () => {
 describe("markAbsence", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("mode='full': insert override con missedStart=shiftStart, missedEnd=shiftEnd, hours negativas", async () => {
-    const sb = makeMockSupabase({ single: { data: { id: 300 }, error: null } });
-    sb.setResult("schedule_overrides", { data: [] });
+  it("mode='full': calls mark_absence_atomic with correct params and fires audit", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 300, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await markAbsence({
@@ -216,19 +255,105 @@ describe("markAbsence", () => {
       employeeName: "Seba",
     });
 
-    const overrideInsert = sb.insertCalls.find((c) => c.table === "schedule_overrides")!;
-    const payload = overrideInsert.payload as Record<string, unknown>;
-    expect(payload.is_day_off).toBe(true);
-    expect(payload.is_absence).toBe(true);
-    expect(payload.start_time).toBe("09:00");
-    expect(payload.end_time).toBe("13:00");
+    expect(sb.rpcCalls).toHaveLength(1);
+    expect(sb.rpcCalls[0].fn).toBe("mark_absence_atomic");
+    expect(sb.rpcCalls[0].params).toMatchObject({
+      p_user_id: "u1",
+      p_date: "2026-05-15",
+      p_missed_start: "09:00",
+      p_missed_end: "13:00",
+      p_is_day_off: true,
+      p_reason: "Inasistencia justificada",
+      p_log_description: "Inasistencia 2026-05-15 (09:00-13:00)",
+      p_admin_id: "admin",
+    });
 
-    const hoursInsert = sb.insertCalls.find((c) => c.table === "extra_hours_log")!;
-    expect((hoursInsert.payload as Record<string, unknown>).hours).toBe(-4);
+    // No direct table inserts or client-side dup selects
+    expect(sb.insertCalls).toHaveLength(0);
+    expect(sb.selectCalls.filter((c) => c.table === "schedule_overrides")).toHaveLength(0);
 
     expect(mockedLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: "marcar_inasistencia" }),
     );
+  });
+
+  it("mode='late' con actualTime: calls RPC with missedStart=shiftStart, missedEnd=actualTime", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 301, error: null } });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await markAbsence({
+      userId: "u1",
+      date: "2026-05-15",
+      shiftStart: "09:00",
+      shiftEnd: "13:00",
+      mode: "late",
+      actualTime: "09:30",
+      adminId: "admin",
+      adminName: "Admin",
+      employeeName: "Seba",
+    });
+
+    expect(sb.rpcCalls[0].fn).toBe("mark_absence_atomic");
+    expect(sb.rpcCalls[0].params).toMatchObject({
+      p_missed_start: "09:00",
+      p_missed_end: "09:30",
+      p_is_day_off: false,
+      p_reason: "Tardanza",
+    });
+
+    expect(mockedLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "marcar_tardanza" }),
+    );
+  });
+
+  it("mode='early' con actualTime: calls RPC with missedStart=actualTime, missedEnd=shiftEnd", async () => {
+    const sb = makeMockSupabase({ rpc: { data: 302, error: null } });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await markAbsence({
+      userId: "u1",
+      date: "2026-05-15",
+      shiftStart: "09:00",
+      shiftEnd: "13:00",
+      mode: "early",
+      actualTime: "12:00",
+      adminId: "admin",
+      adminName: "Admin",
+      employeeName: "Seba",
+    });
+
+    expect(sb.rpcCalls[0].fn).toBe("mark_absence_atomic");
+    expect(sb.rpcCalls[0].params).toMatchObject({
+      p_missed_start: "12:00",
+      p_missed_end: "13:00",
+      p_is_day_off: false,
+      p_reason: "Salida temprana",
+    });
+
+    expect(mockedLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "marcar_salida_temprana" }),
+    );
+  });
+
+  it("propagates RPC error (including dup-check message from DB)", async () => {
+    const rpcError = new Error("Ya existe un registro para este rango de tiempo");
+    const sb = makeMockSupabase({ rpc: { data: null, error: rpcError } });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(
+      markAbsence({
+        userId: "u1",
+        date: "2026-05-15",
+        shiftStart: "09:00",
+        shiftEnd: "13:00",
+        mode: "full",
+        adminId: "admin",
+        adminName: null,
+        employeeName: "Seba",
+      }),
+    ).rejects.toThrow("Ya existe un registro para este rango de tiempo");
+
+    expect(mockedLogAudit).not.toHaveBeenCalled();
   });
 
   it("mode='late' sin actualTime: throws 'Falta la hora de llegada'", async () => {
@@ -246,31 +371,34 @@ describe("markAbsence", () => {
     ).rejects.toThrow("Falta la hora de llegada");
   });
 
-  it("mode='late' con actualTime válido: marca tardanza con missedStart=shiftStart", async () => {
-    const sb = makeMockSupabase({ single: { data: { id: 300 }, error: null } });
-    sb.setResult("schedule_overrides", { data: [] });
-    vi.mocked(createClient).mockReturnValue(sb.client as never);
+  it("mode='late' con actualTime <= shiftStart: throws", async () => {
+    await expect(
+      markAbsence({
+        userId: "u1",
+        date: "2026-05-15",
+        shiftStart: "09:00",
+        shiftEnd: "13:00",
+        mode: "late",
+        actualTime: "08:30",
+        adminId: "admin",
+        adminName: null,
+        employeeName: "Seba",
+      }),
+    ).rejects.toThrow("La hora de llegada debe ser posterior al inicio del turno");
+  });
 
-    await markAbsence({
-      userId: "u1",
-      date: "2026-05-15",
-      shiftStart: "09:00",
-      shiftEnd: "13:00",
-      mode: "late",
-      actualTime: "09:30",
-      adminId: "admin",
-      adminName: "Admin",
-      employeeName: "Seba",
-    });
-
-    const overrideInsert = sb.insertCalls.find((c) => c.table === "schedule_overrides")!;
-    const payload = overrideInsert.payload as Record<string, unknown>;
-    expect(payload.start_time).toBe("09:00");
-    expect(payload.end_time).toBe("09:30");
-    expect(payload.is_day_off).toBe(false);
-
-    expect(mockedLogAudit).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "marcar_tardanza" }),
-    );
+  it("mode='early' sin actualTime: throws 'Falta la hora de salida'", async () => {
+    await expect(
+      markAbsence({
+        userId: "u1",
+        date: "2026-05-15",
+        shiftStart: "09:00",
+        shiftEnd: "13:00",
+        mode: "early",
+        adminId: "admin",
+        adminName: null,
+        employeeName: "Seba",
+      }),
+    ).rejects.toThrow("Falta la hora de salida");
   });
 });
