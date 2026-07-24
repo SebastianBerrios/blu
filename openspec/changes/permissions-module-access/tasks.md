@@ -97,22 +97,22 @@ Chain strategy: stacked-to-main
 
 ### Phase 9: get_payment_accounts RPC
 
-- [ ] 9.1 Use MCP `execute_sql` to create the RPC: `CREATE OR REPLACE FUNCTION public.get_payment_accounts() RETURNS TABLE (id bigint, type text, name text) LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$ SELECT a.id, a.type, a.name FROM public.accounts a ORDER BY a.id; $$;` Then `REVOKE EXECUTE ON FUNCTION public.get_payment_accounts() FROM PUBLIC, anon; GRANT EXECUTE ON FUNCTION public.get_payment_accounts() TO authenticated;`
-- [ ] 9.2 MCP verify: authenticated non-admin `SELECT * FROM get_payment_accounts()` → rows with `{id,type,name}` only, no `balance` column (S7.1-a). Anon call → permission error (S7.1-b). Admin call → same rows (S7.1-c).
-- [ ] 9.3 Commit RPC migration: `supabase db pull <name> --local --yes`. Verify `supabase migration list --local`.
+- [x] 9.1 DONE BY ORCHESTRATOR — RPC already created in DB before this apply run.
+- [x] 9.2 DONE BY ORCHESTRATOR — Verified: returns {id,type,name} only, no balance column.
+- [x] 9.3 Migration file created: `supabase/migrations/20260723T04_get_payment_accounts_rpc.sql` (for repo reproducibility; NOT applied — already in DB).
 
 ### Phase 10: Regen database.ts + usePaymentAccounts hook
 
-- [ ] 10.1 MCP `generate_typescript_types` → overwrite `src/types/database.ts`. Confirm `get_payment_accounts` return type appears in the generated file (required before hook compiles against it).
-- [ ] 10.2 Create `src/hooks/usePaymentAccounts.ts`: SWR hook calling `supabase.rpc("get_payment_accounts")`, returning `{ data: PaymentAccount[], error, isLoading, mutate }` with standard SWR config (`revalidateOnFocus: false, revalidateOnReconnect: true, dedupingInterval: 2000`). Type `PaymentAccount = { id: bigint; type: string; name: string }`. Do NOT modify `useAccounts.ts`.
+- [x] 10.1 Regenerated `src/types/database.ts` via `npx supabase@latest gen types typescript --project-id guicntncdiygxullmfil`. Confirmed `get_payment_accounts` appears at line 1403 with `Returns: { id: number; name: string; type: string }[]`.
+- [x] 10.2 Created `src/hooks/usePaymentAccounts.ts`: SWR hook calling `supabase.rpc("get_payment_accounts")`, exporting `PaymentAccount = { id: number; type: string; name: string }` and convenience accessors (cajaAccount, bancoAccount, rappiAccount, posAccount). Standard SWR config. `useAccounts.ts` NOT modified.
 
 ### Phase 11: Rewire non-admin payment flows
 
-- [ ] 11.1 `src/features/ventas/components/PaymentModal.tsx`: replace `useAccounts()` with `usePaymentAccounts()`. Confirm it receives `id`, `type`, `name` — no balance needed. Props/shape to `AccountSelector` unchanged.
-- [ ] 11.2 `src/components/forms/SaleForm/` (or `src/features/ventas/`): replace `useAccounts()` with `usePaymentAccounts()` for the account-selection step.
-- [ ] 11.3 `src/components/forms/PurchaseForm/` — locate `usePurchaseFormInit` (or equivalent accounts fetch); switch to `usePaymentAccounts()`.
-- [ ] 11.4 `src/components/ui/AccountSelector/` (or wherever it lives): confirm it receives `{id, type, name}[]` via props — no internal data fetch that reads balance. Adjust if needed.
-- [ ] 11.5 MCP scenario: non-admin authenticated call to `get_payment_accounts()` succeeds AND (manual) non-admin opens PaymentModal → accounts populate → payment submits successfully (S7.2-a, S7.2-b, S9.2-a).
+- [x] 11.1 `src/components/forms/PaymentModal/index.tsx`: replaced `useAccounts()` with `usePaymentAccounts()`. No `.balance` read. Accessors (cajaAccount, bancoAccount, rappiAccount, posAccount, accountsLoading) same shape.
+- [x] 11.2 `src/components/forms/SaleForm/index.tsx`: replaced `useAccounts()` with `usePaymentAccounts()`. Services only receive account IDs (`.id` extracts), no balance.
+- [x] 11.3 `src/components/forms/PurchaseForm/index.tsx`: replaced `useAccounts()` with `usePaymentAccounts()`. `usePurchaseFormInit` receives `cajaAccount?.id` (number) — unchanged signature.
+- [x] 11.4 `src/features/compras/components/AccountSelector.tsx`: updated import from `Account` to `PaymentAccount` type — prop shape `{ id, type, name }` matches. No `.balance` read anywhere in component. Admin-only banco button still gated by `isAdmin` prop.
+- [ ] 11.5 MCP scenario: manual verify — non-admin opens PaymentModal → accounts populate from RPC → payment submits successfully (pending orchestrator manual smoke-test).
 
 ### Phase 12: Restrict transactions and accounts SELECT
 

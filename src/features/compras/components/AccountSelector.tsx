@@ -1,10 +1,10 @@
 "use client";
 
-import type { Account } from "@/types";
+import type { PaymentAccount } from "@/hooks/usePaymentAccounts";
 
 interface AccountSelectorProps {
-  cajaAccount: Account | null | undefined;
-  bancoAccount: Account | null | undefined;
+  cajaAccount: PaymentAccount | null | undefined;
+  bancoAccount: PaymentAccount | null | undefined;
   selectedAccountId: number | null;
   onSelect: (accountId: number) => void;
   onSelectBanco: (accountId: number) => void;
