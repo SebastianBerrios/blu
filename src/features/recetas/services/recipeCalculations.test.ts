@@ -1,36 +1,9 @@
 import { describe, it, expect } from "vitest";
 import type { RecipeIngredientLine } from "../types";
 import {
-  convertToBaseUnit,
   calculateIngredientCost,
   calculateTotalCost,
 } from "./recipeCalculations";
-
-describe("convertToBaseUnit", () => {
-  it("convierte kg → g (multiplica por 1000)", () => {
-    expect(convertToBaseUnit(2, "kg", "weight")).toBe(2000);
-  });
-
-  it("preserva g cuando ya está en gramos", () => {
-    expect(convertToBaseUnit(500, "g", "weight")).toBe(500);
-  });
-
-  it("convierte l → ml", () => {
-    expect(convertToBaseUnit(1.5, "l", "volume")).toBe(1500);
-  });
-
-  it("preserva ml", () => {
-    expect(convertToBaseUnit(250, "ml", "volume")).toBe(250);
-  });
-
-  it("retorna quantity sin convertir si la unidad no aplica al tipo (ej: ml en weight)", () => {
-    expect(convertToBaseUnit(100, "ml", "weight")).toBe(100);
-  });
-
-  it("retorna quantity sin convertir si la unidad es desconocida", () => {
-    expect(convertToBaseUnit(5, "und", "weight")).toBe(5);
-  });
-});
 
 describe("calculateIngredientCost", () => {
   it("peso: 100g de un ingrediente que cuesta S/30 por kg = S/3", () => {

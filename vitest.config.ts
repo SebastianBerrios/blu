@@ -1,13 +1,16 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
-    tsconfigPaths: true,
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
   },
   test: {
     environment: "node",
     allowOnly: false,
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
@@ -16,7 +19,7 @@ export default defineConfig({
         "src/features/**/utils/*.ts",
         "src/features/**/services/*.ts",
       ],
-      exclude: ["**/*.test.ts", "**/index.ts", "**/__tests__/**"],
+      exclude: ["**/*.test.{ts,tsx}", "**/index.ts", "**/__tests__/**"],
     },
   },
 });

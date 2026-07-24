@@ -1,24 +1,7 @@
 import type { RecipeIngredientLine } from "../types";
 import { convert } from "@/utils/helpers/units";
 
-// Pure helpers — unit conversions and cost calculations.
-
-export function convertToBaseUnit(
-  quantity: number,
-  unit: string,
-  targetType: "weight" | "volume"
-): number {
-  const weightUnits: Record<string, number> = { kg: 1000, g: 1 };
-  const volumeUnits: Record<string, number> = { l: 1000, ml: 1 };
-
-  if (targetType === "weight" && weightUnits[unit]) {
-    return quantity * weightUnits[unit];
-  }
-  if (targetType === "volume" && volumeUnits[unit]) {
-    return quantity * volumeUnits[unit];
-  }
-  return quantity;
-}
+// Pure helpers — cost calculations. Unit conversion lives in @/utils/helpers/units.
 
 export function calculateIngredientCost(
   recipeQuantity: number,
