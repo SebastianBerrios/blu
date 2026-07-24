@@ -14,11 +14,7 @@ const fetchUsers = async (): Promise<UserProfile[]> => {
 };
 
 export function useUsers() {
-  const { data, error, isLoading, mutate } = useSWR("users", fetchUsers, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: true,
-    dedupingInterval: 2000,
-  });
+  const { data, error, isLoading, mutate } = useSWR("users", fetchUsers);
 
   return {
     users: data || [],

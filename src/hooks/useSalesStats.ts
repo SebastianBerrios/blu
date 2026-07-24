@@ -175,8 +175,6 @@ export const useSalesStats = (ranges: PeriodRanges) => {
     ["sales-stats", ranges],
     () => fetchStats(ranges),
     {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
       dedupingInterval: 5000,
       keepPreviousData: true,
     },

@@ -50,12 +50,7 @@ const fetchTransactions = async (
 export const useTransactions = (filters: TransactionFilters = {}) => {
   const { data, error, isLoading, mutate } = useSWR<TransactionWithUser[]>(
     ["transactions", filters],
-    () => fetchTransactions(filters),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    }
+    () => fetchTransactions(filters)
   );
 
   return { transactions: data ?? [], error, isLoading, mutate };

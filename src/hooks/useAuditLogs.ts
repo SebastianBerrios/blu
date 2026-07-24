@@ -48,12 +48,7 @@ export function useAuditLogs(filters: AuditLogFilters = {}) {
 
   const { data, error, isLoading, mutate } = useSWR<AuditLog[]>(
     key,
-    buildFetcher(filters),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    }
+    buildFetcher(filters)
   );
 
   return {

@@ -33,7 +33,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SWRConfig value={{ onError: handleSWRError }}>
+    <SWRConfig value={{
+      onError: handleSWRError,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      dedupingInterval: 2000,
+    }}>
     <ConfirmProvider>
       <AuthGuard>
         <main className="h-dvh flex flex-col md:flex-row bg-slate-50">

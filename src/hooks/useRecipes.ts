@@ -27,12 +27,7 @@ const fetchRecipes = async (): Promise<RecipeWithProducible[]> => {
 export const useRecipes = () => {
   const { data, error, isLoading, mutate } = useSWR<RecipeWithProducible[]>(
     "recipes",
-    fetchRecipes,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    }
+    fetchRecipes
   );
 
   return { recipes: data ?? [], error, isLoading, mutate };

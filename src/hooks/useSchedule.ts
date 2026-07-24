@@ -113,12 +113,7 @@ export const useSchedule = (weekStart: string | null) => {
 
   const { data, error, isLoading, mutate } = useSWR<ScheduleData>(
     weekStart ? ["schedule", weekStart] : null,
-    () => fetchScheduleData(weekStart!, weekEnd),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    }
+    () => fetchScheduleData(weekStart!, weekEnd)
   );
 
   const templates = useMemo(() => data?.templates ?? [], [data?.templates]);

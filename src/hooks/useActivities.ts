@@ -170,12 +170,7 @@ export const useActivities = () => {
 
   const { data, error, isLoading, mutate } = useSWR<ActivitiesData>(
     authLoading ? null : ["activities", isAdmin, user?.id],
-    () => fetchActivities(isAdmin, user?.id),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    }
+    () => fetchActivities(isAdmin, user?.id)
   );
 
   return {

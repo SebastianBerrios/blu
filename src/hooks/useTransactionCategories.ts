@@ -6,12 +6,7 @@ export const useTransactionCategories = (opts?: { includeInactive?: boolean }) =
   const includeInactive = opts?.includeInactive ?? false;
   const { data, error, isLoading, mutate } = useSWR<TransactionCategory[]>(
     ["transaction_categories", includeInactive],
-    () => getTransactionCategories({ includeInactive }),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    }
+    () => getTransactionCategories({ includeInactive })
   );
 
   const categories = data ?? [];

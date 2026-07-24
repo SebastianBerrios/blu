@@ -48,33 +48,27 @@ const fetchGroups = async (): Promise<IngredientGroup[]> => {
   return data || [];
 };
 
-const swrConfig = {
-  revalidateOnFocus: false,
-  revalidateOnReconnect: true,
-  dedupingInterval: 2000,
-};
-
 export const useInventory = () => {
   const {
     data: ingredients,
     error: ingredientsError,
     isLoading: ingredientsLoading,
     mutate: mutateIngredients,
-  } = useSWR<Ingredient[]>("ingredients", fetchIngredients, swrConfig);
+  } = useSWR<Ingredient[]>("ingredients", fetchIngredients);
 
   const {
     data: movements,
     error: movementsError,
     isLoading: movementsLoading,
     mutate: mutateMovements,
-  } = useSWR<InventoryMovement[]>("inventory-movements", fetchMovements, swrConfig);
+  } = useSWR<InventoryMovement[]>("inventory-movements", fetchMovements);
 
   const {
     data: groups,
     error: groupsError,
     isLoading: groupsLoading,
     mutate: mutateGroups,
-  } = useSWR<IngredientGroup[]>("ingredient-groups", fetchGroups, swrConfig);
+  } = useSWR<IngredientGroup[]>("ingredient-groups", fetchGroups);
 
   return {
     ingredients: ingredients ?? [],

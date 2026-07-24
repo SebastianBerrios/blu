@@ -127,12 +127,7 @@ export const useActivityHistory = (filters: HistoryFilters | null) => {
 
   const { data, error, isLoading, mutate } = useSWR<HistoryData>(
     authLoading || !filters ? null : ["activity-history", filters],
-    () => fetchHistory(filters!),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    }
+    () => fetchHistory(filters!)
   );
 
   return {

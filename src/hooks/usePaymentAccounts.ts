@@ -23,12 +23,7 @@ const fetchPaymentAccounts = async (): Promise<PaymentAccount[]> => {
 export const usePaymentAccounts = () => {
   const { data, error, isLoading, mutate } = useSWR<PaymentAccount[]>(
     "payment_accounts",
-    fetchPaymentAccounts,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    },
+    fetchPaymentAccounts
   );
 
   const accounts = data ?? [];

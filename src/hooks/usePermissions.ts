@@ -5,12 +5,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { resolvePermission } from "@/features/usuarios/services/permissionsResolver";
 import type { RolePermission, UserPermission, PermissionKey } from "@/types/permissions";
 
-const SWR_CONFIG = {
-  revalidateOnFocus: false,
-  revalidateOnReconnect: true,
-  dedupingInterval: 2000,
-} as const;
-
 const fetchRolePermissions = async (): Promise<RolePermission[]> => {
   const supabase = createClient();
   const { data, error } = await supabase.from("role_permissions").select("*");
@@ -36,7 +30,7 @@ export function usePermissions() {
     error: roleErr,
     isLoading: roleLoading,
     mutate: mutateRole,
-  } = useSWR("role-permissions", fetchRolePermissions, SWR_CONFIG);
+  } = useSWR("role-permissions", fetchRolePermissions);
 
   // Current user's overrides only; null key while unauthenticated (SWR skips — no waterfall).
   const {
@@ -47,7 +41,6 @@ export function usePermissions() {
   } = useSWR(
     user ? ["user-permissions", user.id] : null,
     () => fetchUserPermissions(user!.id),
-    SWR_CONFIG,
   );
 
   const rolePerms = useMemo(() => roleData ?? [], [roleData]);

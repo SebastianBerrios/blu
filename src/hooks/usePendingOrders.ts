@@ -115,12 +115,7 @@ export const usePendingOrders = () => {
   const { user, profile } = useAuth();
   const { data, error, isLoading, mutate } = useSWR<PendingOrderSale[]>(
     "pending-orders",
-    fetchTodayOrders,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    }
+    fetchTodayOrders
   );
 
   const { realtimeStatus } = useRealtimeChannel({

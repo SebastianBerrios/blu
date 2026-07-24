@@ -50,12 +50,7 @@ export const useExtraHours = () => {
 
   const { data, error, isLoading, mutate } = useSWR<ExtraHoursLogWithUser[]>(
     authLoading ? null : ["extra-hours", isAdmin, user?.id],
-    () => fetchExtraHours(isAdmin, user?.id),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    }
+    () => fetchExtraHours(isAdmin, user?.id)
   );
 
   const entries = useMemo(() => data ?? [], [data]);

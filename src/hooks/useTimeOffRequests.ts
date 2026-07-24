@@ -59,12 +59,7 @@ export const useTimeOffRequests = (filters: TimeOffFilters = {}) => {
 
   const { data, error, isLoading, mutate } = useSWR<TimeOffRequestWithUser[]>(
     authLoading ? null : ["time-off-requests", isAdmin, user?.id, filters],
-    () => fetchTimeOffRequests(isAdmin, user?.id, filters),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    }
+    () => fetchTimeOffRequests(isAdmin, user?.id, filters)
   );
 
   return {

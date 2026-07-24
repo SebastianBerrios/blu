@@ -102,12 +102,7 @@ export const usePurchases = (filters: PurchasesFilters = {}) => {
 
   const { data, error, isLoading, mutate } = useSWR<PurchaseWithItems[]>(
     authLoading ? null : ["purchases", isAdmin, filters],
-    () => fetchPurchases(isAdmin, filters),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    }
+    () => fetchPurchases(isAdmin, filters)
   );
 
   return {

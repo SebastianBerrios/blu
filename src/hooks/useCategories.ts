@@ -18,12 +18,7 @@ const fetchCategories = async () => {
 export const useCategories = () => {
   const { data, error, isLoading, mutate } = useSWR<Category[]>(
     "categories",
-    fetchCategories,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    }
+    fetchCategories
   );
 
   return { categories: data ?? [], error, isLoading, mutate };

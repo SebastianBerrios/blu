@@ -49,12 +49,7 @@ export const useMonthSchedule = (params: MonthParams | null) => {
 
   const { data, error, isLoading, mutate } = useSWR<MonthScheduleData>(
     params ? ["schedule-month", params.year, params.month] : null,
-    () => fetchMonthData(gridStart, gridEnd),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    }
+    () => fetchMonthData(gridStart, gridEnd)
   );
 
   const templates = useMemo(() => data?.templates ?? [], [data?.templates]);

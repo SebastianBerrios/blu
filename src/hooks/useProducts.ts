@@ -18,12 +18,7 @@ const fetchProducts = async () => {
 export const useProducts = () => {
   const { data, error, isLoading, mutate } = useSWR<Product[]>(
     "products",
-    fetchProducts,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    }
+    fetchProducts
   );
 
   return { products: data ?? [], error, isLoading, mutate };

@@ -29,11 +29,7 @@ const fetchAuth = async (): Promise<{
 };
 
 export function useAuth() {
-  const { data, error, isLoading, mutate } = useSWR("auth", fetchAuth, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: true,
-    dedupingInterval: 2000,
-  });
+  const { data, error, isLoading, mutate } = useSWR("auth", fetchAuth);
 
   const user = data?.user ?? null;
   const profile = data?.profile ?? null;

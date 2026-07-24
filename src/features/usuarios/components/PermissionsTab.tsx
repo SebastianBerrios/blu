@@ -15,8 +15,6 @@ import type { AppRole } from "@/types/auth";
 import { RoleMatrix, UserOverridePanel } from "./permissions";
 import { deriveConfigRoles } from "./permissions/configRoles";
 
-const SWR_CONFIG = { revalidateOnFocus: false, revalidateOnReconnect: true, dedupingInterval: 2000 } as const;
-
 async function fetchUserOverrides(userId: string): Promise<UserPermission[]> {
   const supabase = createClient();
   const { data, error } = await supabase.from("user_permissions").select("*").eq("user_id", userId);
@@ -36,7 +34,6 @@ export default function PermissionsTab() {
   const { data: selectedUserOverrides, mutate: mutateSelectedOverrides } = useSWR(
     selectedUserId ? ["user-permissions-admin-view", selectedUserId] : null,
     () => fetchUserOverrides(selectedUserId!),
-    SWR_CONFIG,
   );
   const overridesList = useMemo(() => selectedUserOverrides ?? [], [selectedUserOverrides]);
   const configRoles = deriveConfigRoles(users);

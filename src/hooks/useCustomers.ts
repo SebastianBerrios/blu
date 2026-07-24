@@ -18,12 +18,7 @@ const fetchCustomers = async () => {
 export const useCustomers = () => {
   const { data, error, isLoading, mutate } = useSWR<Customer[]>(
     "customers",
-    fetchCustomers,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    }
+    fetchCustomers
   );
 
   return { customers: data ?? [], error, isLoading, mutate };

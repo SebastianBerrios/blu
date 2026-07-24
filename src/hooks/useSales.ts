@@ -133,12 +133,7 @@ export const useSales = ({
 }: SalesFilters & { todayOnly?: boolean } = {}) => {
   const { data, error, isLoading, mutate } = useSWR<SaleWithProducts[]>(
     ["sales", { todayOnly, startDate, endDate }],
-    () => fetchSales({ todayOnly, startDate, endDate }),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    }
+    () => fetchSales({ todayOnly, startDate, endDate })
   );
 
   const { realtimeStatus } = useRealtimeChannel({
