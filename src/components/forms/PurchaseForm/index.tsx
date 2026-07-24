@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { usePaymentAccounts } from "@/hooks/usePaymentAccounts";
 import type { Ingredient, PurchaseWithItems, PurchaseItemLine } from "@/types";
 import {
@@ -33,7 +34,8 @@ export default function PurchaseForm({
   ingredients,
 }: PurchaseFormProps) {
   const isEditMode = !!purchase;
-  const { isAdmin, user: authUser, profile } = useAuth();
+  const { user: authUser, profile } = useAuth();
+  const { can } = usePermissions();
   const { cajaAccount, bancoAccount } = usePaymentAccounts();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -160,7 +162,7 @@ export default function PurchaseForm({
           setHasPlinChange(false);
           setPlinChange("");
         }}
-        isAdmin={isAdmin}
+        canUseBanco={can("action.purchases.use_banco")}
         isSubmitting={isSubmitting}
       />
 
