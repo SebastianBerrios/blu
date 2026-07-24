@@ -1,7 +1,18 @@
 import { createClient } from "@/utils/supabase/client";
 import { logAudit } from "@/utils/auditLog";
 import type { AppRole } from "@/types/auth";
-import type { PermissionKey } from "@/types/permissions";
+import type { PermissionKey, UserPermission } from "@/types/permissions";
+
+/** Fetches the per-user permission overrides for a single user (admin view). */
+export async function fetchUserOverrides(userId: string): Promise<UserPermission[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("user_permissions")
+    .select("*")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return data ?? [];
+}
 
 interface SetUserPermissionParams {
   userId: string;

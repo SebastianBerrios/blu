@@ -15,6 +15,45 @@ interface SetInitialBalancesParams {
   userName: string | null;
 }
 
+interface TransferParams {
+  fromAccount: { id: number; name: string };
+  toAccount: { id: number; name: string };
+  amount: number;
+  description: string;
+  userId: string | null;
+  userName: string | null;
+}
+
+export async function transferBetweenAccounts(params: TransferParams): Promise<void> {
+  const supabase = createClient();
+  const trimmed = params.description.trim();
+  const desc =
+    trimmed || `Transferencia ${params.fromAccount.name} → ${params.toAccount.name}`;
+
+  const { error } = await supabase.rpc("transfer_between_accounts", {
+    p_from_account_id: params.fromAccount.id,
+    p_to_account_id: params.toAccount.id,
+    p_amount: params.amount,
+    p_description: desc,
+  });
+  if (error) throw error;
+
+  logAudit({
+    userId: params.userId,
+    userName: params.userName,
+    action: "crear_transaccion",
+    targetTable: "transactions",
+    targetDescription: `Transferencia ${params.fromAccount.name} → ${params.toAccount.name}: S/ ${params.amount.toFixed(2)}`,
+    details: {
+      tipo: "transferencia",
+      origen: params.fromAccount.name,
+      destino: params.toAccount.name,
+      monto: params.amount,
+      descripcion: trimmed || null,
+    },
+  });
+}
+
 export async function setInitialBalances(params: SetInitialBalancesParams): Promise<void> {
   const supabase = createClient();
 

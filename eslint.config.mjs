@@ -30,6 +30,30 @@ const eslintConfig = [
     },
   },
   {
+    // Architectural rule: components/pages never instantiate the Supabase client
+    // directly — data access goes through a service in features/<mod>/services/.
+    // Services, hooks and utils are exempt (they own the createClient() calls).
+    files: [
+      "src/app/**/*.{ts,tsx}",
+      "src/components/**/*.{ts,tsx}",
+      "src/features/*/components/**/*.{ts,tsx}",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/utils/supabase/client",
+              message:
+                "Los componentes no deben crear el cliente Supabase directamente. Usa un service en features/<módulo>/services/ (ver cafeteria-architecture).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     ignores: [
       "node_modules/**",
       ".next/**",

@@ -6,21 +6,18 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useUsers } from "@/hooks/useUsers";
-import { setRolePermission, setUserPermission, clearUserPermission } from "@/features/usuarios";
-import { createClient } from "@/utils/supabase/client";
+import {
+  setRolePermission,
+  setUserPermission,
+  clearUserPermission,
+  fetchUserOverrides,
+} from "@/features/usuarios";
 import Spinner from "@/components/ui/Spinner";
 import { PERMISSION_DEFS } from "@/types/permissions";
 import type { PermissionKey, UserPermission } from "@/types/permissions";
 import type { AppRole } from "@/types/auth";
 import { RoleMatrix, UserOverridePanel } from "./permissions";
 import { deriveConfigRoles } from "./permissions/configRoles";
-
-async function fetchUserOverrides(userId: string): Promise<UserPermission[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase.from("user_permissions").select("*").eq("user_id", userId);
-  if (error) throw error;
-  return data ?? [];
-}
 
 export default function PermissionsTab() {
   const { user, profile } = useAuth();

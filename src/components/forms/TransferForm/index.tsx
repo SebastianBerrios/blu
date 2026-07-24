@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccounts } from "@/hooks/useAccounts";
-import { createClient } from "@/utils/supabase/client";
-import { logAudit } from "@/utils/auditLog";
+import { transferBetweenAccounts } from "@/features/finanzas";
 
 interface TransferFormProps {
   isOpen: boolean;
@@ -65,31 +64,13 @@ export default function TransferForm({
 
     setIsSubmitting(true);
     try {
-      const desc =
-        description.trim() || `Transferencia ${fromAccount.name} → ${toAccount.name}`;
-
-      const supabase = createClient();
-      const { error: rpcError } = await supabase.rpc("transfer_between_accounts", {
-        p_from_account_id: fromAccount.id,
-        p_to_account_id: toAccount.id,
-        p_amount: numAmount,
-        p_description: desc,
-      });
-      if (rpcError) throw rpcError;
-
-      logAudit({
+      await transferBetweenAccounts({
+        fromAccount: { id: fromAccount.id, name: fromAccount.name },
+        toAccount: { id: toAccount.id, name: toAccount.name },
+        amount: numAmount,
+        description,
         userId: user?.id ?? null,
         userName: profile?.full_name ?? null,
-        action: "crear_transaccion",
-        targetTable: "transactions",
-        targetDescription: `Transferencia ${fromAccount.name} → ${toAccount.name}: S/ ${numAmount.toFixed(2)}`,
-        details: {
-          tipo: "transferencia",
-          origen: fromAccount.name,
-          destino: toAccount.name,
-          monto: numAmount,
-          descripcion: description.trim() || null,
-        },
       });
 
       onSuccess();
