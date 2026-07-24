@@ -2,134 +2,17 @@ import { createClient } from "@/utils/supabase/client";
 import { logAudit } from "@/utils/auditLog";
 import { getSaleNumber } from "@/utils/saleNumber";
 import type { SaleSubmitParams } from "../types";
-import { RAPPI_COMMISSION_RATE, POS_COMMISSION_RATE } from "../constants";
-import { resolveLineDiscount, round2 } from "../utils/discount";
 import {
-  buildPaymentFields,
-  validateSplitPayment,
-  validateCashReceived,
-} from "./paymentHelpers";
+  computeCommission,
+  buildSalePayments,
+  buildSaleProductRows,
+  prepareSaleSubmit,
+  type SalePayment,
+} from "./salePayments";
 
-interface SalePayment {
-  account_id: number;
-  type: string;
-  amount: number;
-  description: string;
-}
-
-export function computeCommission(
-  orderType: string,
-  totalPrice: number,
-  discountAmount = 0,
-  paymentMethod?: string | null,
-): number | null {
-  // La comisión se calcula sobre el monto rebajado por descuento (neto a cobrar).
-  const base = Math.max(0, totalPrice - (discountAmount || 0));
-  // Rappi está acoplado al tipo de pedido (el pedido Rappi fuerza el pago Rappi).
-  if (orderType === "Rappi") {
-    return Number((base * RAPPI_COMMISSION_RATE).toFixed(2));
-  }
-  // POS es un método de pago puro: la comisión depende del método, no del pedido.
-  if (paymentMethod === "POS") {
-    return Number((base * POS_COMMISSION_RATE).toFixed(2));
-  }
-  return null;
-}
-
-
-function buildSaleProductRows(saleId: number, params: SaleSubmitParams) {
-  return params.saleProducts
-    .filter((p) => p.status !== "Entregado")
-    .map((p) => ({
-      sale_id: saleId,
-      product_id: p.product_id,
-      quantity: p.quantity,
-      unit_price: p.unit_price,
-      unit_cost: p.unit_cost ?? 0,
-      temperatura: p.temperatura,
-      tipo_leche: p.tipo_leche,
-      loyalty_reward: p.loyalty_reward ?? null,
-      discount_amount: resolveLineDiscount(p),
-    }));
-}
-
-export function buildSalePayments(params: {
-  saleNumber: number;
-  paymentMethod: string | null;
-  totalPrice: number;
-  commission: number | null;
-  cashAmount: number | null;
-  plinAmount: number | null;
-  cajaAccountId: number | null;
-  bancoAccountId: number | null;
-  rappiAccountId: number | null;
-  posAccountId: number | null;
-}): SalePayment[] {
-  const {
-    saleNumber,
-    paymentMethod,
-    totalPrice,
-    commission,
-    cashAmount,
-    plinAmount,
-    cajaAccountId,
-    bancoAccountId,
-    rappiAccountId,
-    posAccountId,
-  } = params;
-
-  if (!paymentMethod) return [];
-
-  if (paymentMethod === "Rappi") {
-    if (!rappiAccountId) throw new Error("No se encontró la cuenta Rappi");
-    const net = Number((totalPrice - (commission ?? 0)).toFixed(2));
-    if (net <= 0) return [];
-    return [{
-      account_id: rappiAccountId,
-      type: "ingreso_venta",
-      amount: net,
-      description: `Venta #${saleNumber} - Rappi (neto)`,
-    }];
-  }
-
-  if (paymentMethod === "POS") {
-    if (!posAccountId) throw new Error("No se encontró la cuenta POS");
-    const net = Number((totalPrice - (commission ?? 0)).toFixed(2));
-    if (net <= 0) return [];
-    return [{
-      account_id: posAccountId,
-      type: "ingreso_venta",
-      amount: net,
-      description: `Venta #${saleNumber} - POS (neto)`,
-    }];
-  }
-
-  if ((paymentMethod === "Efectivo" || paymentMethod === "Efectivo + Plin") && !cajaAccountId) {
-    throw new Error("No se encontró la cuenta Caja");
-  }
-  if ((paymentMethod === "Plin" || paymentMethod === "Efectivo + Plin") && !bancoAccountId) {
-    throw new Error("No se encontró la cuenta Bancaria");
-  }
-
-  const payments: SalePayment[] = [];
-  if (cashAmount && cashAmount > 0 && cajaAccountId) {
-    payments.push({
-      account_id: cajaAccountId,
-      type: "ingreso_venta",
-      amount: cashAmount,
-      description: `Venta #${saleNumber} - Efectivo`,
-    });
-  }
-  if (plinAmount && plinAmount > 0 && bancoAccountId) {
-    payments.push({
-      account_id: bancoAccountId,
-      type: "ingreso_venta",
-      amount: plinAmount,
-      description: `Venta #${saleNumber} - Plin`,
-    });
-  }
-  return payments;
-}
+// Builders kept public for existing importers (latePaymentService, feature barrel).
+export { computeCommission, buildSalePayments };
+export type { SalePayment };
 
 export async function recordSaleTransactions(params: {
   saleId: number;
@@ -154,47 +37,9 @@ export async function recordSaleTransactions(params: {
 }
 
 export async function createSale(params: SaleSubmitParams): Promise<void> {
-  // --- Client-side UX pre-validation (fast-fail before network round-trip) ---
-  const discountAmount = round2(
-    Math.min(Math.max(params.discountAmount || 0, 0), params.totalPrice),
-  );
-  const netPayable = round2(params.totalPrice - discountAmount);
-  if (netPayable < 0) {
-    throw new Error("El total a cobrar no puede ser negativo");
-  }
-  // Las utilidades de pago operan sobre el neto a cobrar (total − descuento).
-  const netParams = { ...params, totalPrice: netPayable };
-  validateSplitPayment(netParams);
-  const paymentFields = buildPaymentFields(netParams);
-  validateCashReceived(paymentFields);
-
-  // Pre-compute commission for the payment entries passed to the RPC.
-  // The RPC recomputes server-side and is authoritative; this is for UX only.
-  const commission = computeCommission(
-    params.orderType,
-    params.totalPrice,
-    discountAmount,
-    paymentFields.payment_method,
-  );
-
-  // Build payment_entries array (same shape as buildSalePayments) so the RPC
-  // can call replace_sale_transactions without re-deriving the split logic.
-  // Documented sync pair: buildSalePayments ↔ create_sale_atomic payment block.
-  const saleNumberForDesc = 0; // placeholder — RPC will use the real id
-  const paymentEntries = params.registerPayment
-    ? buildSalePayments({
-        saleNumber: saleNumberForDesc,
-        paymentMethod: paymentFields.payment_method,
-        totalPrice: netPayable,
-        commission,
-        cashAmount: paymentFields.cash_amount,
-        plinAmount: paymentFields.plin_amount,
-        cajaAccountId: params.cajaAccountId,
-        bancoAccountId: params.bancoAccountId,
-        rappiAccountId: params.rappiAccountId,
-        posAccountId: params.posAccountId,
-      })
-    : [];
+  // Client-side UX pre-validation + payment entries (RPC recomputes server-side).
+  const { discountAmount, paymentFields, commission, paymentEntries } =
+    prepareSaleSubmit(params, 0); // saleNumber placeholder — RPC assigns the real id
 
   // --- Build the atomic payload ---
   const payload = {
@@ -283,44 +128,9 @@ export async function updateSale(
   saleId: number,
   params: SaleSubmitParams
 ): Promise<void> {
-  // --- Client-side UX pre-validation (fast-fail before network round-trip) ---
-  const discountAmount = round2(
-    Math.min(Math.max(params.discountAmount || 0, 0), params.totalPrice),
-  );
-  const netPayable = round2(params.totalPrice - discountAmount);
-  if (netPayable < 0) {
-    throw new Error("El total a cobrar no puede ser negativo");
-  }
-  const netParams = { ...params, totalPrice: netPayable };
-  validateSplitPayment(netParams);
-  const paymentFields = buildPaymentFields(netParams);
-  validateCashReceived(paymentFields);
-
-  // Pre-compute commission for building payment_entries sent to the RPC.
-  // The RPC recomputes server-side and is authoritative; this is for UX only.
-  const commission = computeCommission(
-    params.orderType,
-    params.totalPrice,
-    discountAmount,
-    paymentFields.payment_method,
-  );
-
-  // Build payment_entries: [] means "revert existing transactions only" (idempotent).
   const saleNumber = await getSaleNumber(saleId);
-  const paymentEntries = params.registerPayment
-    ? buildSalePayments({
-        saleNumber,
-        paymentMethod: paymentFields.payment_method,
-        totalPrice: netPayable,
-        commission,
-        cashAmount: paymentFields.cash_amount,
-        plinAmount: paymentFields.plin_amount,
-        cajaAccountId: params.cajaAccountId,
-        bancoAccountId: params.bancoAccountId,
-        rappiAccountId: params.rappiAccountId,
-        posAccountId: params.posAccountId,
-      })
-    : [];
+  const { discountAmount, paymentFields, commission, paymentEntries } =
+    prepareSaleSubmit(params, saleNumber);
 
   // Derive kept_delivered_ids — IDs of Entregado sale_products the editor chose to keep.
   // The RPC uses this list to detect which Entregado rows to remove (admin-only sub-op).
