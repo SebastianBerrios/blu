@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { redirect } from "next/navigation";
 import { ShoppingCart, X } from "lucide-react";
 import { toast } from "sonner";
 import { usePurchases, groupPurchasesByDate } from "@/hooks/usePurchases";
 import { useIngredients } from "@/hooks/useIngredients";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useConfirm } from "@/hooks/useConfirm";
 import { deletePurchase } from "@/features/compras/services/purchasesService";
 import type { PurchaseWithItems } from "@/types";
@@ -18,6 +20,12 @@ import FAB from "@/components/ui/FAB";
 import EmptyState from "@/components/ui/EmptyState";
 
 export default function Compras() {
+  const { can, isLoading: permsLoading } = usePermissions();
+
+  if (!permsLoading && !can("module.compras")) {
+    redirect("/");
+  }
+
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const { purchases, error, isLoading, mutate } = usePurchases({

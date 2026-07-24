@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { redirect } from "next/navigation";
 import { ClipboardCheck, CheckSquare, Settings, History, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useActivities } from "@/hooks/useActivities";
 import { toLocalDateKey } from "@/utils/helpers/groupByDate";
@@ -27,7 +29,12 @@ function getTodayStr(): string {
 
 export default function ActividadesPage() {
   const { user, isAdmin, profile } = useAuth();
+  const { can, isLoading: permsLoading } = usePermissions();
   const confirm = useConfirm();
+
+  if (!permsLoading && !can("module.actividades")) {
+    redirect("/");
+  }
   const { myTasks, allEmployeeTasks, catalog, users, isLoading, mutate } = useActivities();
   const [activeTab, setActiveTab] = useState<TabId>("hoy");
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { redirect } from "next/navigation";
 import { ShoppingBasket, SquarePen, Trash2, BookOpen, Eye } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import { toast } from "sonner";
@@ -8,6 +9,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useConfirm } from "@/hooks/useConfirm";
 import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import { normalizeText } from "@/utils/helpers";
@@ -22,6 +24,12 @@ import FAB from "@/components/ui/FAB";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export default function Products() {
+  const { can, isLoading: permsLoading } = usePermissions();
+
+  if (!permsLoading && !can("module.products")) {
+    redirect("/");
+  }
+
   const { products, error, isLoading, mutate } = useProducts();
   const { recipes, mutate: mutateRecipes } = useRecipes();
   const { categories } = useCategories();

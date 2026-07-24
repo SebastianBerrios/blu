@@ -5,6 +5,7 @@ import { ChefHat, SquarePen, Trash2 } from "lucide-react";
 import { useIngredients } from "@/hooks/useIngredients";
 import { useInventory } from "@/hooks/useInventory";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import type { Ingredient } from "@/types";
 import IngredientForm from "@/components/forms/IngredientForm";
@@ -15,11 +16,12 @@ import FAB from "@/components/ui/FAB";
 import { redirect } from "next/navigation";
 
 export default function Ingredients() {
-  const { isAdmin, isLoading: authLoading, user, profile } = useAuth();
+  const { user, profile } = useAuth();
+  const { can, isLoading: permsLoading } = usePermissions();
   const { ingredients, error, isLoading, mutate } = useIngredients();
   const { groups } = useInventory();
 
-  if (!authLoading && !isAdmin) {
+  if (!permsLoading && !can("module.ingredients")) {
     redirect("/");
   }
 

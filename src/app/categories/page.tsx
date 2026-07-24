@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { redirect } from "next/navigation";
 import { FolderOpen, SquarePen, Trash2 } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { deleteWithAudit } from "@/utils/helpers/deleteWithAudit";
 import type { Category } from "@/types";
 import CategoryForm from "@/components/forms/CategoryForm";
@@ -15,6 +17,11 @@ import FAB from "@/components/ui/FAB";
 export default function Categories() {
   const { categories, error, isLoading, mutate } = useCategories();
   const { isAdmin, user, profile } = useAuth();
+  const { can, isLoading: permsLoading } = usePermissions();
+
+  if (!permsLoading && !can("module.categories")) {
+    redirect("/");
+  }
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedCategory, setSelectedCategory] = useState<
