@@ -4,7 +4,8 @@ import { useMemo } from "react";
 import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import type { ExtraHoursLogWithUser, EmployeeBalance } from "@/types";
+import { computeExtraHoursBalances } from "@/features/horario/services/extraHoursService";
+import type { ExtraHoursLogWithUser } from "@/types";
 
 const fetchExtraHours = async (
   isAdmin: boolean,
@@ -55,38 +56,7 @@ export const useExtraHours = () => {
 
   const entries = useMemo(() => data ?? [], [data]);
 
-  const balances = useMemo((): EmployeeBalance[] => {
-    const map = new Map<
-      string,
-      { name: string; role: string; credits: number; debits: number }
-    >();
-
-    for (const entry of entries) {
-      const existing = map.get(entry.user_id) ?? {
-        name: entry.user_name ?? "Sin nombre",
-        role: "",
-        credits: 0,
-        debits: 0,
-      };
-
-      if (entry.hours > 0) {
-        existing.credits += entry.hours;
-      } else {
-        existing.debits += Math.abs(entry.hours);
-      }
-
-      map.set(entry.user_id, existing);
-    }
-
-    return Array.from(map.entries()).map(([userId, info]) => ({
-      user_id: userId,
-      user_name: info.name,
-      user_role: info.role,
-      total_credits: info.credits,
-      total_debits: info.debits,
-      balance: info.credits - info.debits,
-    }));
-  }, [entries]);
+  const balances = useMemo(() => computeExtraHoursBalances(entries), [entries]);
 
   return {
     entries,
