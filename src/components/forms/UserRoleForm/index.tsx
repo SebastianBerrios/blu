@@ -40,6 +40,12 @@ export default function UserRoleForm({
   if (!isOpen || !user) return null;
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
+    // UX guard: block admin self-demotion before submitting
+    if (user.id === currentUser?.id && data.role !== "admin") {
+      setSubmitError("No puedes cambiar tu propio rol de administrador");
+      return;
+    }
+
     setSubmitError(null);
     setIsSubmitting(true);
 
@@ -51,6 +57,7 @@ export default function UserRoleForm({
         newRole: data.role,
         adminId: currentUser?.id ?? null,
         adminName: currentProfile?.full_name ?? null,
+        currentUserId: currentUser?.id ?? "",
       });
 
       toast.success("Rol actualizado");

@@ -44,6 +44,7 @@ describe("setUserRole", () => {
       newRole: "admin",
       adminId: "admin-uuid",
       adminName: "Admin",
+      currentUserId: "admin-uuid",
     });
 
     const update = sb.updateCalls.find((c) => c.table === "user_profiles")!;
@@ -56,6 +57,64 @@ describe("setUserRole", () => {
         details: { rol_anterior: "barista", rol_nuevo: "admin" },
       }),
     );
+  });
+
+  it("admin can assign admin role to themselves (promote is allowed)", async () => {
+    const sb = makeMockSupabase();
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    // Self-assign admin role: should NOT throw
+    await expect(
+      setUserRole({
+        targetUserId: "admin-uuid",
+        targetDisplayName: "Me",
+        previousRole: "barista",
+        newRole: "admin",
+        adminId: "admin-uuid",
+        adminName: "Admin",
+        currentUserId: "admin-uuid",
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("throws when admin tries to self-demote to non-admin role", async () => {
+    const sb = makeMockSupabase();
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(
+      setUserRole({
+        targetUserId: "admin-uuid",
+        targetDisplayName: "Me",
+        previousRole: "admin",
+        newRole: "barista",
+        adminId: "admin-uuid",
+        adminName: "Admin",
+        currentUserId: "admin-uuid",
+      }),
+    ).rejects.toThrow("No puedes cambiar tu propio rol de administrador");
+
+    // Must not hit supabase or audit
+    expect(sb.updateCalls).toHaveLength(0);
+    expect(mockedLogAudit).not.toHaveBeenCalled();
+  });
+
+  it("admin can edit another user's role (even another admin)", async () => {
+    const sb = makeMockSupabase();
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(
+      setUserRole({
+        targetUserId: "other-admin-uuid",
+        targetDisplayName: "OtherAdmin",
+        previousRole: "admin",
+        newRole: "barista",
+        adminId: "admin-uuid",
+        adminName: "Admin",
+        currentUserId: "admin-uuid",
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(sb.updateCalls).toHaveLength(1);
   });
 });
 
@@ -73,6 +132,7 @@ describe("toggleUserActive", () => {
       newActive: true,
       adminId: "admin",
       adminName: "Admin",
+      currentUserId: "admin",
     });
 
     expect(mockedLogAudit).toHaveBeenCalledWith(
@@ -93,6 +153,7 @@ describe("toggleUserActive", () => {
       newActive: false,
       adminId: "admin",
       adminName: null,
+      currentUserId: "admin",
     });
 
     expect(mockedLogAudit).toHaveBeenCalledWith(
@@ -100,5 +161,61 @@ describe("toggleUserActive", () => {
         targetDescription: expect.stringContaining("desactivado"),
       }),
     );
+  });
+
+  it("throws when admin tries to deactivate themselves", async () => {
+    const sb = makeMockSupabase();
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(
+      toggleUserActive({
+        targetUserId: "admin-uuid",
+        targetDisplayName: "Admin",
+        previousActive: true,
+        newActive: false,
+        adminId: "admin-uuid",
+        adminName: "Admin",
+        currentUserId: "admin-uuid",
+      }),
+    ).rejects.toThrow("No puedes desactivar tu propia cuenta");
+
+    expect(sb.updateCalls).toHaveLength(0);
+    expect(mockedLogAudit).not.toHaveBeenCalled();
+  });
+
+  it("admin can activate themselves (self-activate is allowed)", async () => {
+    const sb = makeMockSupabase();
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(
+      toggleUserActive({
+        targetUserId: "admin-uuid",
+        targetDisplayName: "Admin",
+        previousActive: false,
+        newActive: true,
+        adminId: "admin-uuid",
+        adminName: "Admin",
+        currentUserId: "admin-uuid",
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("admin can deactivate another user", async () => {
+    const sb = makeMockSupabase();
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(
+      toggleUserActive({
+        targetUserId: "other-uuid",
+        targetDisplayName: "Other",
+        previousActive: true,
+        newActive: false,
+        adminId: "admin-uuid",
+        adminName: "Admin",
+        currentUserId: "admin-uuid",
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(sb.updateCalls).toHaveLength(1);
   });
 });

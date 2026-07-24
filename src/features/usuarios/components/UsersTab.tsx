@@ -41,6 +41,12 @@ export default function UsersTab() {
     const action = newActive ? "activar" : "desactivar";
     const displayName = targetUser.full_name || targetUser.email;
 
+    // UX guard: block self-deactivation before showing the confirmation dialog
+    if (!newActive && targetUser.id === currentUser?.id) {
+      toast.error("No puedes desactivar tu propia cuenta");
+      return;
+    }
+
     const ok = await confirm({
       title: `¿${action.charAt(0).toUpperCase() + action.slice(1)} usuario?`,
       description: `¿Estás seguro de ${action} a ${displayName}?`,
@@ -57,6 +63,7 @@ export default function UsersTab() {
         newActive,
         adminId: currentUser?.id ?? null,
         adminName: currentProfile?.full_name ?? null,
+        currentUserId: currentUser?.id ?? "",
       });
       toast.success(newActive ? "Usuario activado" : "Usuario desactivado");
       mutate();
@@ -133,12 +140,21 @@ export default function UsersTab() {
                     </button>
                     <button
                       onClick={() => handleToggleActive(user)}
+                      disabled={!!user.is_active && user.id === currentUser?.id}
                       className={`p-3 rounded-lg ${
-                        user.is_active
+                        user.is_active && user.id !== currentUser?.id
                           ? "text-red-700 hover:bg-red-50"
-                          : "text-green-700 hover:bg-green-50"
+                          : user.is_active
+                            ? "text-slate-300 cursor-not-allowed"
+                            : "text-green-700 hover:bg-green-50"
                       }`}
-                      title={user.is_active ? "Desactivar" : "Activar"}
+                      title={
+                        user.is_active && user.id === currentUser?.id
+                          ? "No puedes desactivarte a ti mismo"
+                          : user.is_active
+                            ? "Desactivar"
+                            : "Activar"
+                      }
                     >
                       {user.is_active ? <UserX className="w-5 h-5" /> : <UserCheck className="w-5 h-5" />}
                     </button>
@@ -195,10 +211,21 @@ export default function UsersTab() {
                         </button>
                         <button
                           onClick={() => handleToggleActive(user)}
+                          disabled={!!user.is_active && user.id === currentUser?.id}
                           className={`p-3 rounded-lg transition-colors ${
-                            user.is_active ? "text-red-700 hover:bg-red-100" : "text-green-700 hover:bg-green-100"
+                            user.is_active && user.id !== currentUser?.id
+                              ? "text-red-700 hover:bg-red-100"
+                              : user.is_active
+                                ? "text-slate-300 cursor-not-allowed"
+                                : "text-green-700 hover:bg-green-100"
                           }`}
-                          title={user.is_active ? "Desactivar" : "Activar"}
+                          title={
+                            user.is_active && user.id === currentUser?.id
+                              ? "No puedes desactivarte a ti mismo"
+                              : user.is_active
+                                ? "Desactivar"
+                                : "Activar"
+                          }
                         >
                           {user.is_active ? <UserX className="w-5 h-5" /> : <UserCheck className="w-5 h-5" />}
                         </button>
