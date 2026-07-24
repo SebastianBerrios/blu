@@ -71,10 +71,9 @@ export async function fetchDailySummary(dateKey: string): Promise<DailySummary> 
       .gte("created_at", start)
       .lte("created_at", end)
       .eq("target_table", "sales"),
-    supabase
-      .from("transactions")
-      .select("account_id, amount")
-      .gt("created_at", end),
+    // Closing balance = current balance minus everything posted AFTER the day.
+    // Aggregated server-side (RPC) instead of fetching every future transaction.
+    supabase.rpc("get_account_after_sums", { p_after: end }),
   ]);
 
   if (accountsRes.error) throw accountsRes.error;
@@ -89,7 +88,12 @@ export async function fetchDailySummary(dateKey: string): Promise<DailySummary> 
   const sales = salesRes.data ?? [];
   const purchases = purchasesRes.data ?? [];
   const auditLogs = auditLogsRes.data ?? [];
-  const postTransactions = postTransactionsRes.data ?? [];
+
+  // Server-aggregated Σ(amount) of transactions posted after the day, per account.
+  const afterSums = new Map<number, number>();
+  for (const r of (postTransactionsRes.data ?? []) as { account_id: number; after_sum: number }[]) {
+    afterSums.set(r.account_id, Number(r.after_sum));
+  }
 
   const perAccount: DailyAccountSummary[] = accounts.map((a) => {
     const dayTx = transactions.filter((t) => t.account_id === a.id);
@@ -104,9 +108,7 @@ export async function fetchDailySummary(dateKey: string): Promise<DailySummary> 
         .filter((t) => t.amount < 0)
         .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0),
     );
-    const afterSum = postTransactions
-      .filter((t) => t.account_id === a.id)
-      .reduce((sum, t) => sum + Number(t.amount), 0);
+    const afterSum = afterSums.get(a.id) ?? 0;
     const currentBalance = Number(a.balance);
     return {
       accountId: a.id,

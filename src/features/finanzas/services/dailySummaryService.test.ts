@@ -68,8 +68,8 @@ describe("fetchDailySummary — Lima timezone (T1.8)", () => {
 
     await fetchDailySummary(LIMA_DATE_KEY);
 
-    // The service queries transactions twice: once for the day range (gte+lte)
-    // and once for postTransactions (gt only). Find the one with a lte set.
+    // The service queries transactions once, for the day range (gte+lte).
+    // Post-day balances now come from the get_account_after_sums RPC.
     const txDayQuery = allQueries.find((q) => q.table === "transactions" && q.lte !== undefined);
     expect(txDayQuery).toBeDefined();
 
@@ -167,8 +167,6 @@ function makeSummaryDataMock(opts: {
 }) {
   const sb = makeMockSupabase();
 
-  let transactionsCallCount = 0;
-
   sb.from.mockImplementation((table: string) => {
     const chain: Record<string, unknown> = {
       select: vi.fn(() => chain),
@@ -185,18 +183,24 @@ function makeSummaryDataMock(opts: {
         if (table === "accounts") {
           data = [{ id: 1, name: "Caja", type: "caja", balance: opts.currentBalance }];
         } else if (table === "transactions") {
-          // First transactions call = day range (gte+lte), second = post-day (gt only)
-          transactionsCallCount += 1;
-          data =
-            transactionsCallCount === 1
-              ? opts.dayTransactions
-              : opts.postTransactions;
+          data = opts.dayTransactions;
         }
 
         return Promise.resolve({ data, error: null }).then(onFulfilled);
       },
     };
     return chain;
+  });
+
+  // Post-day balances now come from the get_account_after_sums RPC (server-side
+  // aggregation), so expose the sum-per-account that the query would return.
+  const afterSums = new Map<number, number>();
+  for (const t of opts.postTransactions) {
+    afterSums.set(t.account_id, (afterSums.get(t.account_id) ?? 0) + t.amount);
+  }
+  sb.setRpcResult("get_account_after_sums", {
+    data: [...afterSums.entries()].map(([account_id, after_sum]) => ({ account_id, after_sum })),
+    error: null,
   });
 
   return sb;
