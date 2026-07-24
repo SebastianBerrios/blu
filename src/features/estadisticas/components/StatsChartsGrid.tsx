@@ -29,6 +29,19 @@ interface StatsChartsGridProps {
 
 const MONTH_LABELS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
+const money = (n: number) => `S/ ${n.toFixed(2)}`;
+
+/** Texto alternativo para lectores de pantalla: resume los pares etiqueta/valor del gráfico. */
+function seriesSummary(
+  pairs: [string, number][],
+  fmt: (n: number) => string = (n) => String(n),
+  max = 6,
+): string {
+  if (pairs.length === 0) return "sin datos";
+  const head = pairs.slice(0, max).map(([l, v]) => `${l}: ${fmt(v)}`).join("; ");
+  return pairs.length > max ? `${head}; …` : head;
+}
+
 function formatBucketLabel(bucket: string, granularity: Granularity): string {
   if (granularity === "hour") {
     const hour = bucket.slice(11, 13);
@@ -71,6 +84,11 @@ export default function StatsChartsGrid({
       >
         {revenueByBucket.length > 0 ? (
           <Line
+            role="img"
+            aria-label={`Gráfico de línea de tendencia de ingresos. ${seriesSummary(
+              labels.map((l, i) => [l, currentSeries[i]] as [string, number]),
+              money,
+            )}`}
             data={{
               labels,
               datasets: [
@@ -126,6 +144,11 @@ export default function StatsChartsGrid({
       <ChartCard title="Ingresos por Método de Pago">
         {revenueByMethod.length > 0 ? (
           <Doughnut
+            role="img"
+            aria-label={`Gráfico de anillo de ingresos por método de pago. ${seriesSummary(
+              revenueByMethod.map((d) => [d.method, d.total] as [string, number]),
+              money,
+            )}`}
             data={{
               labels: revenueByMethod.map((d) => d.method),
               datasets: [
@@ -164,6 +187,11 @@ export default function StatsChartsGrid({
       <ChartCard title="Top Productos">
         {topProducts.length > 0 ? (
           <Bar
+            role="img"
+            aria-label={`Gráfico de barras de top productos por ingresos. ${seriesSummary(
+              topProducts.map((p) => [p.productName, p.totalRevenue] as [string, number]),
+              money,
+            )}`}
             data={{
               labels: topProducts.map((p) => p.productName),
               datasets: [
@@ -191,6 +219,10 @@ export default function StatsChartsGrid({
       <ChartCard title="Ventas por Tipo de Pedido">
         {salesByOrderType.length > 0 ? (
           <Doughnut
+            role="img"
+            aria-label={`Gráfico de anillo de ventas por tipo de pedido. ${seriesSummary(
+              salesByOrderType.map((d) => [d.orderType, d.count] as [string, number]),
+            )}`}
             data={{
               labels: salesByOrderType.map((d) => d.orderType),
               datasets: [
@@ -216,6 +248,10 @@ export default function StatsChartsGrid({
       <ChartCard title="Ventas por Hora del Día">
         {salesByHour.length > 0 ? (
           <Bar
+            role="img"
+            aria-label={`Gráfico de barras de ventas por hora del día. ${seriesSummary(
+              salesByHour.map((d) => [`${d.hour}:00`, d.count] as [string, number]),
+            )}`}
             data={{
               labels: salesByHour.map((d) => `${d.hour}:00`),
               datasets: [
@@ -242,6 +278,14 @@ export default function StatsChartsGrid({
       <ChartCard title="Ingresos vs Gastos">
         {revenueVsExpenses.length > 0 ? (
           <Line
+            role="img"
+            aria-label={`Gráfico de línea de ingresos contra gastos. ${seriesSummary(
+              [
+                ["Ingresos totales", revenueVsExpenses.reduce((s, d) => s + d.revenue, 0)],
+                ["Gastos totales", revenueVsExpenses.reduce((s, d) => s + d.expenses, 0)],
+              ],
+              money,
+            )}`}
             data={{
               labels: revenueVsExpenses.map((d) => formatDateChart(d.date)),
               datasets: [
