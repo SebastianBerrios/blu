@@ -2,6 +2,8 @@
  * UserOverridePanel — per-user permission override sub-view.
  * Renders a user selector and a TriStateControl per permission key,
  * with a role-baseline hint ("Hereda del rol: Activado / Desactivado").
+ * Module-level permissions render under an "Acceso a módulos" heading,
+ * separate from action-level permissions (ADR-6, REQ-10).
  * Presentational only: no service/createClient imports.
  */
 import TriStateControl, { type TriStateValue } from "./TriStateControl";
@@ -10,6 +12,11 @@ import { PERMISSION_DEFS, PERMISSION_GROUPS } from "@/types/permissions";
 import type { UserPermission } from "@/types/permissions";
 import type { UserProfile } from "@/types/auth";
 import { ROLE_LABEL } from "./RoleMatrix";
+
+/** Human-readable section heading per group. */
+const GROUP_HEADING: Record<string, string> = {
+  Módulos: "Acceso a módulos",
+};
 
 interface UserOverridePanelProps {
   users: UserProfile[];
@@ -81,10 +88,25 @@ export default function UserOverridePanel({
           {PERMISSION_GROUPS.map((group) => {
             const groupDefs = defs.filter((d) => d.group === group);
             if (groupDefs.length === 0) return null;
+            const isModuleGroup = group === "Módulos";
+            const heading = GROUP_HEADING[group] ?? group;
             return (
-              <div key={group}>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
-                  {group}
+              <div
+                key={group}
+                className={
+                  isModuleGroup
+                    ? "rounded-md border border-primary-100 bg-primary-50/40 p-3"
+                    : undefined
+                }
+              >
+                <p
+                  className={
+                    isModuleGroup
+                      ? "text-xs font-semibold uppercase tracking-wider text-primary-700 mb-3"
+                      : "text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3"
+                  }
+                >
+                  {heading}
                 </p>
                 <div className="space-y-4">
                   {groupDefs.map((def) => {
