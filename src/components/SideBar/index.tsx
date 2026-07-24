@@ -3,54 +3,12 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import {
-  Coffee,
-  FolderOpen,
-  ChefHat,
-  BookOpen,
-  TrendingUp,
-  ShoppingBasket,
-  ShoppingCart,
-  Users,
-  LogOut,
-  SquarePen,
-  ClipboardList,
-  Wallet,
-  BarChart3,
-  ScrollText,
-  Package,
-  CalendarDays,
-  ClipboardCheck,
-} from "lucide-react";
+import { Coffee, LogOut, SquarePen } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { isNavItemVisible } from "@/features/usuarios/permissions/moduleNav";
+import { SIDEBAR_ITEMS } from "@/config/navigation";
 import ProfileForm from "@/components/forms/ProfileForm";
-
-type NavItem = {
-  id: number;
-  nav: string;
-  name: string;
-  icon: typeof Coffee;
-  adminOnly?: boolean;
-};
-
-const allNavItems: NavItem[] = [
-  { id: 1, nav: "/categories", name: "Categorías", icon: FolderOpen },
-  { id: 2, nav: "/products", name: "Productos", icon: ShoppingBasket },
-  { id: 3, nav: "/ingredients", name: "Ingredientes", icon: ChefHat, adminOnly: true },
-  { id: 4, nav: "/recipes", name: "Recetas", icon: BookOpen, adminOnly: true },
-  { id: 5, nav: "/sales", name: "Ventas", icon: TrendingUp },
-  { id: 8, nav: "/pedidos", name: "Pedidos", icon: ClipboardList },
-  { id: 6, nav: "/compras", name: "Compras", icon: ShoppingCart },
-  { id: 12, nav: "/inventario", name: "Inventario", icon: Package },
-  { id: 13, nav: "/horario", name: "Horario", icon: CalendarDays },
-  { id: 14, nav: "/actividades", name: "Actividades", icon: ClipboardCheck },
-  { id: 9, nav: "/finanzas", name: "Finanzas", icon: Wallet, adminOnly: true },
-  { id: 10, nav: "/estadisticas", name: "Estadísticas", icon: BarChart3, adminOnly: true },
-  { id: 11, nav: "/auditoria", name: "Auditoría", icon: ScrollText, adminOnly: true },
-  { id: 7, nav: "/users", name: "Usuarios", icon: Users, adminOnly: true },
-];
 
 export default function SideBar() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -58,8 +16,8 @@ export default function SideBar() {
   const { can } = usePermissions();
   const pathname = usePathname();
 
-  const navItems = allNavItems.filter((item) =>
-    isNavItemVisible(item, { isAdmin, can }),
+  const navItems = SIDEBAR_ITEMS.filter((item) =>
+    isNavItemVisible({ nav: item.href, adminOnly: item.adminOnly }, { isAdmin, can }),
   );
 
   return (
@@ -84,11 +42,11 @@ export default function SideBar() {
           <nav className="space-y-1">
             {navItems.map((item) => {
               const IconComponent = item.icon;
-              const isActive = pathname.startsWith(item.nav);
+              const isActive = pathname.startsWith(item.href);
               return (
                 <Link
-                  key={item.id}
-                  href={item.nav}
+                  key={item.href}
+                  href={item.href}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
                     isActive
                       ? "bg-primary-50 text-primary-700 border-l-3 border-primary-500 font-semibold"
@@ -99,7 +57,7 @@ export default function SideBar() {
                     size={18}
                     className={isActive ? "text-primary-600" : "text-slate-400 group-hover:text-slate-600"}
                   />
-                  <span className="font-medium">{item.name}</span>
+                  <span className="font-medium">{item.label}</span>
                 </Link>
               );
             })}

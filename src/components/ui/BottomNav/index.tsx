@@ -3,68 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  TrendingUp,
-  ClipboardList,
-  ShoppingBasket,
-  Wallet,
-  MoreHorizontal,
-  FolderOpen,
-  ChefHat,
-  BookOpen,
-  ShoppingCart,
-  BarChart3,
-  Users,
-  ScrollText,
-  Package,
-  CalendarDays,
-  ClipboardCheck,
-} from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { isNavItemVisible } from "@/features/usuarios/permissions/moduleNav";
+import {
+  BOTTOM_NAV_ADMIN_TABS,
+  BOTTOM_NAV_COMMON_TABS,
+  BOTTOM_NAV_MORE_ITEMS,
+} from "@/config/navigation";
 import BottomSheet from "@/components/ui/BottomSheet";
-
-interface NavTab {
-  href: string;
-  label: string;
-  icon: typeof TrendingUp;
-}
-
-const COMMON_TABS: NavTab[] = [
-  { href: "/sales", label: "Ventas", icon: TrendingUp },
-  { href: "/pedidos", label: "Pedidos", icon: ClipboardList },
-  { href: "/compras", label: "Compras", icon: ShoppingCart },
-];
-
-const ADMIN_TABS: NavTab[] = [
-  { href: "/sales", label: "Ventas", icon: TrendingUp },
-  { href: "/pedidos", label: "Pedidos", icon: ClipboardList },
-  { href: "/finanzas", label: "Finanzas", icon: Wallet },
-  { href: "/products", label: "Productos", icon: ShoppingBasket },
-];
-
-interface MoreItem {
-  href: string;
-  label: string;
-  icon: typeof TrendingUp;
-  adminOnly?: boolean;
-}
-
-const MORE_ITEMS: MoreItem[] = [
-  { href: "/categories", label: "Categorías", icon: FolderOpen },
-  { href: "/ingredients", label: "Ingredientes", icon: ChefHat, adminOnly: true },
-  { href: "/recipes", label: "Recetas", icon: BookOpen, adminOnly: true },
-  { href: "/compras", label: "Compras", icon: ShoppingCart },
-  { href: "/products", label: "Productos", icon: ShoppingBasket },
-  { href: "/inventario", label: "Inventario", icon: Package },
-  { href: "/horario", label: "Horario", icon: CalendarDays },
-  { href: "/actividades", label: "Actividades", icon: ClipboardCheck },
-  { href: "/finanzas", label: "Finanzas", icon: Wallet, adminOnly: true },
-  { href: "/estadisticas", label: "Estadísticas", icon: BarChart3, adminOnly: true },
-  { href: "/auditoria", label: "Auditoría", icon: ScrollText, adminOnly: true },
-  { href: "/users", label: "Usuarios", icon: Users, adminOnly: true },
-];
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -72,15 +20,15 @@ export default function BottomNav() {
   const { can } = usePermissions();
   const [showMore, setShowMore] = useState(false);
 
-  const baseTabList = isAdmin ? ADMIN_TABS : COMMON_TABS;
-  // Filter tabs by module permission (tabs have no adminOnly flag — all use can() lookup).
+  const baseTabList = isAdmin ? BOTTOM_NAV_ADMIN_TABS : BOTTOM_NAV_COMMON_TABS;
+  // Filter tabs by module permission (primary tabs carry no adminOnly flag — all use can() lookup).
   const tabs = baseTabList.filter((tab) =>
-    isNavItemVisible({ nav: tab.href }, { isAdmin, can }),
+    isNavItemVisible({ nav: tab.href, adminOnly: tab.adminOnly }, { isAdmin, can }),
   );
 
   // Filter "Más" items: exclude items already in tabs, filter by role and module permission.
   const tabHrefs = new Set(tabs.map((t) => t.href));
-  const moreItems = MORE_ITEMS.filter(
+  const moreItems = BOTTOM_NAV_MORE_ITEMS.filter(
     (item) =>
       !tabHrefs.has(item.href) &&
       isNavItemVisible({ nav: item.href, adminOnly: item.adminOnly }, { isAdmin, can }),
