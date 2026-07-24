@@ -31,7 +31,7 @@ export default function PosPaymentBreakdown({
         </div>
         <div className="bg-white border border-indigo-200 rounded-lg p-2.5">
           <p className="text-[11px] uppercase tracking-wide text-indigo-700">
-            Comisión 3.44%
+            Comisión {+(POS_COMMISSION_RATE * 100).toFixed(2)}%
           </p>
           <p className="font-bold text-red-600 tabular-nums">
             − S/ {commission.toFixed(2)}

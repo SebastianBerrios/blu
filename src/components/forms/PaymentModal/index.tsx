@@ -126,6 +126,15 @@ export default function PaymentModal({
       ? receivedNum - effectiveCash
       : 0;
 
+  // Gate the submit on the account each method actually settles into (mirrors
+  // buildSalePayments): Efectivo→caja, Plin→banco, mixto→ambas, POS→pos.
+  const needsCaja = paymentMethod === "Efectivo" || isMixed;
+  const needsBanco = paymentMethod === "Plin" || isMixed;
+  const missingAccount =
+    (needsCaja && !cajaAccount) ||
+    (needsBanco && !bancoAccount) ||
+    (paymentMethod === "POS" && !posAccount);
+
   const handleCashChange = (value: string) => {
     setCashAmount(value);
     const cash = parseFloat(value);
@@ -321,9 +330,7 @@ export default function PaymentModal({
                 isSubmitting ||
                 saleProducts.length === 0 ||
                 accountsLoading ||
-                !cajaAccount ||
-                !bancoAccount ||
-                (paymentMethod === "POS" && !posAccount)
+                missingAccount
               }
               className="flex-1 px-4 py-3 min-h-[44px] bg-green-700 text-white font-medium rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
             >
