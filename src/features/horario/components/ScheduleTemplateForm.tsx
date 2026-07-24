@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { X, Check, AlertTriangle } from "lucide-react";
+import { X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { DAY_LABELS } from "@/types/schedule";
 import type { ScheduleTemplate, ScheduleUser, DayOfWeek } from "@/types";
 import {
   getExistingTemplates,
@@ -9,6 +8,9 @@ import {
   createTemplates,
   updateTemplate,
 } from "@/features/horario";
+import DaySelectionField from "./ScheduleTemplateFormParts/DaySelectionField";
+import TimeRangeFields from "./ScheduleTemplateFormParts/TimeRangeFields";
+import ConflictWarning from "./ScheduleTemplateFormParts/ConflictWarning";
 
 interface ScheduleTemplateFormProps {
   isOpen: boolean;
@@ -18,7 +20,6 @@ interface ScheduleTemplateFormProps {
   users: ScheduleUser[];
 }
 
-const ALL_DAYS: DayOfWeek[] = [0, 1, 2, 3, 4, 5, 6];
 const ALL_USERS_VALUE = "__all__";
 
 export default function ScheduleTemplateForm({
@@ -258,119 +259,32 @@ export default function ScheduleTemplateForm({
           </div>
 
           {/* Day selection */}
-          {isEditMode ? (
-            <div>
-              <label className="block text-sm font-medium text-slate-900 mb-1.5">
-                Día <span className="text-red-600">*</span>
-              </label>
-              <select
-                value={dayOfWeek}
-                onChange={(e) => setDayOfWeek(Number(e.target.value) as DayOfWeek)}
-                disabled={isProcessing}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-              >
-                {ALL_DAYS.map((d) => (
-                  <option key={d} value={d}>
-                    {DAY_LABELS[d]}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <div>
-              <label className="block text-sm font-medium text-slate-900 mb-1.5">
-                Días <span className="text-red-600">*</span>
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {ALL_DAYS.map((day) => {
-                  const isSelected = selectedDays.has(day);
-                  return (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => toggleDay(day)}
-                      disabled={isProcessing}
-                      className={`
-                        relative flex items-center justify-center gap-1.5 px-3 py-2.5 min-h-[44px]
-                        rounded-lg text-sm font-medium transition-all
-                        ${
-                          isSelected
-                            ? "bg-primary-50 text-primary-800 border-2 border-primary-500 shadow-sm"
-                            : "bg-white text-slate-600 border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-                        }
-                        disabled:opacity-50 disabled:cursor-not-allowed
-                      `}
-                    >
-                      {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
-                      {DAY_LABELS[day]}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <DaySelectionField
+            isEditMode={isEditMode}
+            dayOfWeek={dayOfWeek}
+            onDayOfWeekChange={setDayOfWeek}
+            selectedDays={selectedDays}
+            onToggleDay={toggleDay}
+            disabled={isProcessing}
+          />
 
           {/* Time inputs */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-slate-900 mb-1.5">
-                Hora inicio <span className="text-red-600">*</span>
-              </label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                disabled={isProcessing}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-900 mb-1.5">
-                Hora fin <span className="text-red-600">*</span>
-              </label>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                disabled={isProcessing}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:bg-gray-100"
-              />
-            </div>
-          </div>
+          <TimeRangeFields
+            startTime={startTime}
+            onStartTimeChange={setStartTime}
+            endTime={endTime}
+            onEndTimeChange={setEndTime}
+            disabled={isProcessing}
+          />
 
           {/* Conflict warning */}
           {showConflictWarning && (
-            <div className="flex gap-3 p-3.5 bg-amber-50 border border-amber-300 rounded-lg">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div className="text-sm">
-                {isAllUsers ? (
-                  <>
-                    <p className="font-medium text-amber-800">
-                      Conflictos encontrados:
-                    </p>
-                    <ul className="text-amber-700 mt-0.5 space-y-0.5">
-                      {Array.from(conflictsByUser.entries()).map(([name, days]) => (
-                        <li key={name}>
-                          {name}: {days.map((d) => DAY_LABELS[d]).join(", ")}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : (
-                  <>
-                    <p className="font-medium text-amber-800">
-                      {employeeName} ya tiene turno en:
-                    </p>
-                    <p className="text-amber-700 mt-0.5">
-                      {conflictingDays.map((d) => DAY_LABELS[d]).join(", ")}
-                    </p>
-                  </>
-                )}
-                <p className="text-amber-600 mt-1">
-                  Al continuar se reemplazarán los turnos existentes.
-                </p>
-              </div>
-            </div>
+            <ConflictWarning
+              isAllUsers={isAllUsers}
+              conflictsByUser={conflictsByUser}
+              employeeName={employeeName}
+              conflictingDays={conflictingDays}
+            />
           )}
 
           {/* Submit error */}
