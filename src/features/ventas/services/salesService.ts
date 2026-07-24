@@ -8,7 +8,6 @@ import {
   buildPaymentFields,
   validateSplitPayment,
   validateCashReceived,
-  paymentStateChanged,
 } from "./paymentHelpers";
 
 interface SalePayment {
@@ -37,32 +36,6 @@ export function computeCommission(
   return null;
 }
 
-async function resolveCustomerId(dni: string): Promise<number | null> {
-  if (!dni.trim()) return null;
-
-  const supabase = createClient();
-  const dniNumber = parseInt(dni.trim());
-
-  if (Number.isNaN(dniNumber)) return null;
-
-  const { data: existing, error: lookupError } = await supabase
-    .from("customers")
-    .select("id")
-    .eq("dni", dniNumber)
-    .maybeSingle();
-  if (lookupError) throw lookupError;
-
-  if (existing) return existing.id;
-
-  const { data: newCustomer, error } = await supabase
-    .from("customers")
-    .insert({ dni: dniNumber })
-    .select("id")
-    .single();
-
-  if (error) throw error;
-  return newCustomer.id;
-}
 
 function buildSaleProductRows(saleId: number, params: SaleSubmitParams) {
   return params.saleProducts
@@ -310,6 +283,7 @@ export async function updateSale(
   saleId: number,
   params: SaleSubmitParams
 ): Promise<void> {
+  // --- Client-side UX pre-validation (fast-fail before network round-trip) ---
   const discountAmount = round2(
     Math.min(Math.max(params.discountAmount || 0, 0), params.totalPrice),
   );
@@ -319,12 +293,11 @@ export async function updateSale(
   }
   const netParams = { ...params, totalPrice: netPayable };
   validateSplitPayment(netParams);
-
-  const supabase = createClient();
-  const customerId = await resolveCustomerId(params.customerDni);
   const paymentFields = buildPaymentFields(netParams);
   validateCashReceived(paymentFields);
 
+  // Pre-compute commission for building payment_entries sent to the RPC.
+  // The RPC recomputes server-side and is authoritative; this is for UX only.
   const commission = computeCommission(
     params.orderType,
     params.totalPrice,
@@ -332,151 +305,91 @@ export async function updateSale(
     paymentFields.payment_method,
   );
 
-  // Fetch existing payment state to detect changes for transaction re-sync
-  const { data: existingSale, error: fetchError } = await supabase
-    .from("sales")
-    .select("payment_method, cash_amount, plin_amount, total_price, discount_amount")
-    .eq("id", saleId)
-    .single();
+  // Build payment_entries: [] means "revert existing transactions only" (idempotent).
+  const saleNumber = await getSaleNumber(saleId);
+  const paymentEntries = params.registerPayment
+    ? buildSalePayments({
+        saleNumber,
+        paymentMethod: paymentFields.payment_method,
+        totalPrice: netPayable,
+        commission,
+        cashAmount: paymentFields.cash_amount,
+        plinAmount: paymentFields.plin_amount,
+        cajaAccountId: params.cajaAccountId,
+        bancoAccountId: params.bancoAccountId,
+        rappiAccountId: params.rappiAccountId,
+        posAccountId: params.posAccountId,
+      })
+    : [];
 
-  if (fetchError) throw fetchError;
+  // Derive kept_delivered_ids — IDs of Entregado sale_products the editor chose to keep.
+  // The RPC uses this list to detect which Entregado rows to remove (admin-only sub-op).
+  const keptDeliveredIds = params.saleProducts
+    .filter((p) => p.status === "Entregado" && p.id != null)
+    .map((p) => p.id as number);
 
-  const { data: updatedRows, error } = await supabase
-    .from("sales")
-    .update({
+  // Build pending product rows (Entregado items excluded — RPC handles them separately).
+  const pendingProductRows = buildSaleProductRows(saleId, params).map((row) => ({
+    product_id: row.product_id,
+    quantity: row.quantity,
+    unit_price: row.unit_price,
+    unit_cost: row.unit_cost,
+    temperatura: row.temperatura ?? null,
+    tipo_leche: row.tipo_leche ?? null,
+    loyalty_reward: row.loyalty_reward ?? null,
+    discount_amount: row.discount_amount,
+    status: "Pendiente" as const,
+  }));
+
+  // --- Assemble the atomic payload ---
+  const payload = {
+    header: {
       order_type: params.orderType,
+      table_number: params.orderType === "Mesa" ? parseInt(params.tableNumber) || null : null,
+      notes: params.notes.trim() || null,
+      customer_dni: params.customerDni || null,
       total_price: params.totalPrice,
       discount_amount: discountAmount,
-      commission,
-      customer_id: customerId,
-      table_number:
-        params.orderType === "Mesa"
-          ? parseInt(params.tableNumber) || null
-          : null,
-      notes: params.notes.trim() || null,
-      last_edited_by: params.userId,
-      last_edited_at: new Date().toISOString(),
-      ...paymentFields,
-    })
-    .eq("id", saleId)
-    .select("id");
+    },
+    payment: {
+      payment_method: paymentFields.payment_method,
+      payment_date: paymentFields.payment_date,
+      cash_amount: paymentFields.cash_amount,
+      plin_amount: paymentFields.plin_amount,
+      cash_received: paymentFields.cash_received,
+    },
+    products: pendingProductRows,
+    kept_delivered_ids: keptDeliveredIds,
+    payment_entries: paymentEntries,
+  };
 
+  // --- Single atomic RPC call ---
+  const supabase = createClient();
+  const { error } = await supabase.rpc("update_sale_atomic", {
+    p_sale_id: saleId,
+    p_payload: payload,
+    p_user_id: params.userId ?? undefined,
+  });
   if (error) throw error;
-  if (!updatedRows || updatedRows.length === 0) {
-    throw new Error(
-      "No se pudo actualizar la venta. Solo se pueden editar ventas del día actual.",
-    );
-  }
 
-  // Eliminar items "Entregado" que el admin quitó: revierte inventario y borra
-  // la fila de forma atómica vía RPC (valida rol admin en el servidor).
-  // F5: propagate the error (was previously silently discarded, causing a
-  // failed fetch to be treated as "all delivered items kept").
-  const { data: existingDelivered, error: existingDeliveredError } = await supabase
-    .from("sale_products")
-    .select("id")
-    .eq("sale_id", saleId)
-    .eq("status", "Entregado");
-  if (existingDeliveredError) throw existingDeliveredError;
-
-  const keptDeliveredIds = new Set(
-    params.saleProducts
-      .filter((p) => p.status === "Entregado" && p.id)
-      .map((p) => p.id),
-  );
-  const removedDeliveredIds = (existingDelivered ?? [])
-    .map((r) => r.id)
-    .filter((id) => !keptDeliveredIds.has(id));
-
-  for (const spId of removedDeliveredIds) {
-    const { error: rpcError } = await supabase.rpc(
-      "delete_delivered_sale_product",
-      {
-        p_sale_product_id: spId,
-        p_user_name: params.userName ?? undefined,
-      },
-    );
-    if (rpcError) throw rpcError;
-
-    logAudit({
-      userId: params.userId,
-      userName: params.userName,
-      action: "eliminar",
-      targetTable: "sale_products",
-      targetId: spId,
-      targetDescription: `Item entregado eliminado de venta #${saleId}`,
-    });
-  }
-
-  const { error: deleteError } = await supabase
-    .from("sale_products")
-    .delete()
-    .eq("sale_id", saleId)
-    .eq("status", "Pendiente");
-  if (deleteError) throw deleteError;
-
-  const rowsToInsert = buildSaleProductRows(saleId, params);
-  if (rowsToInsert.length > 0) {
-    const { error: productsError } = await supabase
-      .from("sale_products")
-      .insert(rowsToInsert);
-    if (productsError) throw productsError;
-  }
-
-  // Re-sync transactions whenever the sale has an active payment, OR when a
-  // payment is being removed (existingSale had one, new state has none).
-  // replace_sale_transactions is idempotent (revert + insert) so this is safe
-  // and acts as auto-recovery for sales that were left orphaned by a prior
-  // partial failure (payment_method set in DB but no transactions).
-  // Neto anterior vs nuevo: detecta cambios de monto (incl. solo descuento) que
-  // requieren regenerar transacciones aunque el método de pago no cambie.
-  const existingNet = round2(
-    Number(existingSale.total_price ?? 0) - Number(existingSale.discount_amount ?? 0),
-  );
-  const netAmountChanged = Math.abs(existingNet - netPayable) > 0.01;
-  const paymentChanged =
-    paymentStateChanged(existingSale, paymentFields) || netAmountChanged;
-  const hasActivePayment = paymentFields.payment_method !== null;
-  const paymentRemoved =
-    !hasActivePayment && existingSale.payment_method !== null;
-
-  if (hasActivePayment || paymentRemoved) {
-    const saleNumber = await getSaleNumber(saleId);
-    await recordSaleTransactions({
-      saleId,
-      saleNumber,
-      paymentMethod: paymentFields.payment_method,
-      totalPrice: netPayable,
+  // --- Post-success side-effects (audit log) ---
+  logAudit({
+    userId: params.userId,
+    userName: params.userName,
+    action: "actualizar",
+    targetTable: "sales",
+    targetId: saleId,
+    targetDescription: paymentFields.payment_method
+      ? `Venta #${saleNumber} - ${paymentFields.payment_method} - S/ ${params.totalPrice.toFixed(2)}`
+      : `Venta #${saleNumber} - S/ ${params.totalPrice.toFixed(2)}`,
+    details: {
+      metodo_pago: paymentFields.payment_method,
+      total: params.totalPrice,
+      descuento: discountAmount,
       commission,
-      cashAmount: paymentFields.cash_amount,
-      plinAmount: paymentFields.plin_amount,
-      cajaAccountId: params.cajaAccountId,
-      bancoAccountId: params.bancoAccountId,
-      rappiAccountId: params.rappiAccountId,
-      posAccountId: params.posAccountId,
-    });
-
-    if (paymentChanged || paymentRemoved) {
-      logAudit({
-        userId: params.userId,
-        userName: params.userName,
-        action: "actualizar",
-        targetTable: "sales",
-        targetId: saleId,
-        targetDescription: paymentFields.payment_method
-          ? `Venta #${saleNumber} - ${paymentFields.payment_method} - S/ ${params.totalPrice.toFixed(2)}`
-          : `Venta #${saleNumber} - Pago removido`,
-        details: {
-          transacciones_regeneradas: true,
-          metodo_anterior: existingSale.payment_method,
-          metodo_nuevo: paymentFields.payment_method,
-          cash_amount: paymentFields.cash_amount,
-          plin_amount: paymentFields.plin_amount,
-          cash_received: paymentFields.cash_received,
-        },
-      });
-    }
-  }
+      productos: params.saleProducts.length,
+    },
+  });
 }
 
 export async function deleteSale(

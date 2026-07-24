@@ -1531,6 +1531,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_sale_atomic: {
+        Args: {
+          p_payload: Json
+          p_sale_id: number
+          p_user_id?: string
+        }
+        Returns: undefined
+      }
       upsert_activity_with_assignments: {
         Args: {
           p_activity_id: number
