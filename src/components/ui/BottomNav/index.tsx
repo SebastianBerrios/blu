@@ -50,6 +50,7 @@ export default function BottomNav() {
               <Link
                 key={tab.href}
                 href={tab.href}
+                aria-current={isActive ? "page" : undefined}
                 className={`flex flex-col items-center justify-center flex-1 min-w-[44px] min-h-[44px] gap-0.5 transition-colors ${
                   isActive ? "text-primary-600" : "text-slate-400"
                 }`}
@@ -84,6 +85,7 @@ export default function BottomNav() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setShowMore(false)}
+                aria-current={isActive ? "page" : undefined}
                 className={`flex flex-col items-center gap-1.5 p-3 rounded-xl min-h-[44px] transition-colors ${
                   isActive
                     ? "bg-primary-50 text-primary-700"

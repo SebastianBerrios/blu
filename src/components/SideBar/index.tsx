@@ -47,6 +47,7 @@ export default function SideBar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  aria-current={isActive ? "page" : undefined}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
                     isActive
                       ? "bg-primary-50 text-primary-700 border-l-3 border-primary-500 font-semibold"

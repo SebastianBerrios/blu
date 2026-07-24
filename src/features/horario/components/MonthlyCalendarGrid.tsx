@@ -55,17 +55,14 @@ export default function MonthlyCalendarGrid({
           const visibleSlots = daySlots.slice(0, 3);
           const extraCount = daySlots.length - 3;
 
-          return (
-            <div
-              key={date}
-              onClick={() => isAdmin && onDayClick(date)}
-              className={`
-                min-h-[100px] border-r border-b border-slate-200 p-1.5
-                ${isCurrentMonth ? "bg-white" : "bg-slate-50 opacity-50"}
-                ${isAdmin ? "cursor-pointer hover:bg-primary-50/50 transition-colors" : ""}
-                ${isToday ? "ring-2 ring-inset ring-primary-500" : ""}
-              `}
-            >
+          const cellClasses = `
+            block w-full text-left min-h-[100px] border-r border-b border-slate-200 p-1.5
+            ${isCurrentMonth ? "bg-white" : "bg-slate-50 opacity-50"}
+            ${isToday ? "ring-2 ring-inset ring-primary-500" : ""}
+          `;
+
+          const cellContent = (
+            <>
               <div
                 className={`text-xs font-medium mb-1 ${
                   isToday
@@ -87,6 +84,24 @@ export default function MonthlyCalendarGrid({
                   </div>
                 )}
               </div>
+            </>
+          );
+
+          // Clickable cells (admin) are real buttons for keyboard/AT access;
+          // non-interactive cells stay as static divs (not focusable).
+          return isAdmin ? (
+            <button
+              key={date}
+              type="button"
+              onClick={() => onDayClick(date)}
+              aria-label={`Editar horario del día ${dayNum}`}
+              className={`${cellClasses} cursor-pointer hover:bg-primary-50/50 transition-colors`}
+            >
+              {cellContent}
+            </button>
+          ) : (
+            <div key={date} className={cellClasses}>
+              {cellContent}
             </div>
           );
         })}
