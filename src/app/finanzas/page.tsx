@@ -4,14 +4,11 @@ import { useState } from "react";
 import { redirect } from "next/navigation";
 import {
   Wallet,
-  ArrowRightLeft,
-  Settings,
   Building2,
   Banknote,
   Bike,
   CreditCard,
   ListFilter,
-  Tags,
   AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,7 +16,7 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useTransactionCategories } from "@/hooks/useTransactionCategories";
 import { toLocalDateKey, groupByDate } from "@/utils/helpers/groupByDate";
-import type { TransactionType } from "@/types";
+import type { TransactionType, TransactionWithUser } from "@/types";
 import TransferForm from "@/components/forms/TransferForm";
 import ExpenseForm from "@/components/forms/ExpenseForm";
 import ExtraIncomeForm from "@/components/forms/ExtraIncomeForm";
@@ -30,6 +27,9 @@ import DailySummary from "@/features/finanzas/components/DailySummary";
 import CategoryBreakdown from "@/features/finanzas/components/CategoryBreakdown";
 import TransactionCategoryManager from "@/features/finanzas/components/TransactionCategoryManager";
 import BalanceCard from "@/features/finanzas/components/BalanceCard";
+import FinanzasActions from "@/features/finanzas/components/FinanzasActions";
+import TransactionFilters from "@/features/finanzas/components/TransactionFilters";
+import TransactionDateGroup from "@/features/finanzas/components/TransactionDateGroup";
 import { accountMeta } from "@/features/finanzas/components/accountMeta";
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
@@ -40,14 +40,6 @@ const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   gasto: { label: "Gasto", color: "bg-red-100 text-red-700" },
   ingreso_extra: { label: "Ingreso extra", color: "bg-emerald-100 text-emerald-700" },
 };
-
-const FILTER_OPTIONS: { value: string; label: string }[] = [
-  { value: "all", label: "Todos" },
-  ...(["caja", "banco", "rappi", "pos"] as const).map((t) => ({
-    value: t,
-    label: accountMeta(t).shortLabel,
-  })),
-];
 
 export default function FinanzasPage() {
   const { isAdmin, isLoading: authLoading } = useAuth();
@@ -107,6 +99,26 @@ export default function FinanzasPage() {
   const ingresoCategories = categories.filter((c) => c.kind === "ingreso");
   const egresoCategories = categories.filter((c) => c.kind === "egreso");
 
+  const resolveTypeInfo = (t: TransactionWithUser) =>
+    TYPE_LABELS[t.type] ?? {
+      label: t.type,
+      color: "bg-gray-100 text-gray-700",
+    };
+
+  const resolveAccentBar = (t: TransactionWithUser) => {
+    const accountType =
+      t.account_id === cajaAccount?.id
+        ? "caja"
+        : t.account_id === bancoAccount?.id
+        ? "banco"
+        : t.account_id === rappiAccount?.id
+        ? "rappi"
+        : t.account_id === posAccount?.id
+        ? "pos"
+        : null;
+    return accountType ? accountMeta(accountType).accentBar : "bg-slate-300";
+  };
+
   return (
     <section className="h-full flex flex-col bg-slate-50">
       <PageHeader
@@ -163,33 +175,12 @@ export default function FinanzasPage() {
         </div>
 
         {/* Action buttons */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <button
-            onClick={() => setShowTransfer(true)}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-3 bg-primary-900 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm min-h-[44px] active:scale-[0.97] shadow-sm"
-          >
-            <ArrowRightLeft className="w-4 h-4" />
-            <span className="truncate">Transferir entre cuentas</span>
-          </button>
-          {isAdmin && (
-            <button
-              onClick={() => setShowCategories(true)}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-3 border-2 border-primary-300 text-primary-700 bg-white rounded-lg hover:bg-primary-50 transition-colors font-medium text-sm min-h-[44px] active:scale-[0.97]"
-            >
-              <Tags className="w-4 h-4" />
-              <span className="truncate">Categorías</span>
-            </button>
-          )}
-          {isAdmin && (
-            <button
-              onClick={() => setShowBalance(true)}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-3 border-2 border-primary-300 text-primary-700 bg-white rounded-lg hover:bg-primary-50 transition-colors font-medium text-sm min-h-[44px] active:scale-[0.97]"
-            >
-              <Settings className="w-4 h-4" />
-              <span className="truncate">Configurar saldos</span>
-            </button>
-          )}
-        </div>
+        <FinanzasActions
+          isAdmin={isAdmin}
+          onTransfer={() => setShowTransfer(true)}
+          onManageCategories={() => setShowCategories(true)}
+          onConfigureBalances={() => setShowBalance(true)}
+        />
 
         {/* Transactions section */}
         <div className="space-y-3">
@@ -216,58 +207,17 @@ export default function FinanzasPage() {
           </div>
 
           {/* Filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-              {FILTER_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setAccountFilter(opt.value)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    accountFilter === opt.value
-                      ? "bg-primary-100 text-primary-800"
-                      : "text-slate-600 hover:text-slate-800"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value as TransactionType | "")}
-              className="px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none shadow-sm"
-            >
-              <option value="">Todos los tipos</option>
-              {Object.entries(TYPE_LABELS).map(([value, { label }]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-
-            {(ingresoCategories.length > 0 || egresoCategories.length > 0) && (
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none shadow-sm"
-              >
-                <option value="">Todas las categorías</option>
-                {ingresoCategories.length > 0 && (
-                  <optgroup label="Ingresos">
-                    {ingresoCategories.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </optgroup>
-                )}
-                {egresoCategories.length > 0 && (
-                  <optgroup label="Egresos">
-                    {egresoCategories.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </optgroup>
-                )}
-              </select>
-            )}
-          </div>
+          <TransactionFilters
+            typeLabels={TYPE_LABELS}
+            accountFilter={accountFilter}
+            onAccountFilterChange={setAccountFilter}
+            typeFilter={typeFilter}
+            onTypeFilterChange={setTypeFilter}
+            categoryFilter={categoryFilter}
+            onCategoryFilterChange={setCategoryFilter}
+            ingresoCategories={ingresoCategories}
+            egresoCategories={egresoCategories}
+          />
 
           {/* Category totals */}
           {!isLoading && <CategoryBreakdown transactions={transactions} />}
@@ -300,81 +250,13 @@ export default function FinanzasPage() {
           ) : (
             <div className="space-y-4 md:space-y-6">
               {sortedDates.map((date) => (
-                <div key={date}>
-                  <h3 className="text-xs md:text-sm font-semibold text-slate-600 mb-2 uppercase tracking-wide">
-                    {new Date(date + "T12:00:00").toLocaleDateString("es-PE", {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </h3>
-                  <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden shadow-sm">
-                    {groupedTransactions[date].map((t) => {
-                      const typeInfo = TYPE_LABELS[t.type] ?? {
-                        label: t.type,
-                        color: "bg-gray-100 text-gray-700",
-                      };
-                      const isPositive = t.amount > 0;
-                      const accountType =
-                        t.account_id === cajaAccount?.id
-                          ? "caja"
-                          : t.account_id === bancoAccount?.id
-                          ? "banco"
-                          : t.account_id === rappiAccount?.id
-                          ? "rappi"
-                          : t.account_id === posAccount?.id
-                          ? "pos"
-                          : null;
-                      const accentBar = accountType
-                        ? accountMeta(accountType).accentBar
-                        : "bg-slate-300";
-
-                      return (
-                        <div
-                          key={t.id}
-                          className="flex items-stretch gap-3 px-3 md:px-4 py-3 hover:bg-slate-50/60 transition-colors"
-                        >
-                          <span
-                            className={`shrink-0 w-1 rounded-full ${accentBar}`}
-                            aria-hidden
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                              <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${typeInfo.color}`}>
-                                {typeInfo.label}
-                              </span>
-                              {t.category_name && (
-                                <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600">
-                                  {t.category_name}
-                                </span>
-                              )}
-                              <span className="text-[11px] text-slate-500 tabular-nums">
-                                {new Date(t.created_at).toLocaleTimeString("es-PE", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                            </div>
-                            {t.description && (
-                              <p className="text-sm text-slate-700 truncate">{t.description}</p>
-                            )}
-                            {t.user_name && (
-                              <p className="text-[11px] text-slate-500 mt-0.5">por {t.user_name}</p>
-                            )}
-                          </div>
-                          <span
-                            className={`self-center text-sm font-bold whitespace-nowrap tabular-nums ${
-                              isPositive ? "text-green-700" : "text-red-700"
-                            }`}
-                          >
-                            {isPositive ? "+" : ""}S/ {Math.abs(t.amount).toFixed(2)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <TransactionDateGroup
+                  key={date}
+                  date={date}
+                  transactions={groupedTransactions[date]}
+                  resolveTypeInfo={resolveTypeInfo}
+                  resolveAccentBar={resolveAccentBar}
+                />
               ))}
             </div>
           )}
@@ -390,4 +272,3 @@ export default function FinanzasPage() {
     </section>
   );
 }
-
