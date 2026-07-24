@@ -12,7 +12,10 @@ interface BottomSheetProps {
 export default function BottomSheet({ isOpen, onClose, children }: BottomSheetProps) {
   const [visible, setVisible] = useState(false);
   const [animating, setAnimating] = useState(false);
-  const trapRef = useFocusTrap<HTMLDivElement>(isOpen);
+  // Drive the trap by `visible` (not `isOpen`): the sheet DOM mounts one tick
+  // after isOpen, so activating on isOpen would run the effect before the ref
+  // exists. `visible` flips true in the same render that mounts the sheet.
+  const trapRef = useFocusTrap<HTMLDivElement>(visible);
 
   useEffect(() => {
     if (!isOpen) return;
