@@ -2,8 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { redirect } from "next/navigation";
-import { ShoppingBasket, SquarePen, Trash2, BookOpen, Eye } from "lucide-react";
-import Badge from "@/components/ui/Badge";
+import { ShoppingBasket } from "lucide-react";
 import { toast } from "sonner";
 import { useProducts } from "@/hooks/useProducts";
 import { useRecipes } from "@/hooks/useRecipes";
@@ -17,6 +16,8 @@ import type { Product, Recipe } from "@/types";
 import ProductForm from "@/components/forms/ProductForm";
 import RecipeForm from "@/components/forms/RecipeForm";
 import AvailabilityTab from "@/features/productos/components/AvailabilityTab";
+import ProductCard from "@/features/productos/components/ProductCard";
+import ProductRecipeActions from "@/features/productos/components/ProductRecipeActions";
 import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
 import PageHeader from "@/components/ui/PageHeader";
@@ -227,99 +228,26 @@ export default function Products() {
             isLoading={isLoading}
             onEdit={isAdmin ? handleEdit : undefined}
             onDelete={isAdmin ? handleDelete : undefined}
-            renderExtraActions={(item) => {
-              if (!isAdmin && !canEditRecipe(item)) return null;
-              return (
-                <div className="flex items-center">
-                  <button
-                    onClick={() => handleViewRecipe(item)}
-                    className="p-3 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
-                    title="Ver receta"
-                  >
-                    <Eye className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => handleEditRecipe(item)}
-                    className={`p-3 rounded-lg transition-colors ${
-                      item.recipe_id
-                        ? "text-green-700 hover:bg-green-100"
-                        : "text-amber-700 hover:bg-amber-100"
-                    }`}
-                    title={item.recipe_id ? "Editar receta" : "Crear receta"}
-                  >
-                    <BookOpen className="w-5 h-5" />
-                  </button>
-                </div>
-              );
-            }}
+            renderExtraActions={(item) => (
+              <ProductRecipeActions
+                item={item}
+                isAdmin={isAdmin}
+                canEditRecipe={canEditRecipe}
+                onViewRecipe={handleViewRecipe}
+                onEditRecipe={handleEditRecipe}
+              />
+            )}
             renderCard={(item, onEditFn, onDeleteFn) => (
-              <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900 capitalize truncate">{item.name}</p>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    {canViewProductCost && item.manufacturing_cost != null && (
-                      <span className="text-xs text-slate-500">Costo: S/ {item.manufacturing_cost}</span>
-                    )}
-                    <span className="text-sm font-semibold text-primary-700">S/ {item.price}</span>
-                  </div>
-                  {(item.temperatura || item.tipo_leche) && (
-                    <div className="flex items-center gap-1.5 mt-1">
-                      {item.temperatura && (
-                        <Badge tone={item.temperatura === "caliente" ? "tempCaliente" : item.temperatura === "frío" ? "tempFrio" : "neutral"} size="sm">
-                          {item.temperatura === "ambos" ? "frío o caliente" : item.temperatura}
-                        </Badge>
-                      )}
-                      {item.tipo_leche && (
-                        <Badge tone="milkType" size="sm">
-                          leche: {item.tipo_leche}
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  {onEditFn && (
-                    <button
-                      onClick={() => onEditFn(item)}
-                      className="p-3 text-primary-700 hover:bg-primary-50 rounded-lg"
-                      title="Editar producto"
-                    >
-                      <SquarePen className="w-5 h-5" />
-                    </button>
-                  )}
-                  {(isAdmin || canEditRecipe(item)) && (
-                    <>
-                      <button
-                        onClick={() => handleViewRecipe(item)}
-                        className="p-3 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
-                        title="Ver receta"
-                      >
-                        <Eye className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleEditRecipe(item)}
-                        className={`p-3 rounded-lg transition-colors ${
-                          item.recipe_id
-                            ? "text-green-700 hover:bg-green-100"
-                            : "text-amber-700 hover:bg-amber-100"
-                        }`}
-                        title={item.recipe_id ? "Editar receta" : "Crear receta"}
-                      >
-                        <BookOpen className="w-5 h-5" />
-                      </button>
-                    </>
-                  )}
-                  {onDeleteFn && (
-                    <button
-                      onClick={() => onDeleteFn(item)}
-                      className="p-3 text-red-700 hover:bg-red-50 rounded-lg"
-                      title="Eliminar producto"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  )}
-                </div>
-              </div>
+              <ProductCard
+                item={item}
+                onEditFn={onEditFn}
+                onDeleteFn={onDeleteFn}
+                isAdmin={isAdmin}
+                canViewProductCost={canViewProductCost}
+                canEditRecipe={canEditRecipe}
+                onViewRecipe={handleViewRecipe}
+                onEditRecipe={handleEditRecipe}
+              />
             )}
           />}
         </div>
