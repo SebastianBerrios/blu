@@ -18,10 +18,12 @@ Blu is a café/bakery business management system. It manages ingredients, recipe
 
 ## Commands
 
-- `npm run dev` — Start dev server (Turbopack)
-- `npm run build` — Production build (Turbopack)
-- `npm run lint` — ESLint
-- No test framework configured
+Package manager is **pnpm** (`pnpm-lock.yaml`) — use `pnpm`, not npm.
+
+- `pnpm dev` — Start dev server (Turbopack)
+- `pnpm build` — Production build (Turbopack)
+- `pnpm lint` — ESLint
+- `pnpm test` — Run tests once (Vitest); `pnpm test:watch` to watch, `pnpm test:coverage` for coverage. Vitest is configured (`vitest.config.ts`), with tests colocated as `src/**/*.test.ts`.
 
 ## Path Alias
 
