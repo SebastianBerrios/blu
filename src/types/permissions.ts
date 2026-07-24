@@ -4,7 +4,7 @@ import type { AppRole } from "./auth";
 export type RolePermission = Tables<"role_permissions">;
 export type UserPermission = Tables<"user_permissions">;
 
-export type PermissionGroup = "Ventas" | "Inventario" | "Compras" | "Módulos";
+export type PermissionGroup = "Ventas" | "Inventario" | "Compras" | "Módulos" | "Campos";
 
 export interface PermissionDef {
   key: string;
@@ -63,6 +63,13 @@ export const PERMISSION_DEFS = [
     key: "purchases.delete",
     label: "Eliminar compras",
     description: "Permite borrar compras y revertir sus transacciones.",
+    group: "Compras",
+    level: "action",
+  },
+  {
+    key: "action.purchases.use_banco",
+    label: "Usar cuenta bancaria en compras",
+    description: "Permite seleccionar la cuenta bancaria al registrar una compra.",
     group: "Compras",
     level: "action",
   },
@@ -138,6 +145,29 @@ export const PERMISSION_DEFS = [
     description: "Permite abrir el módulo de Actividades.",
     group: "Módulos",
     level: "module",
+  },
+  // Field-visibility keys (Fase 3) — UI-only gates for business-sensitive fields.
+  // Admin always sees all fields via branch-1. These keys default OFF for non-admins.
+  {
+    key: "field.products.view_cost",
+    label: "Ver costos de productos",
+    description: "Permite ver el costo de fabricación y precio sugerido de los productos.",
+    group: "Campos",
+    level: "field",
+  },
+  {
+    key: "field.categories.view_margin",
+    label: "Ver margen de categorías",
+    description: "Permite ver el margen objetivo configurado en cada categoría.",
+    group: "Campos",
+    level: "field",
+  },
+  {
+    key: "field.recipes.view_cost",
+    label: "Ver costos de recetas",
+    description: "Permite ver el costo de fabricación de las recetas.",
+    group: "Campos",
+    level: "field",
   },
 ] as const satisfies readonly PermissionDef[];
 

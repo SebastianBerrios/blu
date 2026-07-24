@@ -8,7 +8,7 @@ interface AccountSelectorProps {
   selectedAccountId: number | null;
   onSelect: (accountId: number) => void;
   onSelectBanco: (accountId: number) => void;
-  isAdmin: boolean;
+  canUseBanco: boolean;
   isSubmitting: boolean;
 }
 
@@ -18,7 +18,7 @@ export default function AccountSelector({
   selectedAccountId,
   onSelect,
   onSelectBanco,
-  isAdmin,
+  canUseBanco,
   isSubmitting,
 }: AccountSelectorProps) {
   return (
@@ -50,22 +50,22 @@ export default function AccountSelector({
           <button
             type="button"
             onClick={() => {
-              if (isAdmin) {
+              if (canUseBanco) {
                 onSelectBanco(bancoAccount.id);
               }
             }}
-            disabled={isSubmitting || !isAdmin}
-            title={!isAdmin ? "Solo administradores pueden usar la cuenta bancaria" : undefined}
+            disabled={isSubmitting || !canUseBanco}
+            title={!canUseBanco ? "No tienes permiso para usar la cuenta bancaria" : undefined}
             className={`flex-1 px-4 py-3 min-h-[44px] rounded-lg border-2 font-medium transition-all ${
               selectedAccountId === bancoAccount.id
                 ? "bg-blue-100 text-blue-700 border-blue-300"
-                : !isAdmin
+                : !canUseBanco
                 ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                 : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
             }`}
           >
             Cuenta Bancaria
-            {!isAdmin && <span className="block text-xs mt-0.5">Solo admin</span>}
+            {!canUseBanco && <span className="block text-xs mt-0.5">Sin permiso</span>}
           </button>
         )}
       </div>

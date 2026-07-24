@@ -22,6 +22,7 @@ export default function Recipes() {
   const { user, profile } = useAuth();
   const { can, isLoading: permsLoading } = usePermissions();
   const { recipes, error, isLoading, mutate } = useRecipes();
+  const canViewRecipeCost = can("field.recipes.view_cost");
 
   if (!permsLoading && !can("module.recipes")) {
     redirect("/");
@@ -94,8 +95,12 @@ export default function Recipes() {
           )}
           <DataTable<RecipeRow>
             title="Lista de Recetas"
-            columns={["N°", "Nombre", "Descripción", "Cantidad", "Unidad de Medida", "Costo de Fabricación", "Tipo", "Acciones"]}
-            dataKeys={["id", "name", "description", "quantity", "unit_of_measure", "manufacturing_cost", "tipo"]}
+            columns={canViewRecipeCost
+              ? ["N°", "Nombre", "Descripción", "Cantidad", "Unidad de Medida", "Costo de Fabricación", "Tipo", "Acciones"]
+              : ["N°", "Nombre", "Descripción", "Cantidad", "Unidad de Medida", "Tipo", "Acciones"]}
+            dataKeys={canViewRecipeCost
+              ? ["id", "name", "description", "quantity", "unit_of_measure", "manufacturing_cost", "tipo"]
+              : ["id", "name", "description", "quantity", "unit_of_measure", "tipo"]}
             data={rows}
             isLoading={isLoading}
             onEdit={handleEdit}
@@ -114,7 +119,9 @@ export default function Recipes() {
                   </div>
                   <div className="flex items-center gap-3 mt-0.5">
                     <span className="text-xs text-slate-500">{item.quantity} {item.unit_of_measure}</span>
-                    <span className="text-sm font-semibold text-primary-700">S/ {item.manufacturing_cost}</span>
+                    {canViewRecipeCost && (
+                      <span className="text-sm font-semibold text-primary-700">S/ {item.manufacturing_cost}</span>
+                    )}
                   </div>
                   {item.description && (
                     <p className="text-xs text-slate-500 mt-0.5 truncate">{item.description}</p>
@@ -145,6 +152,7 @@ export default function Recipes() {
         onClose={handleCloseModal}
         onSuccess={handleSuccess}
         recipe={selectedRecipe}
+        hidePrice={!canViewRecipeCost}
       />
     </>
   );

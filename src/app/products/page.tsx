@@ -148,11 +148,14 @@ export default function Products() {
     mutate();
   };
 
-  const columns = isAdmin
+  const canViewProductCost = can("field.products.view_cost");
+  const canViewRecipeCost = can("field.recipes.view_cost");
+
+  const columns = canViewProductCost
     ? ["N°", "Producto", "Costo de Fabricación", "Precio sugerido", "Precio Venta", "Acciones"]
     : ["N°", "Producto", "Precio Venta", "Receta"];
 
-  const dataKeys: (keyof Product)[] = isAdmin
+  const dataKeys: (keyof Product)[] = canViewProductCost
     ? ["id", "name", "manufacturing_cost", "suggested_price", "price"]
     : ["id", "name", "price"];
 
@@ -254,7 +257,7 @@ export default function Products() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-900 capitalize truncate">{item.name}</p>
                   <div className="flex items-center gap-3 mt-0.5">
-                    {isAdmin && item.manufacturing_cost != null && (
+                    {canViewProductCost && item.manufacturing_cost != null && (
                       <span className="text-xs text-slate-500">Costo: S/ {item.manufacturing_cost}</span>
                     )}
                     <span className="text-sm font-semibold text-primary-700">S/ {item.price}</span>
@@ -338,7 +341,7 @@ export default function Products() {
         onClose={handleCloseRecipeModal}
         onSuccess={handleRecipeSuccess}
         recipe={selectedRecipeForEdit}
-        hidePrice={!isAdmin}
+        hidePrice={!canViewRecipeCost}
         readOnlyMeta={!isAdmin && !!selectedRecipeForEdit}
         productId={selectedProductForRecipe?.id}
       />
@@ -348,7 +351,7 @@ export default function Products() {
         onClose={handleCloseRecipeView}
         onSuccess={() => {}}
         recipe={recipeForView}
-        hidePrice={!isAdmin}
+        hidePrice={!canViewRecipeCost}
         viewOnly
         productId={productForView?.id}
       />
