@@ -644,6 +644,7 @@ export type Database = {
           id: number
           notes: string | null
           plin_change: number | null
+          purchase_number: number
           total: number
           user_id: string
         }
@@ -655,6 +656,7 @@ export type Database = {
           id?: never
           notes?: string | null
           plin_change?: number | null
+          purchase_number?: number
           total?: number
           user_id: string
         }
@@ -666,6 +668,7 @@ export type Database = {
           id?: never
           notes?: string | null
           plin_change?: number | null
+          purchase_number?: number
           total?: number
           user_id?: string
         }
@@ -1532,11 +1535,7 @@ export type Database = {
         Returns: undefined
       }
       update_sale_atomic: {
-        Args: {
-          p_payload: Json
-          p_sale_id: number
-          p_user_id?: string
-        }
+        Args: { p_payload: Json; p_sale_id: number; p_user_id?: string }
         Returns: undefined
       }
       upsert_activity_with_assignments: {
