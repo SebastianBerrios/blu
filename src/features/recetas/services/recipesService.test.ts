@@ -66,7 +66,7 @@ function makeParams(
 describe("createRecipe", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("happy path básico: insert recipes + insert recipe_ingredients", async () => {
+  it("happy path básico: insert recipes + rpc replace_recipe_ingredients (no direct insert/delete)", async () => {
     const sb = makeMockSupabase({ single: { data: { id: 99 }, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
@@ -75,11 +75,16 @@ describe("createRecipe", () => {
     const recipesInsert = sb.insertCalls.find((c) => c.table === "recipes")!;
     expect((recipesInsert.payload as Record<string, unknown>).name).toBe("pan de yuca");
 
-    const ingredientsInsert = sb.insertCalls.find(
-      (c) => c.table === "recipe_ingredients",
-    )!;
-    expect(ingredientsInsert).toBeDefined();
-    expect((ingredientsInsert.payload as unknown[]).length).toBe(1);
+    // RPC called for ingredient replacement
+    const rpcCall = sb.rpcCalls.find((c) => c.fn === "replace_recipe_ingredients");
+    expect(rpcCall).toBeDefined();
+    expect((rpcCall!.params as Record<string, unknown>).p_recipe_id).toBe(99);
+    const rpcIngredients = (rpcCall!.params as Record<string, unknown>).p_ingredients as Array<Record<string, unknown>>;
+    expect(rpcIngredients).toHaveLength(1);
+
+    // No direct delete or insert on recipe_ingredients
+    expect(sb.deleteCalls.find((c) => c.table === "recipe_ingredients")).toBeUndefined();
+    expect(sb.insertCalls.find((c) => c.table === "recipe_ingredients")).toBeUndefined();
 
     expect(mockedLogAudit).not.toHaveBeenCalled();
   });
@@ -142,23 +147,40 @@ describe("createRecipe", () => {
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await expect(createRecipe(makeParams())).rejects.toBeTruthy();
-    expect(sb.insertCalls.find((c) => c.table === "recipe_ingredients")).toBeUndefined();
+    expect(sb.rpcCalls.find((c) => c.fn === "replace_recipe_ingredients")).toBeUndefined();
+  });
+
+  it("rpc error propagates: si replace_recipe_ingredients falla, se lanza el error", async () => {
+    const sb = makeMockSupabase({
+      single: { data: { id: 99 }, error: null },
+      rpc: { data: null, error: { message: "FK violation" } },
+    });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(createRecipe(makeParams())).rejects.toBeTruthy();
   });
 });
 
 describe("updateRecipe", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("update recipes + delete recipe_ingredients + update ingredients (recipe_id) + insert recipe_ingredients", async () => {
+  it("update recipes + update ingredients (recipe_id) + rpc replace_recipe_ingredients (no direct delete/insert)", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
     await updateRecipe(makeParams({ recipe: makeRecipe() }));
 
     expect(sb.updateCalls.find((c) => c.table === "recipes")).toBeDefined();
-    expect(sb.deleteCalls.find((c) => c.table === "recipe_ingredients")).toBeDefined();
     expect(sb.updateCalls.find((c) => c.table === "ingredients")).toBeDefined();
-    expect(sb.insertCalls.find((c) => c.table === "recipe_ingredients")).toBeDefined();
+
+    // RPC called instead of delete + insert
+    const rpcCall = sb.rpcCalls.find((c) => c.fn === "replace_recipe_ingredients");
+    expect(rpcCall).toBeDefined();
+    expect((rpcCall!.params as Record<string, unknown>).p_recipe_id).toBe(7);
+
+    // No direct delete or insert on recipe_ingredients
+    expect(sb.deleteCalls.find((c) => c.table === "recipe_ingredients")).toBeUndefined();
+    expect(sb.insertCalls.find((c) => c.table === "recipe_ingredients")).toBeUndefined();
   });
 
   it("throws si no hay recipe", async () => {
@@ -166,12 +188,23 @@ describe("updateRecipe", () => {
       "Recipe is required",
     );
   });
+
+  it("rpc error propagates: si replace_recipe_ingredients falla, se lanza el error", async () => {
+    const sb = makeMockSupabase({
+      rpc: { data: null, error: { message: "FK violation" } },
+    });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(
+      updateRecipe(makeParams({ recipe: makeRecipe() })),
+    ).rejects.toBeTruthy();
+  });
 });
 
 describe("updateRecipeIngredientsOnly", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("happy path: update recipes.cost + delete + insert recipe_ingredients + update ingredients.price + audit", async () => {
+  it("happy path: update recipes.cost + rpc replace_recipe_ingredients + update ingredients.price + audit (no direct delete/insert)", async () => {
     const sb = makeMockSupabase();
     vi.mocked(createClient).mockReturnValue(sb.client as never);
 
@@ -184,7 +217,16 @@ describe("updateRecipeIngredientsOnly", () => {
     );
 
     expect(sb.updateCalls.find((c) => c.table === "recipes")).toBeDefined();
-    expect(sb.deleteCalls.find((c) => c.table === "recipe_ingredients")).toBeDefined();
+
+    // RPC called instead of delete + insert
+    const rpcCall = sb.rpcCalls.find((c) => c.fn === "replace_recipe_ingredients");
+    expect(rpcCall).toBeDefined();
+    expect((rpcCall!.params as Record<string, unknown>).p_recipe_id).toBe(7);
+
+    // No direct delete or insert on recipe_ingredients
+    expect(sb.deleteCalls.find((c) => c.table === "recipe_ingredients")).toBeUndefined();
+    expect(sb.insertCalls.find((c) => c.table === "recipe_ingredients")).toBeUndefined();
+
     expect(sb.updateCalls.find((c) => c.table === "ingredients")).toBeDefined();
     expect(sb.updateCalls.find((c) => c.table === "products")).toBeDefined();
     expect(mockedLogAudit).toHaveBeenCalledWith(
@@ -207,5 +249,18 @@ describe("updateRecipeIngredientsOnly", () => {
     await expect(
       updateRecipeIngredientsOnly(makeParams({ recipe: undefined })),
     ).rejects.toThrow("Recipe is required");
+  });
+
+  it("rpc error propagates: si replace_recipe_ingredients falla, se lanza el error", async () => {
+    const sb = makeMockSupabase({
+      rpc: { data: null, error: { message: "atomic failure" } },
+    });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(
+      updateRecipeIngredientsOnly(
+        makeParams({ recipe: makeRecipe(), originalIngredients: [] }),
+      ),
+    ).rejects.toBeTruthy();
   });
 });

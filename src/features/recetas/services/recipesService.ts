@@ -6,8 +6,20 @@ import {
   computeIngredientDiff,
 } from "./recipeIngredientsService";
 
+async function replaceRecipeIngredients(
+  recipeId: number,
+  ingredients: ReturnType<typeof buildIngredientsToInsert>,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("replace_recipe_ingredients", {
+    p_recipe_id: recipeId,
+    p_ingredients: ingredients as unknown as never,
+  });
+  if (error) throw error;
+}
+
 export async function updateRecipeIngredientsOnly(
-  params: RecipeSubmitParams
+  params: RecipeSubmitParams,
 ): Promise<void> {
   const {
     formData,
@@ -32,12 +44,10 @@ export async function updateRecipeIngredientsOnly(
     .eq("id", recipe.id);
   if (recipeError) throw recipeError;
 
-  await supabase.from("recipe_ingredients").delete().eq("recipe_id", recipe.id);
-
-  const { error: ingredientsError } = await supabase
-    .from("recipe_ingredients")
-    .insert(buildIngredientsToInsert(recipe.id, ingredients));
-  if (ingredientsError) throw ingredientsError;
+  await replaceRecipeIngredients(
+    recipe.id,
+    buildIngredientsToInsert(recipe.id, ingredients),
+  );
 
   await supabase
     .from("ingredients")
@@ -80,11 +90,14 @@ export async function fetchRecipeProducible(
     .eq("recipe_id", recipeId)
     .maybeSingle();
   if (error) throw error;
-  return data ? { ingredientId: data.id, stockQuantity: data.stock_quantity ?? 0 } : null;
+  return data
+    ? { ingredientId: data.id, stockQuantity: data.stock_quantity ?? 0 }
+    : null;
 }
 
 export async function updateRecipe(params: RecipeSubmitParams): Promise<void> {
-  const { formData, ingredients, recipe, addAsIngredient, userId, userName } = params;
+  const { formData, ingredients, recipe, addAsIngredient, userId, userName } =
+    params;
   if (!recipe) throw new Error("Recipe is required for update");
 
   const supabase = createClient();
@@ -104,8 +117,6 @@ export async function updateRecipe(params: RecipeSubmitParams): Promise<void> {
     .eq("id", recipe.id);
   if (error) throw error;
 
-  await supabase.from("recipe_ingredients").delete().eq("recipe_id", recipe.id);
-
   await supabase
     .from("ingredients")
     .update({
@@ -116,10 +127,10 @@ export async function updateRecipe(params: RecipeSubmitParams): Promise<void> {
     })
     .eq("recipe_id", recipe.id);
 
-  const { error: ingredientsError } = await supabase
-    .from("recipe_ingredients")
-    .insert(buildIngredientsToInsert(recipe.id, ingredients));
-  if (ingredientsError) throw ingredientsError;
+  await replaceRecipeIngredients(
+    recipe.id,
+    buildIngredientsToInsert(recipe.id, ingredients),
+  );
 
   // Sincronizar estado "producible" (solo cuando addAsIngredient es explícito)
   if (addAsIngredient !== undefined) {
@@ -175,7 +186,8 @@ export async function updateRecipe(params: RecipeSubmitParams): Promise<void> {
 }
 
 export async function createRecipe(params: RecipeSubmitParams): Promise<void> {
-  const { formData, ingredients, addAsIngredient, productId, userId, userName } = params;
+  const { formData, ingredients, addAsIngredient, productId, userId, userName } =
+    params;
 
   const supabase = createClient();
 
@@ -239,8 +251,8 @@ export async function createRecipe(params: RecipeSubmitParams): Promise<void> {
     });
   }
 
-  const { error: ingredientsError } = await supabase
-    .from("recipe_ingredients")
-    .insert(buildIngredientsToInsert(newRecipe.id, ingredients));
-  if (ingredientsError) throw ingredientsError;
+  await replaceRecipeIngredients(
+    newRecipe.id,
+    buildIngredientsToInsert(newRecipe.id, ingredients),
+  );
 }
