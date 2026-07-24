@@ -1,6 +1,18 @@
 import useSWR from "swr";
 import { createClient } from "@/utils/supabase/client";
-import { getSaleNet } from "@/features/ventas/utils/saleAmounts";
+import { limaDateKey, limaDayRangeISO } from "@/utils/helpers/dateFormatters";
+import {
+  aggregateBase,
+  groupRevenueByBucket,
+  aggregateTopProducts,
+  aggregateRevenueVsExpenses,
+  aggregateSalesByHour,
+  aggregateHeatmap,
+  aggregateRevenueByMethod,
+  aggregateSalesByOrderType,
+  toKPIValue,
+} from "@/features/estadisticas/services/statsAggregation";
+import type { SaleRow, ExpenseRow } from "@/features/estadisticas/services/statsAggregation";
 import type {
   SalesKPIsWithDelta,
   KPIValue,
@@ -12,42 +24,8 @@ import type {
   RevenueVsExpenses,
   HeatmapCell,
   PeriodRanges,
-  Granularity,
 } from "@/types";
-import { toLocalDateKey } from "@/utils/helpers/groupByDate";
-import { limaDateKey, limaDayRangeISO, hourInLima, dayInLima } from "@/utils/helpers/dateFormatters";
-
-interface SaleRow {
-  id: number;
-  sale_date: string;
-  total_price: number;
-  discount_amount: number | null;
-  commission: number | null;
-  order_type: string;
-  payment_method: string | null;
-  cash_amount: number | null;
-  plin_amount: number | null;
-  sale_products: Array<{
-    quantity: number;
-    unit_price: number;
-    unit_cost: number | null;
-    discount_amount: number | null;
-    products: { name: string } | null;
-  }>;
-}
-
-interface ExpenseRow {
-  amount: number;
-  type: string;
-  created_at: string;
-}
-
-interface BaseAggregates {
-  revenue: number;
-  totalSales: number;
-  productsSold: number;
-  grossCost: number;
-}
+import { getSaleNet } from "@/features/ventas/utils/saleAmounts";
 
 interface StatsData {
   kpis: SalesKPIsWithDelta;
@@ -91,61 +69,8 @@ async function fetchExpenses(start: string, end: string): Promise<ExpenseRow[]> 
   return (data || []) as ExpenseRow[];
 }
 
-function aggregateBase(sales: SaleRow[]): BaseAggregates {
-  let revenue = 0;
-  let productsSold = 0;
-  let grossCost = 0;
-  for (const s of sales) {
-    revenue += getSaleNet(s);
-    for (const sp of s.sale_products) {
-      const qty = Number(sp.quantity) || 0;
-      productsSold += qty;
-      // Costo congelado al momento de la venta (snapshot), no el costo actual del producto.
-      const cost = Number(sp.unit_cost ?? 0) || 0;
-      grossCost += qty * cost;
-    }
-  }
-  return { revenue, productsSold, grossCost, totalSales: sales.length };
-}
-
-function computeDelta(current: number, previous: number): number | null {
-  if (previous === 0) return current === 0 ? 0 : null;
-  return ((current - previous) / previous) * 100;
-}
-
-function toKPIValue(current: number, previous: number): KPIValue {
-  return { current, previous, deltaPct: computeDelta(current, previous) };
-}
-
-function bucketKey(dateStr: string, granularity: Granularity): string {
-  const d = new Date(dateStr);
-  if (granularity === "hour") {
-    return `${toLocalDateKey(dateStr)}T${String(d.getHours()).padStart(2, "0")}`;
-  }
-  if (granularity === "month") {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  }
-  return toLocalDateKey(dateStr);
-}
-
-function groupRevenueByBucket(
-  sales: SaleRow[],
-  granularity: Granularity,
-): RevenueByDay[] {
-  const map = new Map<string, number>();
-  for (const s of sales) {
-    const key = bucketKey(s.sale_date, granularity);
-    map.set(key, (map.get(key) || 0) + getSaleNet(s));
-  }
-  return Array.from(map.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, revenue]) => ({ date, revenue }));
-}
-
 async function fetchStats(ranges: PeriodRanges): Promise<StatsData> {
   // Sparkline window: last 7 Lima calendar days, anchored on today (Lima).
-  // Using Lima TZ keeps the buckets aligned with what cafe staff calls "today",
-  // regardless of the browser's local timezone.
   const todayKey = limaDateKey();
   const sparkStartKey = limaDateKey(
     new Date(new Date(`${todayKey}T05:00:00.000Z`).getTime() - 6 * 24 * 60 * 60 * 1000),
@@ -184,99 +109,28 @@ async function fetchStats(ranges: PeriodRanges): Promise<StatsData> {
   const previousRevenueByBucket = groupRevenueByBucket(previousSales, ranges.granularity);
 
   // Revenue by payment method
-  const revByMethodMap: Record<string, number> = {};
-  for (const s of currentSales) {
-    const method = s.payment_method ?? "Otro";
-    revByMethodMap[method] = (revByMethodMap[method] || 0) + getSaleNet(s);
-  }
-  const revenueByMethod: RevenueByPaymentMethod[] = Object.entries(revByMethodMap).map(
-    ([method, total]) => ({ method, total }),
-  );
+  const revenueByMethod: RevenueByPaymentMethod[] = aggregateRevenueByMethod(currentSales);
 
-  // Top products
-  const productMap: Record<string, { revenue: number; quantity: number }> = {};
-  for (const s of currentSales) {
-    for (const sp of s.sale_products) {
-      const name = sp.products?.name ?? "Desconocido";
-      if (!productMap[name]) productMap[name] = { revenue: 0, quantity: 0 };
-      productMap[name].revenue +=
-        Number(sp.quantity) * Number(sp.unit_price) -
-        Number(sp.discount_amount ?? 0);
-      productMap[name].quantity += Number(sp.quantity);
-    }
-  }
-  const allProducts: TopProduct[] = Object.entries(productMap)
-    .map(([productName, { revenue, quantity }]) => ({
-      productName,
-      totalRevenue: revenue,
-      quantitySold: quantity,
-    }))
-    .sort((a, b) => b.totalRevenue - a.totalRevenue);
-  const topProducts: TopProduct[] = allProducts.slice(0, 10);
+  // Top products (net-of-commission, proportional distribution)
+  const allProducts = aggregateTopProducts(currentSales);
+  const topProducts = allProducts.slice(0, 10);
 
   // Sales by order type
-  const orderTypeMap: Record<string, { count: number; revenue: number }> = {};
-  for (const s of currentSales) {
-    if (!orderTypeMap[s.order_type]) orderTypeMap[s.order_type] = { count: 0, revenue: 0 };
-    orderTypeMap[s.order_type].count++;
-    orderTypeMap[s.order_type].revenue += getSaleNet(s);
-  }
-  const salesByOrderType: SalesByOrderType[] = Object.entries(orderTypeMap).map(
-    ([orderType, { count, revenue }]) => ({ orderType, count, revenue }),
+  const salesByOrderType: SalesByOrderType[] = aggregateSalesByOrderType(currentSales);
+
+  // Sales by hour (Lima-aware)
+  const salesByHour: SalesByHour[] = aggregateSalesByHour(currentSales);
+
+  // Heatmap day-of-week × hour (Lima-aware)
+  const heatmap: HeatmapCell[] = aggregateHeatmap(currentSales);
+
+  // Revenue vs expenses (Lima date keys — Bug 3 fix)
+  const revenueVsExpenses: RevenueVsExpenses[] = aggregateRevenueVsExpenses(
+    currentSales,
+    expenses,
   );
 
-  // Sales by hour
-  // F7: use Lima-aware hour to avoid browser-TZ shift on hour-of-day buckets.
-  const hourMap: Record<number, { count: number; revenue: number }> = {};
-  for (const s of currentSales) {
-    const hour = hourInLima(s.sale_date);
-    if (!hourMap[hour]) hourMap[hour] = { count: 0, revenue: 0 };
-    hourMap[hour].count++;
-    hourMap[hour].revenue += getSaleNet(s);
-  }
-  const salesByHour: SalesByHour[] = Object.entries(hourMap)
-    .map(([h, { count, revenue }]) => ({ hour: parseInt(h), count, revenue }))
-    .sort((a, b) => a.hour - b.hour);
-
-  // Heatmap day-of-week × hour
-  // F7: use Lima-aware dow/hour to prevent browser-TZ mismatch on heatmap cells.
-  const heatmapMap = new Map<string, { count: number; revenue: number }>();
-  for (const s of currentSales) {
-    const dow = dayInLima(s.sale_date);
-    const hour = hourInLima(s.sale_date);
-    const key = `${dow}-${hour}`;
-    const prev = heatmapMap.get(key) ?? { count: 0, revenue: 0 };
-    heatmapMap.set(key, {
-      count: prev.count + 1,
-      revenue: prev.revenue + getSaleNet(s),
-    });
-  }
-  const heatmap: HeatmapCell[] = Array.from(heatmapMap.entries()).map(([k, v]) => {
-    const [dow, hour] = k.split("-").map(Number);
-    return { dayOfWeek: dow, hour, count: v.count, revenue: v.revenue };
-  });
-
-  // Revenue vs expenses
-  const expByDayMap: Record<string, number> = {};
-  for (const e of expenses) {
-    const date = toLocalDateKey(e.created_at);
-    expByDayMap[date] = (expByDayMap[date] || 0) + Math.abs(Number(e.amount) || 0);
-  }
-  const revDayMap: Record<string, number> = {};
-  for (const s of currentSales) {
-    const date = toLocalDateKey(s.sale_date);
-    revDayMap[date] = (revDayMap[date] || 0) + getSaleNet(s);
-  }
-  const allDates = new Set([...Object.keys(revDayMap), ...Object.keys(expByDayMap)]);
-  const revenueVsExpenses: RevenueVsExpenses[] = Array.from(allDates)
-    .sort()
-    .map((date) => ({
-      date,
-      revenue: revDayMap[date] || 0,
-      expenses: expByDayMap[date] || 0,
-    }));
-
-  // Sparkline: last 7 Lima days revenue (always anchored on today Lima)
+  // Sparkline: last 7 Lima days revenue
   const sparkMap = new Map<string, number>();
   for (const s of sparkSales) {
     const d = limaDateKey(s.sale_date);
