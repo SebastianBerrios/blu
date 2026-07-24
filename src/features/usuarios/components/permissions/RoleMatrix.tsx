@@ -1,12 +1,19 @@
 /**
  * RoleMatrix — presentational permission matrix for configurable roles.
  * Admin column always shows "Siempre" (no toggle). Roles are data-driven.
+ * Module-level permissions render under an "Acceso a módulos" section,
+ * separate from action-level permissions (ADR-6, REQ-10).
  * Presentational only: no service/createClient imports.
  */
 import { Fragment } from "react";
 import Toggle from "./Toggle";
 import type { PermissionKey } from "@/types/permissions";
 import { PERMISSION_DEFS, PERMISSION_GROUPS } from "@/types/permissions";
+
+/** Human-readable section heading per group. */
+const GROUP_HEADING: Record<string, string> = {
+  Módulos: "Acceso a módulos",
+};
 
 export const ROLE_LABEL: Record<string, string> = {
   cocinero: "Cocinero",
@@ -51,14 +58,20 @@ export default function RoleMatrix({ defs, roles, isEnabled, pending, onToggle }
             {PERMISSION_GROUPS.map((group) => {
               const groupDefs = defs.filter((d) => d.group === group);
               if (groupDefs.length === 0) return null;
+              const isModuleGroup = group === "Módulos";
+              const heading = GROUP_HEADING[group] ?? group;
               return (
                 <Fragment key={group}>
-                  <tr className="bg-slate-50/60">
+                  <tr className={isModuleGroup ? "bg-primary-50/60 border-t-2 border-primary-100" : "bg-slate-50/60"}>
                     <td
                       colSpan={2 + roles.length}
-                      className="px-4 md:px-6 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500"
+                      className={
+                        isModuleGroup
+                          ? "px-4 md:px-6 py-2 text-xs font-semibold uppercase tracking-wider text-primary-700"
+                          : "px-4 md:px-6 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500"
+                      }
                     >
-                      {group}
+                      {heading}
                     </td>
                   </tr>
                   {groupDefs.map((def) => (
