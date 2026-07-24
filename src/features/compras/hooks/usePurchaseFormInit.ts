@@ -19,7 +19,7 @@ interface PurchaseFormInitState {
  * Intentionally omits cajaAccount?.id from the dependency array: adding it would
  * re-run the init whenever the accounts hook resolves asynchronously (e.g. after the
  * form is already open and the user has started filling it in), resetting their input.
- * cajaAccount is stable once useAccounts() resolves, so reading it inside the effect
+ * cajaAccount is stable once usePaymentAccounts() resolves, so reading it inside the effect
  * at open-time is correct — the value is what it is when the form opens.
  */
 export function usePurchaseFormInit(

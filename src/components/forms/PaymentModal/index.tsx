@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { X, CreditCard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useAccounts } from "@/hooks/useAccounts";
+import { usePaymentAccounts } from "@/hooks/usePaymentAccounts";
 import { registerPaymentWithRewards } from "@/features/ventas";
 import {
   applyLoyaltyReward,
@@ -63,7 +63,7 @@ export default function PaymentModal({
     rappiAccount,
     posAccount,
     isLoading: accountsLoading,
-  } = useAccounts();
+  } = usePaymentAccounts();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Efectivo");
   const [cashAmount, setCashAmount] = useState("");
   const [plinAmount, setPlinAmount] = useState("");

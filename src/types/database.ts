@@ -1400,6 +1400,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_payment_accounts: {
+        Args: never
+        Returns: {
+          id: number
+          name: string
+          type: string
+        }[]
+      }
       has_permission: {
         Args: { p_permission: string; p_user_id?: string }
         Returns: boolean

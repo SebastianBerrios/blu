@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useAccounts } from "@/hooks/useAccounts";
+import { usePaymentAccounts } from "@/hooks/usePaymentAccounts";
 import type { Ingredient, PurchaseWithItems, PurchaseItemLine } from "@/types";
 import {
   validatePurchaseForm,
@@ -34,7 +34,7 @@ export default function PurchaseForm({
 }: PurchaseFormProps) {
   const isEditMode = !!purchase;
   const { isAdmin, user: authUser, profile } = useAuth();
-  const { cajaAccount, bancoAccount } = useAccounts();
+  const { cajaAccount, bancoAccount } = usePaymentAccounts();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [items, setItems] = useState<PurchaseItemLine[]>([]);

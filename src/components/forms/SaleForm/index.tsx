@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useAccounts } from "@/hooks/useAccounts";
+import { usePaymentAccounts } from "@/hooks/usePaymentAccounts";
 import type { Category, Product, SaleWithProducts, PaymentMethod } from "@/types";
 import type { LoyaltyReward, SaleProductLine } from "@/features/ventas/types";
 import { createSale, updateSale } from "@/features/ventas";
@@ -33,7 +33,7 @@ export default function SaleForm({
 }: SaleFormProps) {
   const isEditMode = !!sale;
   const { user, profile, isAdmin } = useAuth();
-  const { cajaAccount, bancoAccount, rappiAccount, posAccount } = useAccounts();
+  const { cajaAccount, bancoAccount, rappiAccount, posAccount } = usePaymentAccounts();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
