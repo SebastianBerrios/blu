@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import type { ActivityWithAssignees, CreateActivity, TaskCategory, TaskFrequency } from "@/types";
-import { CATEGORY_LABELS, CATEGORY_ORDER, DAY_LABELS_SHORT } from "../constants";
+import { CATEGORY_LABELS, CATEGORY_ORDER } from "../constants";
+import WeeklyDaysField from "./fields/WeeklyDaysField";
+import IntervalFrequencyField from "./fields/IntervalFrequencyField";
+import AssigneesField from "./fields/AssigneesField";
+import FormActions from "./fields/FormActions";
 
 interface ActivityFormProps {
   isOpen: boolean;
@@ -224,109 +228,30 @@ export default function ActivityForm({
           </div>
 
           {frequency === "weekly" && (
-            <div>
-              <label className="block text-sm font-medium text-slate-900 mb-1.5">
-                Días de la semana <span className="text-red-600">*</span>
-              </label>
-              <div className="flex gap-2 flex-wrap">
-                {DAY_LABELS_SHORT.map((label, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => toggleDay(idx)}
-                    disabled={isSubmitting}
-                    className={`inline-flex items-center justify-center px-3 py-2 min-h-[44px] text-sm font-medium rounded-lg border transition-colors ${
-                      daysOfWeek.includes(idx)
-                        ? "bg-primary-500 text-white border-primary-500"
-                        : "bg-white text-slate-600 border-slate-300 hover:border-primary-300"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <WeeklyDaysField
+              daysOfWeek={daysOfWeek}
+              onToggleDay={toggleDay}
+              isSubmitting={isSubmitting}
+            />
           )}
 
           {frequency === "interval" && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-slate-900 mb-1.5">
-                  Cada cuántos días <span className="text-red-600">*</span>
-                </label>
-                <div className="flex gap-1.5 mb-2">
-                  {[
-                    { n: 2, label: "Interdiario" },
-                    { n: 3, label: "Cada 3" },
-                  ].map(({ n, label }) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setIntervalDays(n)}
-                      disabled={isSubmitting}
-                      className={`inline-flex items-center text-xs font-medium px-3 py-2 min-h-[44px] rounded-full border transition-colors ${
-                        intervalDays === n
-                          ? "bg-primary-500 text-white border-primary-500"
-                          : "bg-white text-slate-600 border-slate-300 hover:border-primary-300"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  value={intervalDays}
-                  onChange={(e) => setIntervalDays(Number(e.target.value))}
-                  disabled={isSubmitting}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-900 mb-1.5">
-                  Desde <span className="text-red-600">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={anchorDate}
-                  onChange={(e) => setAnchorDate(e.target.value)}
-                  disabled={isSubmitting}
-                  className={inputClass}
-                />
-                <p className="text-[11px] text-slate-500 mt-1">Fecha de referencia del ciclo</p>
-              </div>
-            </div>
+            <IntervalFrequencyField
+              intervalDays={intervalDays}
+              anchorDate={anchorDate}
+              onIntervalDaysChange={setIntervalDays}
+              onAnchorDateChange={setAnchorDate}
+              isSubmitting={isSubmitting}
+              inputClass={inputClass}
+            />
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-slate-900 mb-1.5">
-              Asignar a <span className="text-red-600">*</span>
-            </label>
-            <div className="flex gap-2 flex-wrap">
-              {users.map((u) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => toggleAssignee(u.id)}
-                  disabled={isSubmitting}
-                  className={`inline-flex items-center justify-center px-3 py-2 min-h-[44px] text-sm font-medium rounded-lg border transition-colors ${
-                    assigneeIds.includes(u.id)
-                      ? "bg-primary-500 text-white border-primary-500"
-                      : "bg-white text-slate-600 border-slate-300 hover:border-primary-300"
-                  }`}
-                >
-                  {u.full_name ?? u.id}
-                </button>
-              ))}
-            </div>
-            {assigneeIds.length > 1 && (
-              <p className="text-[11px] text-sky-700 mt-1.5">
-                Actividad compartida entre {assigneeIds.length} personas.
-              </p>
-            )}
-          </div>
+          <AssigneesField
+            users={users}
+            assigneeIds={assigneeIds}
+            onToggleAssignee={toggleAssignee}
+            isSubmitting={isSubmitting}
+          />
 
           <div>
             <label className="block text-sm font-medium text-slate-900 mb-1.5">Orden</label>
@@ -347,23 +272,7 @@ export default function ActivityForm({
             </div>
           )}
 
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="flex-1 px-4 py-3 min-h-[44px] border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 px-4 py-3 min-h-[44px] bg-primary-900 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-            >
-              {isSubmitting ? "Guardando..." : isEditMode ? "Actualizar" : "Guardar"}
-            </button>
-          </div>
+          <FormActions onClose={onClose} isSubmitting={isSubmitting} isEditMode={isEditMode} />
         </form>
       </div>
     </div>
