@@ -3,9 +3,6 @@
 import { useRef } from "react";
 import {
   AlertTriangle,
-  Banknote,
-  Bike,
-  Building2,
   Calendar,
   CheckCircle2,
   ChevronLeft,
@@ -20,6 +17,7 @@ import { useDailyFinancialSummary } from "@/hooks/useDailyFinancialSummary";
 import { toLocalDateKey } from "@/utils/helpers/groupByDate";
 import { formatDateLong } from "@/utils/helpers/dateFormatters";
 import type { DailyAlert, DailyAlertType } from "@/features/finanzas";
+import { accountMeta } from "./accountMeta";
 
 interface DailySummaryProps {
   date: string;
@@ -131,54 +129,23 @@ export default function DailySummary({ date, onDateChange }: DailySummaryProps) 
           {/* Per-account breakdown */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {summary.perAccount.map((a) => {
-              const { Icon, accent, chipLabel } =
-                a.accountType === "caja"
-                  ? {
-                      Icon: Banknote,
-                      accent: {
-                        border: "border-green-200",
-                        bg: "bg-green-50/60",
-                        icon: "text-green-700",
-                        chip: "bg-green-100 text-green-800",
-                      },
-                      chipLabel: "Caja",
-                    }
-                  : a.accountType === "rappi"
-                  ? {
-                      Icon: Bike,
-                      accent: {
-                        border: "border-orange-200",
-                        bg: "bg-orange-50/60",
-                        icon: "text-orange-700",
-                        chip: "bg-orange-100 text-orange-800",
-                      },
-                      chipLabel: "Rappi",
-                    }
-                  : {
-                      Icon: Building2,
-                      accent: {
-                        border: "border-blue-200",
-                        bg: "bg-blue-50/60",
-                        icon: "text-blue-700",
-                        chip: "bg-blue-100 text-blue-800",
-                      },
-                      chipLabel: "Banco",
-                    };
+              const meta = accountMeta(a.accountType);
+              const Icon = meta.Icon;
 
               return (
                 <div
                   key={a.accountId}
-                  className={`border rounded-xl p-3.5 space-y-2.5 ${accent.border} ${accent.bg}`}
+                  className={`border rounded-xl p-3.5 space-y-2.5 ${meta.softBorder} ${meta.softBg}`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <Icon className={`w-4 h-4 ${accent.icon}`} />
+                      <Icon className={`w-4 h-4 ${meta.iconColor}`} />
                       <span className="text-sm font-semibold text-slate-900">
                         {a.accountName}
                       </span>
                     </div>
-                    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${accent.chip}`}>
-                      {chipLabel}
+                    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${meta.chipClasses}`}>
+                      {meta.shortLabel}
                     </span>
                   </div>
 

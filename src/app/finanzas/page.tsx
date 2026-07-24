@@ -30,6 +30,7 @@ import DailySummary from "@/features/finanzas/components/DailySummary";
 import CategoryBreakdown from "@/features/finanzas/components/CategoryBreakdown";
 import TransactionCategoryManager from "@/features/finanzas/components/TransactionCategoryManager";
 import BalanceCard from "@/features/finanzas/components/BalanceCard";
+import { accountMeta } from "@/features/finanzas/components/accountMeta";
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   ingreso_venta: { label: "Venta", color: "bg-green-100 text-green-700" },
@@ -42,10 +43,10 @@ const TYPE_LABELS: Record<string, { label: string; color: string }> = {
 
 const FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "Todos" },
-  { value: "caja", label: "Caja" },
-  { value: "banco", label: "Banco" },
-  { value: "rappi", label: "Rappi" },
-  { value: "pos", label: "POS" },
+  ...(["caja", "banco", "rappi", "pos"] as const).map((t) => ({
+    value: t,
+    label: accountMeta(t).shortLabel,
+  })),
 ];
 
 export default function FinanzasPage() {
@@ -315,18 +316,18 @@ export default function FinanzasPage() {
                         color: "bg-gray-100 text-gray-700",
                       };
                       const isPositive = t.amount > 0;
-                      const isCaja = t.account_id === cajaAccount?.id;
-                      const isBanco = t.account_id === bancoAccount?.id;
-                      const isRappi = t.account_id === rappiAccount?.id;
-                      const isPos = t.account_id === posAccount?.id;
-                      const accentBar = isCaja
-                        ? "bg-green-400"
-                        : isBanco
-                        ? "bg-blue-400"
-                        : isRappi
-                        ? "bg-orange-400"
-                        : isPos
-                        ? "bg-indigo-400"
+                      const accountType =
+                        t.account_id === cajaAccount?.id
+                          ? "caja"
+                          : t.account_id === bancoAccount?.id
+                          ? "banco"
+                          : t.account_id === rappiAccount?.id
+                          ? "rappi"
+                          : t.account_id === posAccount?.id
+                          ? "pos"
+                          : null;
+                      const accentBar = accountType
+                        ? accountMeta(accountType).accentBar
                         : "bg-slate-300";
 
                       return (
