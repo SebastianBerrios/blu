@@ -2,6 +2,7 @@
 
 import { AlertTriangle, X } from "lucide-react";
 import { useEffect } from "react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 export type ConfirmVariant = "danger" | "primary";
 
@@ -28,6 +29,8 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const trapRef = useFocusTrap<HTMLDivElement>(isOpen);
+
   useEffect(() => {
     if (!isOpen) return;
     const handleKey = (e: KeyboardEvent) => {
@@ -49,6 +52,8 @@ export default function ConfirmDialog({
       onClick={isConfirming ? undefined : onCancel}
     >
       <div
+        ref={trapRef}
+        tabIndex={-1}
         className="bg-white rounded-xl shadow-2xl w-full max-w-md"
         onClick={(e) => e.stopPropagation()}
         role="alertdialog"
