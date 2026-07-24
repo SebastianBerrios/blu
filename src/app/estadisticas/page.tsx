@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { redirect } from "next/navigation";
 import { BarChart3 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -43,6 +45,12 @@ ChartJS.register(
 );
 
 export default function EstadisticasPage() {
+  const { isAdmin, isLoading: authLoading } = useAuth();
+
+  if (!authLoading && !isAdmin) {
+    redirect("/");
+  }
+
   const [preset, setPreset] = useState<DateRangePreset>("today");
   const [anchor, setAnchor] = useState<Date>(() => new Date());
   const [custom, setCustom] = useState<{ startDate: string; endDate: string } | undefined>();
