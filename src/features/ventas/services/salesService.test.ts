@@ -574,261 +574,229 @@ describe("createSale", () => {
   });
 });
 
-describe("updateSale", () => {
+// Helper to extract the payload passed to update_sale_atomic
+function getUpdateAtomicPayload(rpcCalls: Array<{ fn: string; params: unknown }>) {
+  const call = rpcCalls.find((c) => c.fn === "update_sale_atomic");
+  return (call?.params as { p_payload: Record<string, unknown> })?.p_payload;
+}
+
+describe("updateSale — atomic RPC path", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockedGetSaleNumber.mockResolvedValue(50);
   });
 
-  function makeUpdateMock(existingSale: Record<string, unknown> = {}) {
-    const sb = makeMockSupabase({
-      single: {
-        data: {
-          payment_method: "Efectivo",
-          cash_amount: 12,
-          plin_amount: null,
-          total_price: 12,
-          ...existingSale,
-        },
-        error: null,
-      },
-    });
+  function makeUpdateMock() {
+    const sb = makeMockSupabase({ rpc: { data: null, error: null } });
     vi.mocked(createClient).mockReturnValue(sb.client as never);
     return sb;
   }
 
-  it("permite actualizar a venta gratis (total 0): actualiza sin generar transacción", async () => {
-    const sb = makeUpdateMock({ total_price: 12, discount_amount: 0 });
-    await updateSale(
-      99,
-      makeSubmitParams({
-        totalPrice: 0,
-        cashReceived: "",
-        saleProducts: [
-          {
-            product_id: 1,
-            product_name: "Flat White",
-            quantity: 1,
-            unit_price: 0,
-            subtotal: 0,
-            temperatura: "caliente",
-            tipo_leche: "entera",
-            category_id: 10,
-            loyalty_reward: "bebida_gratis",
-          },
-        ],
-      }),
-    );
+  // --- Core: calls update_sale_atomic, no direct DB writes ---
 
-    // La venta se actualiza con total 0
-    const salesUpdate = sb.updateCalls.find((c) => c.table === "sales");
-    expect(salesUpdate).toBeDefined();
-    expect((salesUpdate!.payload as Record<string, unknown>).total_price).toBe(0);
-
-    // Pago activo (Efectivo) → se regeneran transacciones, pero sin pagos (monto 0)
-    expect(getReplacePayments(sb.rpcCalls)).toEqual([]);
-  });
-
-  it("regresión bug fix: items con status=Entregado se preservan (DELETE filtra status='Pendiente')", async () => {
+  it("happy path: calls rpc('update_sale_atomic') — NO direct sales.update, NO sale_products delete/insert", async () => {
     const sb = makeUpdateMock();
-    const params = makeSubmitParams({
-      saleProducts: [
-        {
-          product_id: 1,
-          product_name: "Latte (entregado)",
-          quantity: 1,
-          unit_price: 12,
-          subtotal: 12,
-          temperatura: "caliente",
-          tipo_leche: "entera",
-          category_id: 10,
-          loyalty_reward: null,
-          status: "Entregado",
-          id: 100,
-        },
-        {
-          product_id: 2,
-          product_name: "Croissant nuevo",
-          quantity: 1,
-          unit_price: 8,
-          subtotal: 8,
-          temperatura: null,
-          tipo_leche: null,
-          category_id: 20,
-          loyalty_reward: null,
-        },
-      ],
-      totalPrice: 20,
-      cashReceived: "20",
-    });
+    await updateSale(99, makeSubmitParams());
 
-    await updateSale(99, params);
+    const atomicCall = sb.rpcCalls.find((c) => c.fn === "update_sale_atomic");
+    expect(atomicCall).toBeDefined();
 
-    // DELETE on sale_products debe filtrar status='Pendiente' Y sale_id
-    const deleteCall = sb.deleteCalls.find((c) => c.table === "sale_products")!;
-    expect(deleteCall).toBeDefined();
-    expect(deleteCall.filters).toEqual([
-      ["sale_id", 99],
-      ["status", "Pendiente"],
-    ]);
-
-    // INSERT solo del Croissant (Latte no se reinsertó)
-    const productsInsert = sb.insertCalls.find((c) => c.table === "sale_products")!;
-    const rows = productsInsert.payload as Array<{ product_id: number }>;
-    expect(rows).toHaveLength(1);
-    expect(rows[0].product_id).toBe(2);
-  });
-
-  it("solo items pendientes: DELETE filtra Pendiente, INSERT con todos", async () => {
-    const sb = makeUpdateMock();
-    await updateSale(
-      99,
-      makeSubmitParams({
-        saleProducts: [
-          {
-            product_id: 1,
-            product_name: "A",
-            quantity: 1,
-            unit_price: 5,
-            subtotal: 5,
-            temperatura: null,
-            tipo_leche: null,
-            category_id: null,
-            loyalty_reward: null,
-          },
-          {
-            product_id: 2,
-            product_name: "B",
-            quantity: 1,
-            unit_price: 7,
-            subtotal: 7,
-            temperatura: null,
-            tipo_leche: null,
-            category_id: null,
-            loyalty_reward: null,
-          },
-        ],
-        totalPrice: 12,
-        cashReceived: "12",
-      }),
-    );
-    const productsInsert = sb.insertCalls.find((c) => c.table === "sale_products")!;
-    expect((productsInsert.payload as unknown[]).length).toBe(2);
-  });
-
-  it("100% entregados: NO llama insert de sale_products (guard de empty insert)", async () => {
-    const sb = makeUpdateMock();
-    await updateSale(
-      99,
-      makeSubmitParams({
-        saleProducts: [
-          {
-            product_id: 1,
-            product_name: "A",
-            quantity: 1,
-            unit_price: 5,
-            subtotal: 5,
-            temperatura: null,
-            tipo_leche: null,
-            category_id: null,
-            loyalty_reward: null,
-            status: "Entregado",
-            id: 1,
-          },
-        ],
-        totalPrice: 5,
-        cashReceived: "5",
-      }),
-    );
+    // No direct table mutations
+    expect(sb.updateCalls.find((c) => c.table === "sales")).toBeUndefined();
+    expect(sb.deleteCalls.find((c) => c.table === "sale_products")).toBeUndefined();
     expect(sb.insertCalls.find((c) => c.table === "sale_products")).toBeUndefined();
+    // No delete_delivered_sale_product rpc from client
+    expect(sb.rpcCalls.find((c) => c.fn === "delete_delivered_sale_product")).toBeUndefined();
+    // No replace_sale_transactions from client
+    expect(sb.rpcCalls.find((c) => c.fn === "replace_sale_transactions")).toBeUndefined();
   });
 
-  it("sin cambio de payment: SIEMPRE re-sync transacciones (idempotente, recupera ventas huérfanas)", async () => {
-    const sb = makeUpdateMock({
-      payment_method: "Efectivo",
-      cash_amount: 12,
-      plin_amount: null,
-      total_price: 12,
-    });
-    await updateSale(99, makeSubmitParams({ totalPrice: 12, cashReceived: "12" }));
-    // El flujo nuevo siempre llama replace_sale_transactions cuando hay
-    // payment_method activo (la RPC es idempotente). Esto recupera ventas
-    // huérfanas del bug de atomicidad anterior.
-    const payments = getReplacePayments(sb.rpcCalls);
-    expect(payments).toEqual([
-      expect.objectContaining({ account_id: 1, amount: 12 }),
-    ]);
-    // Pero NO loguea audit "actualizar" porque el estado de pago no cambió.
-    const auditUpdateCall = mockedLogAudit.mock.calls.find(
-      ([call]) =>
-        (call as { action?: string; targetTable?: string }).action === "actualizar"
-        && (call as { targetTable?: string }).targetTable === "sales",
-    );
-    expect(auditUpdateCall).toBeUndefined();
+  it("calls update_sale_atomic with p_sale_id and p_user_id", async () => {
+    const sb = makeUpdateMock();
+    await updateSale(99, makeSubmitParams({ userId: "u-1" }));
+
+    const atomicCall = sb.rpcCalls.find((c) => c.fn === "update_sale_atomic");
+    const args = atomicCall?.params as { p_sale_id: number; p_user_id?: string; p_payload: unknown };
+    expect(args.p_sale_id).toBe(99);
+    expect(args.p_user_id).toBe("u-1");
   });
 
-  it("cambio payment_method (Efectivo → Plin): regenera transacciones via replace + audit con metodos", async () => {
-    const sb = makeUpdateMock({
-      payment_method: "Efectivo",
-      cash_amount: 12,
-      plin_amount: null,
-      total_price: 12,
-    });
+  // --- Payload shape: header ---
+
+  it("payload.header contains order_type, total_price, discount_amount, customer_dni", async () => {
+    const sb = makeUpdateMock();
+    await updateSale(99, makeSubmitParams({ orderType: "Mesa", tableNumber: "3", totalPrice: 20, discountAmount: 5, customerDni: "12345678", cashReceived: "15" }));
+
+    const payload = getUpdateAtomicPayload(sb.rpcCalls);
+    const header = payload?.header as Record<string, unknown>;
+    expect(header.order_type).toBe("Mesa");
+    expect(header.table_number).toBe(3);
+    expect(header.total_price).toBe(20);
+    expect(header.discount_amount).toBe(5);
+    expect(header.customer_dni).toBe("12345678");
+  });
+
+  it("payload.header.customer_dni is null when customerDni is empty", async () => {
+    const sb = makeUpdateMock();
+    await updateSale(99, makeSubmitParams({ customerDni: "" }));
+
+    const payload = getUpdateAtomicPayload(sb.rpcCalls);
+    const header = payload?.header as Record<string, unknown>;
+    expect(header.customer_dni).toBeNull();
+  });
+
+  it("Para llevar: table_number is null in header", async () => {
+    const sb = makeUpdateMock();
+    await updateSale(99, makeSubmitParams({ orderType: "Para llevar", tableNumber: "5" }));
+
+    const payload = getUpdateAtomicPayload(sb.rpcCalls);
+    const header = payload?.header as Record<string, unknown>;
+    expect(header.table_number).toBeNull();
+  });
+
+  // --- Payload shape: products ---
+
+  it("payload.products contains pending items (Entregado items excluded)", async () => {
+    const sb = makeUpdateMock();
     await updateSale(
       99,
       makeSubmitParams({
-        paymentMethod: "Plin",
-        cashAmount: "",
-        plinAmount: "",
-        cashReceived: "",
+        saleProducts: [
+          {
+            product_id: 1, product_name: "A", quantity: 1, unit_price: 12, subtotal: 12,
+            temperatura: "caliente", tipo_leche: "entera", category_id: 10, loyalty_reward: null,
+            status: "Entregado", id: 100,
+          },
+          {
+            product_id: 2, product_name: "B", quantity: 1, unit_price: 8, subtotal: 8,
+            temperatura: null, tipo_leche: null, category_id: 20, loyalty_reward: null,
+          },
+        ],
+        totalPrice: 20,
+        cashReceived: "20",
       }),
     );
-    const payments = getReplacePayments(sb.rpcCalls);
-    expect(payments).toEqual([
-      expect.objectContaining({ account_id: 2, type: "ingreso_venta" }),
-    ]);
-    const auditCall = mockedLogAudit.mock.calls.find(
-      ([call]) => (call as { details?: { metodo_anterior?: string } }).details?.metodo_anterior === "Efectivo",
-    );
-    expect(auditCall).toBeDefined();
-    const details = auditCall![0].details;
-    expect(details?.metodo_nuevo).toBe("Plin");
+
+    const payload = getUpdateAtomicPayload(sb.rpcCalls);
+    const products = payload?.products as Array<Record<string, unknown>>;
+    expect(products).toHaveLength(1);
+    expect(products[0].product_id).toBe(2);
   });
 
-  it("Rappi: cambia total_price → rappiTotalChanged regenera transacciones", async () => {
-    const sb = makeUpdateMock({
-      payment_method: "Rappi",
-      cash_amount: null,
-      plin_amount: null,
-      total_price: 100,
+  it("payload.products has required fields (product_id, quantity, unit_price, unit_cost, status)", async () => {
+    const sb = makeUpdateMock();
+    await updateSale(99, makeSubmitParams());
+
+    const payload = getUpdateAtomicPayload(sb.rpcCalls);
+    const products = payload?.products as Array<Record<string, unknown>>;
+    expect(products).toHaveLength(1);
+    expect(products[0]).toMatchObject({
+      product_id: 1,
+      quantity: 1,
+      unit_price: 12,
+      unit_cost: expect.any(Number),
+      status: "Pendiente",
     });
+  });
+
+  // --- Payload shape: kept_delivered_ids ---
+
+  it("payload.kept_delivered_ids contains ids of Entregado items the editor kept", async () => {
+    const sb = makeUpdateMock();
+    await updateSale(
+      99,
+      makeSubmitParams({
+        saleProducts: [
+          {
+            product_id: 1, product_name: "Latte", quantity: 1, unit_price: 12, subtotal: 12,
+            temperatura: "caliente", tipo_leche: "entera", category_id: 10, loyalty_reward: null,
+            status: "Entregado", id: 77,
+          },
+          {
+            product_id: 2, product_name: "Croissant", quantity: 1, unit_price: 8, subtotal: 8,
+            temperatura: null, tipo_leche: null, category_id: 20, loyalty_reward: null,
+          },
+        ],
+        totalPrice: 20,
+        cashReceived: "20",
+      }),
+    );
+
+    const payload = getUpdateAtomicPayload(sb.rpcCalls);
+    expect(payload?.kept_delivered_ids).toEqual([77]);
+  });
+
+  it("payload.kept_delivered_ids is empty when no Entregado items kept", async () => {
+    const sb = makeUpdateMock();
+    await updateSale(99, makeSubmitParams());
+
+    const payload = getUpdateAtomicPayload(sb.rpcCalls);
+    expect(payload?.kept_delivered_ids).toEqual([]);
+  });
+
+  // --- Payload shape: payment_entries ---
+
+  it("registerPayment=true with Efectivo: payload.payment_entries has a caja entry", async () => {
+    const sb = makeUpdateMock();
+    await updateSale(99, makeSubmitParams({ paymentMethod: "Efectivo", cashReceived: "12" }));
+
+    const payload = getUpdateAtomicPayload(sb.rpcCalls);
+    const entries = payload?.payment_entries as Array<Record<string, unknown>>;
+    expect(entries).toEqual([
+      expect.objectContaining({ account_id: 1, type: "ingreso_venta", amount: 12 }),
+    ]);
+  });
+
+  it("registerPayment=false: payload.payment_entries is empty []", async () => {
+    const sb = makeUpdateMock();
+    await updateSale(99, makeSubmitParams({ registerPayment: false }));
+
+    const payload = getUpdateAtomicPayload(sb.rpcCalls);
+    expect(payload?.payment_entries).toEqual([]);
+  });
+
+  it("Rappi: payment_entries net = total × 0.8", async () => {
+    const sb = makeUpdateMock();
     await updateSale(
       99,
       makeSubmitParams({
         orderType: "Rappi",
+        totalPrice: 100,
         paymentMethod: "Rappi",
-        totalPrice: 150,
         cashAmount: "",
         plinAmount: "",
         cashReceived: "",
       }),
     );
-    const payments = getReplacePayments(sb.rpcCalls);
-    expect(payments).toEqual([
-      expect.objectContaining({
-        account_id: 3,
-        amount: 120, // 150 - 20% commission
-      }),
+
+    const payload = getUpdateAtomicPayload(sb.rpcCalls);
+    const entries = payload?.payment_entries as Array<Record<string, unknown>>;
+    expect(entries).toEqual([
+      expect.objectContaining({ account_id: 3, amount: 80 }),
     ]);
   });
 
-  it("pago removido: replace con payments vacíos + audit metodo_nuevo=null", async () => {
-    const sb = makeUpdateMock({
-      payment_method: "Efectivo",
-      cash_amount: 12,
-      plin_amount: null,
-      total_price: 12,
-    });
+  it("con descuento: payment_entries usa el neto (total − descuento)", async () => {
+    const sb = makeUpdateMock();
+    await updateSale(
+      99,
+      makeSubmitParams({
+        totalPrice: 100,
+        discountAmount: 30,
+        paymentMethod: "Efectivo",
+        cashReceived: "70",
+      }),
+    );
+
+    const payload = getUpdateAtomicPayload(sb.rpcCalls);
+    const entries = payload?.payment_entries as Array<Record<string, unknown>>;
+    expect(entries).toEqual([
+      expect.objectContaining({ account_id: 1, amount: 70 }),
+    ]);
+  });
+
+  it("pago removido (registerPayment=false): payment_entries is [] (RPC will revert existing txns)", async () => {
+    const sb = makeUpdateMock();
     await updateSale(
       99,
       makeSubmitParams({
@@ -838,81 +806,99 @@ describe("updateSale", () => {
         cashReceived: "",
       }),
     );
-    const payments = getReplacePayments(sb.rpcCalls);
-    expect(payments).toEqual([]); // sin pago, no insertamos pero sí revertimos las anteriores
-    const auditCall = mockedLogAudit.mock.calls.find(
-      ([call]) => (call as { details?: { metodo_nuevo?: unknown } }).details?.metodo_nuevo === null,
-    );
-    expect(auditCall).toBeDefined();
+
+    const payload = getUpdateAtomicPayload(sb.rpcCalls);
+    expect(payload?.payment_entries).toEqual([]);
   });
 
-  it("editar solo el descuento: re-sincroniza transacciones al nuevo neto", async () => {
-    const sb = makeUpdateMock({
-      payment_method: "Efectivo",
-      cash_amount: 100,
-      plin_amount: null,
-      total_price: 100,
-      discount_amount: 0,
-    });
+  // --- Error propagation ---
+
+  it("RPC error propagates — logAudit NOT called", async () => {
+    const sb = makeMockSupabase({ rpc: { data: null, error: { message: "RLS denied" } } });
+    vi.mocked(createClient).mockReturnValue(sb.client as never);
+
+    await expect(updateSale(99, makeSubmitParams())).rejects.toBeTruthy();
+    expect(mockedLogAudit).not.toHaveBeenCalled();
+  });
+
+  // --- Post-success: logAudit ---
+
+  it("success: logAudit called with action='actualizar', targetTable='sales', targetId=saleId", async () => {
+    makeUpdateMock();
+    await updateSale(99, makeSubmitParams());
+
+    expect(mockedLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "actualizar",
+        targetTable: "sales",
+        targetId: 99,
+      }),
+    );
+  });
+
+  it("success: logAudit targetDescription includes sale number", async () => {
+    makeUpdateMock();
+    await updateSale(99, makeSubmitParams());
+
+    expect(mockedLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetDescription: expect.stringContaining("#50"),
+      }),
+    );
+  });
+
+  // --- Client-side pre-validation (kept) ---
+
+  it("client-side: descuento mayor que total → clampea a total (no lanza)", async () => {
+    const sb = makeUpdateMock();
+    // discountAmount = 999 > totalPrice = 12 → clampea a 12; netPayable = 0
     await updateSale(
       99,
       makeSubmitParams({
-        saleProducts: [
-          {
-            product_id: 1,
-            product_name: "A",
-            quantity: 1,
-            unit_price: 100,
-            subtotal: 100,
-            temperatura: null,
-            tipo_leche: null,
-            category_id: null,
-            loyalty_reward: null,
-          },
-        ],
-        totalPrice: 100,
-        discountAmount: 30,
-        paymentMethod: "Efectivo",
-        cashReceived: "70",
+        totalPrice: 12,
+        discountAmount: 999,
+        cashReceived: "",
       }),
     );
 
-    const salesUpdate = sb.updateCalls.find((c) => c.table === "sales")!;
-    expect((salesUpdate.payload as Record<string, unknown>).discount_amount).toBe(30);
-
-    const payments = getReplacePayments(sb.rpcCalls);
-    expect(payments).toEqual([
-      expect.objectContaining({ account_id: 1, amount: 70 }),
-    ]);
-    // El monto neto cambió (100 → 70) ⇒ audit "actualizar" registrado.
-    const auditUpdateCall = mockedLogAudit.mock.calls.find(
-      ([call]) =>
-        (call as { action?: string; targetTable?: string }).action === "actualizar" &&
-        (call as { targetTable?: string }).targetTable === "sales",
-    );
-    expect(auditUpdateCall).toBeDefined();
+    const payload = getUpdateAtomicPayload(sb.rpcCalls);
+    const header = payload?.header as Record<string, unknown>;
+    expect(header.discount_amount).toBe(12); // clamped
+    expect(payload?.payment_entries).toEqual([]); // net = 0, no payment entries
   });
 
-  it("error en fetch existing sale: propaga sin update", async () => {
-    const sb = makeMockSupabase({
-      single: { data: null, error: { message: "sale missing" } },
-    });
-    vi.mocked(createClient).mockReturnValue(sb.client as never);
-
-    await expect(updateSale(404, makeSubmitParams())).rejects.toBeTruthy();
-    expect(sb.updateCalls.find((c) => c.table === "sales")).toBeUndefined();
-  });
-
-  it("RLS rechaza update silenciosamente (0 filas): throws con mensaje claro y NO toca sale_products", async () => {
+  it("client-side: netPayable < 0 → throws before RPC", async () => {
+    // This path is guarded: totalPrice=0, but validateSplitPayment etc. could trigger
+    // The guard is: netPayable = total - clamp(discount) which can never go < 0 due to clamp
+    // So we test the Efectivo+Plin mismatch instead
     const sb = makeUpdateMock();
-    sb.setUpdateSelectResult("sales", { data: [], error: null });
-
     await expect(
-      updateSale(99, makeSubmitParams({ totalPrice: 25, cashReceived: "25" })),
-    ).rejects.toThrow(/Solo se pueden editar ventas del día actual/);
+      updateSale(
+        99,
+        makeSubmitParams({
+          paymentMethod: "Efectivo + Plin",
+          cashAmount: "5",
+          plinAmount: "3",
+          totalPrice: 12,
+          cashReceived: "",
+        }),
+      ),
+    ).rejects.toThrow(/sumar el total/);
+    expect(sb.rpcCalls.find((c) => c.fn === "update_sale_atomic")).toBeUndefined();
+  });
 
-    expect(sb.deleteCalls.find((c) => c.table === "sale_products")).toBeUndefined();
-    expect(sb.insertCalls.find((c) => c.table === "sale_products")).toBeUndefined();
-    expect(findReplaceCall(sb.rpcCalls)).toBeUndefined();
+  it("client-side: cash_received < cash_amount → throws before RPC", async () => {
+    const sb = makeUpdateMock();
+    await expect(
+      updateSale(
+        99,
+        makeSubmitParams({
+          paymentMethod: "Efectivo",
+          totalPrice: 50,
+          cashReceived: "10",
+        }),
+      ),
+    ).rejects.toThrow(/efectivo recibido/);
+    expect(sb.rpcCalls.find((c) => c.fn === "update_sale_atomic")).toBeUndefined();
   });
 });
