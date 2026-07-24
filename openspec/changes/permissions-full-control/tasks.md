@@ -225,13 +225,13 @@
 **Sequencing:** depends on PR1 merged. Steps below are sequential within PR2 (each component is referenced by the next).
 **Files:** `src/features/usuarios/components/permissions/` (new directory)
 
-- [ ] **T8.1** — Create `src/features/usuarios/components/permissions/Toggle.tsx`. Extract the `Toggle` component verbatim from the bottom of `PermissionsTab.tsx` into its own file. Export as named export. Props: `{ checked: boolean; disabled: boolean; onChange: () => void }`. Verify: `PermissionsTab` imports Toggle from the new file and still renders correctly (no visual change).
+- [x] **T8.1** — Create `src/features/usuarios/components/permissions/Toggle.tsx`. Extract the `Toggle` component verbatim from the bottom of `PermissionsTab.tsx` into its own file. Export as named export. Props: `{ checked: boolean; disabled: boolean; onChange: () => void }`. Verify: `PermissionsTab` imports Toggle from the new file and still renders correctly (no visual change).
   - **Acceptance:** File < 50 LOC; `pnpm tsc --noEmit` passes.
 
-- [ ] **T8.2** — Create `src/features/usuarios/components/permissions/TriStateControl.tsx`. Props: `{ value: "inherit" | "on" | "off"; disabled?: boolean; onChange: (next: "inherit" | "on" | "off") => void }`. Three-segment button group. Labels in Spanish: "Hereda" / "Sí" / "No". Each segment ≥ 44px tap target. Mobile-first layout (stacked by default, `sm:flex-row`). Active segment uses primary-600 color; inactive uses slate-200.
+- [x] **T8.2** — Create `src/features/usuarios/components/permissions/TriStateControl.tsx`. Props: `{ value: "inherit" | "on" | "off"; disabled?: boolean; onChange: (next: "inherit" | "on" | "off") => void }`. Three-segment button group. Labels in Spanish: "Hereda" / "Sí" / "No". Each segment ≥ 44px tap target. Mobile-first layout (stacked by default, `sm:flex-row`). Active segment uses primary-600 color; inactive uses slate-200.
   - **Acceptance:** File < 80 LOC; `pnpm tsc --noEmit` passes.
 
-- [ ] **T8.3** — Create `src/features/usuarios/components/permissions/RoleMatrix.tsx`. Props:
+- [x] **T8.3** — Create `src/features/usuarios/components/permissions/RoleMatrix.tsx`. Props:
   ```ts
   interface RoleMatrixProps {
     defs: typeof PERMISSION_DEFS;
@@ -244,7 +244,7 @@
   Move the matrix table JSX (thead + tbody with group rows) from `PermissionsTab.tsx` into this component. `roles` comes from the data-driven list (not `CONFIGURABLE_ROLES`). `ROLE_LABEL` mapping lives here or in a shared constants file. Admin column renders "Siempre" with no toggle.
   - **Acceptance:** File < 140 LOC; `pnpm tsc --noEmit` passes.
 
-- [ ] **T8.4** — Create `src/features/usuarios/components/permissions/UserOverridePanel.tsx`. Props:
+- [x] **T8.4** — Create `src/features/usuarios/components/permissions/UserOverridePanel.tsx`. Props:
   ```ts
   interface UserOverridePanelProps {
     users: UserProfile[];
@@ -262,7 +262,7 @@
   Renders: a user selector (`<select>` or native dropdown), then per-permission a `TriStateControl` plus a baseline hint ("Hereda del rol: Activado / Desactivado"). Current value derived from `userOverrides(selectedUserId)`: row with `enabled=true` → "on", `enabled=false` → "off", no row → "inherit". All copy in Spanish.
   - **Acceptance:** File < 170 LOC; `pnpm tsc --noEmit` passes; no `createClient` or service imports (presentational only).
 
-- [ ] **T8.5** — Rewrite `src/features/usuarios/components/PermissionsTab.tsx` as a thin container:
+- [x] **T8.5** — Rewrite `src/features/usuarios/components/PermissionsTab.tsx` as a thin container:
   - Import `usePermissions`, `useAuth`, `useUsers` (existing hook), `setUserPermission`, `clearUserPermission`.
   - Derive `configRoles` from live `user_profiles` via `useUsers`: `const configRoles = users.filter(u => u.role !== 'admin').map(u => u.role)` → deduplicate → sort using `CONFIGURABLE_ROLES` as ordering hint (known roles first, then any new roles appended).
   - State: `pending: Set<string>`, `selectedUserId: string | null`.
@@ -272,7 +272,7 @@
   - Remove `permissions` alias usage (use `rolePermissions` from hook). Remove `CONFIGURABLE_ROLES` import (replaced by live derivation).
   - **Acceptance:** File < 130 LOC; `pnpm tsc --noEmit` passes; `GROUP_ORDER` / `ROLE_LABEL` moved to appropriate child (RoleMatrix or a constants file).
 
-- [ ] **T8.6** — Create `src/features/usuarios/components/permissions/index.ts` barrel:
+- [x] **T8.6** — Create `src/features/usuarios/components/permissions/index.ts` barrel:
   ```ts
   export { default as Toggle } from "./Toggle";
   export { default as TriStateControl } from "./TriStateControl";
@@ -285,9 +285,9 @@
 
 ### Step 9 (PR2) — Final Barrel + Verification Run
 
-- [ ] **T9.1** — Update `src/features/usuarios/index.ts` to also export the new components if needed (or leave PermissionsTab as the single entry point — design intent is the container stays the public API; sub-components are internal to the feature). Verify `PermissionsTab` is still the default export accessible from the users page.
+- [x] **T9.1** — Update `src/features/usuarios/index.ts` to also export the new components if needed (or leave PermissionsTab as the single entry point — design intent is the container stays the public API; sub-components are internal to the feature). Verify `PermissionsTab` is still the default export accessible from the users page.
 
-- [ ] **T9.2** — Run `pnpm test`. Run `pnpm tsc --noEmit`. Run `pnpm lint`. Run `pnpm build` (catch Next.js-specific issues). All pass.
+- [x] **T9.2** — Run `pnpm test`. Run `pnpm tsc --noEmit`. Run `pnpm lint`. Run `pnpm build` (catch Next.js-specific issues). All pass.
   - **Acceptance:** All 4 commands exit 0. PR2 is ready.
 
 - [ ] **T9.3** — Manual smoke test in dev (`pnpm dev`): open `/users`, navigate to Permisos tab. Verify:

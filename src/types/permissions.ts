@@ -63,6 +63,12 @@ export const PERMISSION_DEFS = [
 // Derived from PERMISSION_DEFS — adding/removing an entry auto-updates this type.
 export type PermissionKey = (typeof PERMISSION_DEFS)[number]["key"];
 
+// Order-preserving unique groups derived from PERMISSION_DEFS (single source of
+// truth). Adding a new group to a def surfaces it in the dashboard automatically.
+export const PERMISSION_GROUPS: PermissionGroup[] = [
+  ...new Set(PERMISSION_DEFS.map((d) => d.group)),
+];
+
 export interface PermissionResolutionCtx {
   isAdmin: boolean;
   role: AppRole | null;
